@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from 'react'
 
 import {
+  type Column,
   type ColumnDef,
   type ColumnFiltersState,
   type PaginationState,
@@ -55,6 +56,24 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { usePagination } from '@/hooks/use-pagination'
+
+export type DataTableColumnMeta = {
+  label?: string
+}
+
+function getColumnLabel<TData>(column: Column<TData, unknown>): string {
+  const meta = column.columnDef.meta as DataTableColumnMeta | undefined
+  if (meta?.label) {
+    return meta.label
+  }
+
+  const header = column.columnDef.header
+  if (typeof header === 'string') {
+    return header
+  }
+
+  return column.id
+}
 
 export type DataTableFilterOption = {
   value: string
@@ -190,9 +209,8 @@ export function DataTable<TData>({
                       key={column.id}
                       checked={column.getIsVisible()}
                       onCheckedChange={(checked) => column.toggleVisibility(!!checked)}
-                      className='capitalize'
                     >
-                      {column.id}
+                      {getColumnLabel(column)}
                     </DropdownMenuCheckboxItem>
                   ))}
               </DropdownMenuContent>

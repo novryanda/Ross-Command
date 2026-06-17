@@ -103,6 +103,8 @@ export type Order = {
   sentiment: "positive" | "negative" | null;
   engagementActions: string[] | null;
   reportReason: string | null;
+  postingSourceUrl?: string | null;
+  postingTargetPlatforms?: SocialPlatform[] | null;
   status: OrderStatus;
   deadline: string;
   sentAt: string | null;
@@ -137,9 +139,19 @@ export type OrderDetail = Order & {
   }>;
 };
 
+export type PlatformProofLink = {
+  platform: SocialPlatform;
+  url: string;
+};
+
+export type PostingCompleteness = "lengkap" | "sebagian";
+
 export type Submission = {
   id?: string;
-  driveLink: string;
+  driveLink?: string | null;
+  platformLinks?: PlatformProofLink[] | null;
+  postingCompleteness?: PostingCompleteness | null;
+  missingPlatforms?: SocialPlatform[];
   notes: string | null;
   submittedAt: string;
   isLate?: boolean;
@@ -163,6 +175,8 @@ export type Assignment = {
     sentiment?: "positive" | "negative" | null;
     engagementActions?: string[] | null;
     reportReason?: string | null;
+    postingSourceUrl?: string | null;
+    postingTargetPlatforms?: SocialPlatform[] | null;
     status?: OrderStatus;
     deadline: string;
   };

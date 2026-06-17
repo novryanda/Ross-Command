@@ -8,6 +8,10 @@ import { toast } from "sonner";
 import { TargetPicker, type OrderTargetInput } from "@/components/komando/trees/target-picker";
 import { CommentSentimentBadge } from "@/components/komando/badges";
 import {
+  OrderPostingFields,
+  hasValidPostingDraft,
+} from "@/components/features/orders/order-posting-fields";
+import {
   OrderTargetUrlsField,
   createTargetUrlDraft,
   hasValidTargetUrls,
@@ -22,21 +26,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Stepper } from "@/components/wizard-stepper";
 import { clientApiFetch } from "@/lib/api/client";
-import type { Order, OrderType, UnitNode, UserListItem } from "@/lib/api/types";
+import type { Order, OrderType, SocialPlatform, UnitNode, UserListItem } from "@/lib/api/types";
 
 const ENGAGEMENT_ACTIONS = ["like", "share", "repost"] as const;
 
-const defaultDescription: Record<OrderType, string> = {
-  posting: "Unggah konten sesuai brief pada URL target.",
+const defaultDescription: Record<Exclude<OrderType, "posting">, string> = {
   engagement: "Lakukan like, share, dan repost pada URL target.",
   komentar: "Berikan komentar sesuai narasi pada URL target.",
   report_akun: "Laporkan akun target sesuai alasan yang ditentukan.",
 };
-
-function resolveDescription(orderType: OrderType, description: string) {
-  const trimmed = description.trim();
-  return trimmed.length >= 3 ? trimmed : defaultDescription[orderType];
-}
 
 const steps = [
   { id: "detail", title: "Detail", description: "Jenis dan instruksi" },
@@ -44,11 +42,23 @@ const steps = [
   { id: "review", title: "Review", description: "Simpan atau kirim" },
 ];
 
+function resolveDescription(orderType: OrderType, description: string) {
+  const trimmed = description.trim();
+  if (orderType === "posting") {
+    return trimmed;
+  }
+
+  return trimmed.length >= 3 ? trimmed : defaultDescription[orderType];
+}
+
 type OrderDraft = {
   title: string;
   orderType: OrderType;
   description: string;
   targetUrls: OrderTargetUrlDraft[];
+  postingSourceUrl: string;
+  postingTargetPlatforms: SocialPlatform[];
+  deskripsi: string;
   narration: string;
   sentiment: "positive" | "negative" | "";
   engagementActions: string[];
@@ -66,6 +76,9 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
     orderType: "posting",
     description: "",
     targetUrls: [createTargetUrlDraft()],
+    postingSourceUrl: "",
+    postingTargetPlatforms: [],
+    deskripsi: "",
     narration: "",
     sentiment: "",
     engagementActions: [],
@@ -73,14 +86,23 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
     deadline: "",
   });
 
+  const isPosting = draft.orderType === "posting";
   const requiresNarration = draft.orderType === "komentar";
   const requiresReport = draft.orderType === "report_akun";
 
   const canContinue = useMemo(() => {
     if (step === 0) {
-      const baseValid =
-        draft.title.length >= 3 && hasValidTargetUrls(draft.targetUrls) && draft.deadline;
-      if (!baseValid) return false;
+      if (draft.title.length < 3 || !draft.deadline) return false;
+
+      if (isPosting) {
+        return hasValidPostingDraft({
+          postingSourceUrl: draft.postingSourceUrl,
+          postingTargetPlatforms: draft.postingTargetPlatforms,
+          deskripsi: draft.deskripsi,
+        });
+      }
+
+      if (!hasValidTargetUrls(draft.targetUrls)) return false;
       if (requiresNarration) {
         return draft.narration.length >= 3 && (draft.sentiment === "positive" || draft.sentiment === "negative");
       }
@@ -89,7 +111,7 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
     }
     if (step === 1) return targets.length > 0;
     return true;
-  }, [draft, requiresNarration, requiresReport, step, targets.length]);
+  }, [draft, isPosting, requiresNarration, requiresReport, step, targets.length]);
 
   function setField<K extends keyof OrderDraft>(key: K, value: OrderDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -103,25 +125,38 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
 
     setSubmitting(status);
     try {
-      const payload = {
-        title: draft.title,
-        orderType: draft.orderType,
-        description: resolveDescription(draft.orderType, draft.description),
-        targetUrls: draft.targetUrls
-          .filter((item) => item.url.trim())
-          .map((item) => ({
-            platform: item.platform,
-            url: item.url.trim(),
-          })),
-        narration: draft.narration || undefined,
-        sentiment: draft.sentiment || undefined,
-        engagementActions:
-          draft.orderType === "engagement" ? [...ENGAGEMENT_ACTIONS] : undefined,
-        reportReason: draft.reportReason || undefined,
-        deadline: new Date(draft.deadline).toISOString(),
-        status,
-        targets,
-      };
+      const payload = isPosting
+        ? {
+            title: draft.title,
+            orderType: draft.orderType,
+            description: draft.deskripsi.trim(),
+            postingSourceUrl: draft.postingSourceUrl.trim() || undefined,
+            postingTargetPlatforms: draft.postingTargetPlatforms,
+            targetUrls: [],
+            narration: draft.description.trim() || undefined,
+            deadline: new Date(draft.deadline).toISOString(),
+            status,
+            targets,
+          }
+        : {
+            title: draft.title,
+            orderType: draft.orderType,
+            description: resolveDescription(draft.orderType, draft.description),
+            targetUrls: draft.targetUrls
+              .filter((item) => item.url.trim())
+              .map((item) => ({
+                platform: item.platform,
+                url: item.url.trim(),
+              })),
+            narration: draft.narration || undefined,
+            sentiment: draft.sentiment || undefined,
+            engagementActions:
+              draft.orderType === "engagement" ? [...ENGAGEMENT_ACTIONS] : undefined,
+            reportReason: draft.reportReason || undefined,
+            deadline: new Date(draft.deadline).toISOString(),
+            status,
+            targets,
+          };
       const response = await clientApiFetch<Order>("/api/v1/orders", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -191,10 +226,21 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
                 </ToggleGroup>
               ) : null}
             </div>
-            <OrderTargetUrlsField
-              value={draft.targetUrls}
-              onChange={(targetUrls) => setField("targetUrls", targetUrls)}
-            />
+            {!isPosting ? (
+              <OrderTargetUrlsField
+                value={draft.targetUrls}
+                onChange={(targetUrls) => setField("targetUrls", targetUrls)}
+              />
+            ) : (
+              <OrderPostingFields
+                postingSourceUrl={draft.postingSourceUrl}
+                postingTargetPlatforms={draft.postingTargetPlatforms}
+                deskripsi={draft.deskripsi}
+                onPostingSourceUrlChange={(value) => setField("postingSourceUrl", value)}
+                onPostingTargetPlatformsChange={(value) => setField("postingTargetPlatforms", value)}
+                onDeskripsiChange={(value) => setField("deskripsi", value)}
+              />
+            )}
             <div className="grid gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Label htmlFor="description">Instruksi</Label>
@@ -264,18 +310,32 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
             {requiresNarration ? (
               <p><span className="text-muted-foreground">Narasi:</span> {draft.narration || "-"}</p>
             ) : null}
-            <div className="space-y-1">
-              <p className="text-muted-foreground">URL Target:</p>
-              <ul className="space-y-1">
-                {draft.targetUrls
-                  .filter((item) => item.url.trim())
-                  .map((item) => (
-                    <li key={item.clientId} className="text-sm">
-                      {item.platform}: {item.url}
-                    </li>
-                  ))}
-              </ul>
-            </div>
+            {isPosting ? (
+              <>
+                <p><span className="text-muted-foreground">Sumber Posting:</span> {draft.postingSourceUrl || "-"}</p>
+                <p>
+                  <span className="text-muted-foreground">Target Sosmed:</span>{" "}
+                  {draft.postingTargetPlatforms.length
+                    ? draft.postingTargetPlatforms.join(", ")
+                    : "-"}
+                </p>
+                <p><span className="text-muted-foreground">Deskripsi:</span> {draft.deskripsi || "-"}</p>
+                <p><span className="text-muted-foreground">Instruksi:</span> {draft.description || "-"}</p>
+              </>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-muted-foreground">URL Target:</p>
+                <ul className="space-y-1">
+                  {draft.targetUrls
+                    .filter((item) => item.url.trim())
+                    .map((item) => (
+                      <li key={item.clientId} className="text-sm">
+                        {item.platform}: {item.url}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
             <p><span className="text-muted-foreground">Target:</span> {targets.length} target</p>
             <p><span className="text-muted-foreground">Deadline:</span> {draft.deadline ? new Date(draft.deadline).toLocaleString("id-ID") : "-"}</p>
           </CardContent>

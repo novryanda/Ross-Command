@@ -63,6 +63,7 @@ export class AuthController {
         id: unit.id,
         name: unit.name,
         path: unit.path,
+        depthLevel: unit.depthLevel,
       })),
       socialAccountCount,
       lastLoginAt: currentUser.user.lastLoginAt,

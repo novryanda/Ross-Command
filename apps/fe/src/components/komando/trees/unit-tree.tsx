@@ -1,4 +1,7 @@
-import { ChevronRightIcon, UsersIcon } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +15,14 @@ export function UnitTree({
   selectable = false,
   selectedIds = [],
   onToggle,
+  defaultExpanded = true,
 }: {
   nodes: UnitNode[];
   linkPrefix?: string;
   selectable?: boolean;
   selectedIds?: string[];
   onToggle?: (unit: UnitNode) => void;
+  defaultExpanded?: boolean;
 }) {
   if (!nodes.length) return null;
 
@@ -31,6 +36,7 @@ export function UnitTree({
           selectable={selectable}
           selectedIds={selectedIds}
           onToggle={onToggle}
+          defaultExpanded={defaultExpanded}
         />
       ))}
     </div>
@@ -43,15 +49,20 @@ function UnitTreeNode({
   selectable,
   selectedIds,
   onToggle,
+  defaultExpanded,
 }: {
   node: UnitNode;
   linkPrefix?: string;
   selectable: boolean;
   selectedIds: string[];
   onToggle?: (unit: UnitNode) => void;
+  defaultExpanded: boolean;
 }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const selected = selectedIds.includes(node.id);
-  const body = (
+
+  const card = (
     <Card
       className={cn(
         "py-0 transition-colors",
@@ -61,28 +72,60 @@ function UnitTreeNode({
       onClick={selectable ? () => onToggle?.(node) : undefined}
     >
       <CardContent className="flex items-center gap-3 p-3">
-        <div className="bg-muted flex size-8 items-center justify-center rounded-md">
-          <ChevronRightIcon className="size-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{node.name}</p>
-          <p className="text-muted-foreground truncate text-xs">
-            Level {node.depthLevel}
-            {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
-          </p>
-        </div>
-        <Badge variant="secondary" className="gap-1 rounded-sm">
-          <UsersIcon className="size-3" />
-          {node.directMembers?.length ?? 0}
-        </Badge>
+        {hasChildren ? (
+          <button
+            type="button"
+            className="bg-muted hover:bg-muted/80 flex size-8 shrink-0 items-center justify-center rounded-md transition-colors"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setExpanded((current) => !current);
+            }}
+            aria-expanded={expanded}
+            aria-label={expanded ? `Tutup ${node.name}` : `Buka ${node.name}`}
+          >
+            {expanded ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+          </button>
+        ) : (
+          <div className="size-8 shrink-0" aria-hidden />
+        )}
+        {linkPrefix && !selectable ? (
+          <Link href={`${linkPrefix}/${node.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{node.name}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                Level {node.depthLevel}
+                {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
+              </p>
+            </div>
+            <Badge variant="secondary" className="gap-1 rounded-sm">
+              <UsersIcon className="size-3" />
+              {node.directMembers?.length ?? 0}
+            </Badge>
+          </Link>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{node.name}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                Level {node.depthLevel}
+                {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
+              </p>
+            </div>
+            <Badge variant="secondary" className="gap-1 rounded-sm">
+              <UsersIcon className="size-3" />
+              {node.directMembers?.length ?? 0}
+            </Badge>
+          </>
+        )}
       </CardContent>
     </Card>
   );
 
   return (
     <div className="space-y-2">
-      {linkPrefix && !selectable ? <Link href={`${linkPrefix}/${node.id}`}>{body}</Link> : body}
-      {node.children?.length ? (
+      {card}
+      {hasChildren && expanded ? (
         <div className="ml-5 border-l pl-3">
           <UnitTree
             nodes={node.children}
@@ -90,6 +133,7 @@ function UnitTreeNode({
             selectable={selectable}
             selectedIds={selectedIds}
             onToggle={onToggle}
+            defaultExpanded={defaultExpanded}
           />
         </div>
       ) : null}

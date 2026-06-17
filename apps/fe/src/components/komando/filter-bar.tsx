@@ -14,14 +14,21 @@ export type SelectFilter = {
   visibleWhen?: { key: string; equals: string };
 };
 
+export type DateFilter = {
+  key: string;
+  label: string;
+};
+
 export function FilterBar({
   searchKey,
   searchPlaceholder,
   selects = [],
+  dateFilters = [],
 }: {
   searchKey?: string;
   searchPlaceholder?: string;
   selects?: SelectFilter[];
+  dateFilters?: DateFilter[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -49,7 +56,7 @@ export function FilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
       {searchKey ? (
-        <div className="relative w-full max-w-xs">
+        <div className="relative w-52 shrink-0">
           <SearchIcon className="text-muted-foreground absolute left-2.5 top-1/2 size-4 -translate-y-1/2" />
           <Input
             defaultValue={searchParams.get(searchKey) ?? ""}
@@ -88,7 +95,18 @@ export function FilterBar({
           </SelectContent>
         </Select>
       ))}
-      <Button type="button" size="sm" variant="outline" className="ml-auto h-8" onClick={reset}>
+      {dateFilters.map((filter) => (
+        <div key={filter.key} className="flex items-center gap-1.5">
+          <span className="text-muted-foreground text-xs whitespace-nowrap">{filter.label}</span>
+          <Input
+            type="date"
+            value={searchParams.get(filter.key) ?? ""}
+            className="h-8 w-36 text-xs"
+            onChange={(event) => setParam(filter.key, event.target.value)}
+          />
+        </div>
+      ))}
+      <Button type="button" size="sm" variant="destructive" className="ml-auto h-8" onClick={reset}>
         Reset
       </Button>
     </div>

@@ -28,10 +28,19 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   config: NavConfig
   header?: React.ReactNode
   footer?: React.ReactNode
+  contentClassName?: string
   isActive?: (url: string) => boolean
 }
 
-export function AppSidebar({ config, header, footer, isActive, collapsible = 'icon', ...props }: AppSidebarProps) {
+export function AppSidebar({
+  config,
+  header,
+  footer,
+  contentClassName,
+  isActive,
+  collapsible = 'icon',
+  ...props
+}: AppSidebarProps) {
   const pathname = usePathname()
   const matchActive =
     isActive ??
@@ -44,7 +53,7 @@ export function AppSidebar({ config, header, footer, isActive, collapsible = 'ic
   return (
     <Sidebar collapsible={collapsible} {...props}>
       {header ? <SidebarHeader>{header}</SidebarHeader> : null}
-      <SidebarContent>
+      <SidebarContent className={contentClassName}>
         {config.groups.map((group, groupIndex) => (
           <SidebarGroup key={group.label ?? `group-${groupIndex}`}>
             {group.label ? <SidebarGroupLabel>{group.label}</SidebarGroupLabel> : null}

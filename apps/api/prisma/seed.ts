@@ -43,7 +43,9 @@ type SeedOrder = {
   title: string;
   orderType: 'posting' | 'engagement' | 'komentar' | 'report_akun';
   description: string;
-  targetUrls: Array<{ platform: SeedPlatform; url: string }>;
+  targetUrls?: Array<{ platform: SeedPlatform; url: string }>;
+  postingSourceUrl?: string;
+  postingTargetPlatforms?: SeedPlatform[];
   narration?: string;
   sentiment?: 'positive' | 'negative';
   engagementActions?: Array<'like' | 'share' | 'repost'>;
@@ -56,7 +58,8 @@ type SeedOrder = {
 };
 
 type SeedSubmission = {
-  driveLink: string;
+  driveLink?: string;
+  platformLinks?: Array<{ platform: SeedPlatform; url: string }>;
   notes?: string;
   submittedAt: Date;
 };
@@ -369,7 +372,9 @@ const orders: SeedOrder[] = [
     orderType: 'posting',
     description:
       'Unggah materi kampanye Juni ke akun masing-masing sesuai brief pusat.',
-    targetUrls: [{ platform: 'other', url: 'https://drive.google.com/file/d/kampanye-juni-brief/view' }],
+    postingSourceUrl: 'https://drive.google.com/file/d/kampanye-juni-brief/view',
+    postingTargetPlatforms: ['instagram', 'facebook', 'tiktok'],
+    narration: 'Pastikan caption mengikuti tone resmi satuan.',
     status: 'expired',
     deadline: daysAgo(2),
     sentAt: daysAgo(5),
@@ -410,9 +415,9 @@ const orders: SeedOrder[] = [
     key: 'order_6',
     title: 'Draft - Rencana Operasi Berikutnya',
     orderType: 'posting',
-    description:
-      'Draft perintah untuk rencana operasi berikutnya yang belum dikirim.',
-    targetUrls: [{ platform: 'other', url: 'https://drive.google.com/file/d/draft-rencana-operasi/view' }],
+    description: 'Draft perintah untuk rencana operasi berikutnya yang belum dikirim.',
+    postingSourceUrl: 'https://drive.google.com/file/d/draft-rencana-operasi/view',
+    postingTargetPlatforms: ['instagram', 'youtube'],
     status: 'draft',
     deadline: hoursFromNow(7 * 24),
     sentAt: null,
@@ -470,44 +475,82 @@ const submissionSpecs: Record<
   },
   order_3: {
     budi_santoso: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-004/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-001' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-001' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-001' },
+      ],
       submittedAt: daysAgo(3),
     },
     andi_kurnia: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-005/view',
-      notes: 'Terlambat karena kendala teknis',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-002' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-002' },
+      ],
+      notes: 'TikTok belum sempat diunggah',
       submittedAt: daysAgo(1),
     },
     deni_pratama: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-006/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-003' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-003' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-003' },
+      ],
       submittedAt: daysAgo(1),
     },
     wahyu_nugroho: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-007/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-004' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-004' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-004' },
+      ],
       submittedAt: daysAgo(3),
     },
     rina_marlina: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-008/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-005' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-005' },
+      ],
       submittedAt: daysAgo(3),
     },
     kpt_sari: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-009/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-006' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-006' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-006' },
+      ],
       submittedAt: daysAgo(3),
     },
     kpt_rudi: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-010/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-007' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-007' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-007' },
+      ],
       submittedAt: daysAgo(3),
     },
     kpt_lisa: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-011/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-008' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-008' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-008' },
+      ],
       submittedAt: daysAgo(3),
     },
     kol_budi: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-012/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-009' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-009' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-009' },
+      ],
       submittedAt: daysAgo(3),
     },
     kol_hendra: {
-      driveLink: 'https://drive.google.com/file/d/seed-sub-013/view',
+      platformLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/p/seed-post-ig-010' },
+        { platform: 'facebook', url: 'https://facebook.com/seed-post-fb-010' },
+        { platform: 'tiktok', url: 'https://tiktok.com/@seed/video-010' },
+      ],
       submittedAt: daysAgo(3),
     },
   },
@@ -601,17 +644,23 @@ async function main() {
         sentiment: order.sentiment ?? null,
         engagementActions: order.engagementActions ?? undefined,
         reportReason: order.reportReason ?? null,
+        postingSourceUrl: order.postingSourceUrl ?? null,
+        postingTargetPlatforms: order.postingTargetPlatforms ?? undefined,
         status: order.status,
         deadline: order.deadline,
         sentAt: order.sentAt,
         createdById: getRequiredMapValue(userIds, order.createdByKey, 'user'),
-        socialTargets: {
-          create: order.targetUrls.map((target, index) => ({
-            platform: target.platform,
-            url: target.url,
-            sortOrder: index,
-          })),
-        },
+        ...(order.orderType !== 'posting' && order.targetUrls?.length
+          ? {
+              socialTargets: {
+                create: order.targetUrls.map((target, index) => ({
+                  platform: target.platform,
+                  url: target.url,
+                  sortOrder: index,
+                })),
+              },
+            }
+          : {}),
       },
     });
 
@@ -684,7 +733,8 @@ async function main() {
               'assignment',
             ),
             userId: getRequiredMapValue(userIds, userKey, 'user'),
-            driveLink: submission.driveLink,
+            driveLink: submission.driveLink ?? null,
+            platformLinks: submission.platformLinks ?? undefined,
             notes: submission.notes ?? null,
             submittedAt: submission.submittedAt,
             isLatest: true,

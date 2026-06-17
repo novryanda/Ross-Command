@@ -5,7 +5,11 @@ import { PageState } from "@/components/komando/page-state";
 import { ServerPagination } from "@/components/komando/server-pagination";
 import { buildQueryString } from "@/lib/api/client";
 import { serverApiFetch } from "@/lib/api/server";
-import type { UserListItem } from "@/lib/api/types";
+import type { UnitNode, UserListItem } from "@/lib/api/types";
+
+function flattenUnits(units: UnitNode[]): UnitNode[] {
+  return units.flatMap((unit) => [unit, ...flattenUnits(unit.children ?? [])]);
+}
 
 export default async function MembersPage({
   searchParams,
@@ -19,7 +23,14 @@ export default async function MembersPage({
     search: params.search,
     unitId: params.unitId,
   });
-  const members = await serverApiFetch<UserListItem[]>(`/api/v1/commander/members${query ? `?${query}` : ""}`);
+  const [members, units] = await Promise.all([
+    serverApiFetch<UserListItem[]>(`/api/v1/commander/members${query ? `?${query}` : ""}`),
+    serverApiFetch<UnitNode[]>("/api/v1/commander/members/by-unit"),
+  ]);
+  const unitOptions = flattenUnits(units.data).map((unit) => ({
+    value: unit.id,
+    label: unit.depthLevel > 0 ? `${"— ".repeat(unit.depthLevel)}${unit.name}` : unit.name,
+  }));
 
   return (
     <div className="space-y-6">
@@ -30,7 +41,17 @@ export default async function MembersPage({
       />
 
       <div className="space-y-4">
-        <FilterBar searchKey="search" searchPlaceholder="Cari nama atau username..." />
+        <FilterBar
+          searchKey="search"
+          searchPlaceholder="Cari nama atau username..."
+          selects={[
+            {
+              key: "unitId",
+              label: "Satuan",
+              options: unitOptions,
+            },
+          ]}
+        />
         {members.data.length ? (
           <MembersTable members={members.data} />
         ) : (

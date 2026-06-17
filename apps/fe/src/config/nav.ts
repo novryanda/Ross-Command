@@ -11,6 +11,17 @@ import {
 import type { NavConfig } from '@/components/app-shell'
 import type { Me } from '@/lib/api/types'
 
+function hasSuperior(me: Me): boolean {
+  if (!me.isCommander) {
+    return true
+  }
+
+  const membershipDepth = me.unit?.depthLevel ?? 0
+  const commandingDepths = me.commandingUnits?.map((unit) => unit.depthLevel ?? 0) ?? []
+
+  return membershipDepth > 0 || commandingDepths.some((depth) => depth > 0)
+}
+
 export function getNavItems(me: Me): NavConfig {
   const common = [{ title: 'Dashboard', url: '/dashboard', icon: ChartNoAxesCombinedIcon }]
   const accountItems = [{ title: 'Akun Sosmed', url: '/social-accounts', icon: Share2Icon }]
@@ -30,8 +41,7 @@ export function getNavItems(me: Me): NavConfig {
     }
   }
 
-  const hasParent = (me.unit?.depthLevel ?? 0) > 0
-  const memberItems = hasParent || !me.isCommander
+  const memberItems = hasSuperior(me)
     ? [{ title: 'Perintah Saya', url: '/assignments', icon: ClipboardCheckIcon }]
     : []
   const commanderItems = me.isCommander

@@ -16,7 +16,7 @@ export function MainShell({ children, user }: { children: ReactNode; user: Me })
 
   return (
     <AppShell
-      sidebar={<AppSidebar config={nav} header={<SidebarBrand />} />}
+      sidebar={<AppSidebar config={nav} header={<SidebarBrand />} contentClassName="pt-4" />}
       header={
         <AppHeader
           actions={

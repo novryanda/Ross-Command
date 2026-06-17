@@ -9,7 +9,9 @@ export function ListViewToggle({ defaultView = "table" }: { defaultView?: "table
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const view = searchParams.get("view") === "card" ? "card" : "table";
+  const viewParam = searchParams.get("view");
+  const view =
+    viewParam === "card" || viewParam === "table" ? viewParam : defaultView;
 
   function setView(next: "table" | "card") {
     const params = new URLSearchParams(searchParams.toString());

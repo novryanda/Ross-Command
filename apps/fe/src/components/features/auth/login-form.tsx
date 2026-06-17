@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EyeIcon, EyeOffIcon, Loader2Icon, ShieldCheckIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { QuickLoginButtons } from "@/components/features/auth/quick-login-buttons";
+import { AppLogo } from "@/components/komando/app-logo";
 import type { SeedUser } from "@/config/seed-users";
 import { authClient } from "@/lib/auth-client";
 
@@ -92,9 +93,7 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader className="space-y-3 text-center">
-        <div className="bg-primary text-primary-foreground mx-auto flex size-10 items-center justify-center rounded-md">
-          <ShieldCheckIcon className="size-5" />
-        </div>
+        <AppLogo variant="hero" className="mx-auto" />
         <div className="space-y-1">
           <CardTitle className="text-xl">Komando Center</CardTitle>
           <CardDescription>Sistem Manajemen Operasi Sosial Media</CardDescription>

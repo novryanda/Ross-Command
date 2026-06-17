@@ -1,11 +1,9 @@
-import { ShieldCheckIcon } from "lucide-react";
+import { AppLogo } from "@/components/komando/app-logo";
 
 export function SidebarBrand() {
   return (
-    <div className="flex items-center gap-3 px-2 py-1">
-      <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-md">
-        <ShieldCheckIcon className="size-4" />
-      </div>
+    <div className="flex items-center gap-4 px-2 py-1.5">
+      <AppLogo variant="sidebar" />
       <div className="grid min-w-0 text-left text-sm leading-tight">
         <span className="truncate font-semibold">Komando Center</span>
         <span className="text-muted-foreground truncate text-xs">Social Command</span>

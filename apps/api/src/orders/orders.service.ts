@@ -4,6 +4,7 @@ import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
+import { serializeLatestSubmission } from '../common/utils/submission.util';
 import { OrderStatus, OrderType, Prisma, SocialPlatform } from '@prisma/client';
 import {
   baseOrderSchema,
@@ -33,6 +34,41 @@ export class OrdersService {
   async listOrders(commanderId: string, query: unknown) {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = listOrdersQuerySchema.parse(query);
+    const submitDayEnd = parsed.submitDate ? this.endOfDay(parsed.submitDate) : undefined;
+    const deadlineDayEnd = parsed.deadlineDate ? this.endOfDay(parsed.deadlineDate) : undefined;
+    const orderBy = this.buildListOrdersOrderBy(parsed.sortBy, parsed.sortOrder);
+    const filterConditions: Prisma.OrderWhereInput[] = [];
+
+    if (parsed.search) {
+      filterConditions.push({
+        OR: [
+          { title: { contains: parsed.search, mode: 'insensitive' } },
+          { description: { contains: parsed.search, mode: 'insensitive' } },
+          { narration: { contains: parsed.search, mode: 'insensitive' } },
+          { reportReason: { contains: parsed.search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    if (parsed.submitDate) {
+      filterConditions.push({
+        OR: [
+          {
+            sentAt: {
+              gte: parsed.submitDate,
+              lte: submitDayEnd,
+            },
+          },
+          {
+            sentAt: null,
+            createdAt: {
+              gte: parsed.submitDate,
+              lte: submitDayEnd,
+            },
+          },
+        ],
+      });
+    }
 
     const where: Prisma.OrderWhereInput = {
       createdById: commanderId,
@@ -40,11 +76,12 @@ export class OrdersService {
       ...(parsed.status ? { status: parsed.status } : {}),
       ...(parsed.orderType ? { orderType: parsed.orderType } : {}),
       ...(parsed.sentiment ? { sentiment: parsed.sentiment } : {}),
-      ...(parsed.startDate || parsed.endDate
+      ...(filterConditions.length ? { AND: filterConditions } : {}),
+      ...(parsed.deadlineDate
         ? {
-            createdAt: {
-              ...(parsed.startDate ? { gte: parsed.startDate } : {}),
-              ...(parsed.endDate ? { lte: parsed.endDate } : {}),
+            deadline: {
+              gte: parsed.deadlineDate,
+              lte: deadlineDayEnd,
             },
           }
         : {}),
@@ -53,9 +90,7 @@ export class OrdersService {
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
-        orderBy: {
-          [parsed.sortBy]: parsed.sortOrder,
-        },
+        orderBy,
         skip: (parsed.page - 1) * parsed.limit,
         take: parsed.limit,
       }),
@@ -70,9 +105,7 @@ export class OrdersService {
           in: orders.map((order) => order.id),
         },
       },
-      orderBy: {
-        [parsed.sortBy]: parsed.sortOrder,
-      },
+      orderBy,
     });
 
     const progressMap = await this.getProgressMap(
@@ -113,18 +146,26 @@ export class OrdersService {
           sentiment: parsed.sentiment,
           engagementActions: parsed.engagementActions,
           reportReason: parsed.reportReason,
+          postingSourceUrl:
+            parsed.orderType === 'posting' ? (parsed.postingSourceUrl ?? null) : null,
+          postingTargetPlatforms:
+            parsed.orderType === 'posting'
+              ? (parsed.postingTargetPlatforms ?? [])
+              : undefined,
           deadline: parsed.deadline,
           status: parsed.status,
           sentAt: parsed.status === 'aktif' ? new Date() : null,
         },
       });
 
-      await tx.orderSocialTarget.createMany({
-        data: this.mapSocialTargetsInput(parsed.targetUrls).map((target) => ({
-          orderId: created.id,
-          ...target,
-        })),
-      });
+      if (parsed.orderType !== 'posting' && parsed.targetUrls.length) {
+        await tx.orderSocialTarget.createMany({
+          data: this.mapSocialTargetsInput(parsed.targetUrls).map((target) => ({
+            orderId: created.id,
+            ...target,
+          })),
+        });
+      }
 
       await tx.orderTarget.createMany({
         data: parsed.targets.map((target) => ({
@@ -210,17 +251,26 @@ export class OrdersService {
       where: { orderId },
       orderBy: { sortOrder: 'asc' },
     });
+    const nextOrderType = parsed.orderType ?? order.orderType;
     this.validateOrderPayload(
       {
         title: parsed.title ?? order.title,
-        orderType: parsed.orderType ?? order.orderType,
+        orderType: nextOrderType,
         description: parsed.description ?? order.description,
         targetUrls:
-          parsed.targetUrls ??
-          existingSocialTargets.map((target) => ({
-            platform: target.platform,
-            url: target.url,
-          })),
+          nextOrderType === 'posting'
+            ? []
+            : (parsed.targetUrls ??
+              existingSocialTargets.map((target) => ({
+                platform: target.platform,
+                url: target.url,
+              }))),
+        postingSourceUrl:
+          parsed.postingSourceUrl ?? order.postingSourceUrl ?? undefined,
+        postingTargetPlatforms:
+          parsed.postingTargetPlatforms ??
+          this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ??
+          undefined,
         narration: parsed.narration ?? order.narration ?? undefined,
         sentiment: parsed.sentiment ?? order.sentiment ?? undefined,
         engagementActions:
@@ -266,12 +316,18 @@ export class OrdersService {
           ...(parsed.reportReason !== undefined
             ? { reportReason: parsed.reportReason }
             : {}),
+          ...(parsed.postingSourceUrl !== undefined
+            ? { postingSourceUrl: parsed.postingSourceUrl }
+            : {}),
+          ...(parsed.postingTargetPlatforms !== undefined
+            ? { postingTargetPlatforms: parsed.postingTargetPlatforms }
+            : {}),
           ...(parsed.deadline ? { deadline: parsed.deadline } : {}),
           ...(parsed.status ? { status: parsed.status } : {}),
         },
       });
 
-      if (parsed.targetUrls) {
+      if (parsed.targetUrls && nextOrderType !== 'posting') {
         await tx.orderSocialTarget.deleteMany({ where: { orderId } });
         await tx.orderSocialTarget.createMany({
           data: this.mapSocialTargetsInput(parsed.targetUrls).map((target) => ({
@@ -279,6 +335,10 @@ export class OrdersService {
             ...target,
           })),
         });
+      }
+
+      if (nextOrderType === 'posting' && (parsed.postingSourceUrl !== undefined || parsed.postingTargetPlatforms !== undefined)) {
+        await tx.orderSocialTarget.deleteMany({ where: { orderId } });
       }
 
       if (parsed.targets) {
@@ -330,10 +390,16 @@ export class OrdersService {
         title: order.title,
         orderType: order.orderType,
         description: order.description,
-        targetUrls: socialTargets.map((target) => ({
-          platform: target.platform,
-          url: target.url,
-        })),
+        targetUrls:
+          order.orderType === 'posting'
+            ? []
+            : socialTargets.map((target) => ({
+                platform: target.platform,
+                url: target.url,
+              })),
+        postingSourceUrl: order.postingSourceUrl ?? undefined,
+        postingTargetPlatforms:
+          this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ?? undefined,
         narration: order.narration ?? undefined,
         sentiment: order.sentiment ?? undefined,
         engagementActions:
@@ -393,8 +459,11 @@ export class OrdersService {
     orderId: string,
     query: unknown,
   ) {
-    await this.ensureCommanderOrder(commanderId, orderId);
+    const order = await this.ensureCommanderOrder(commanderId, orderId);
     const parsed = listOrderAssignmentsQuerySchema.parse(query);
+    const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
+      ? (order.postingTargetPlatforms as string[])
+      : null;
     const where: Prisma.TaskAssignmentWhereInput = {
       orderId,
       ...(parsed.status ? { status: parsed.status } : {}),
@@ -455,13 +524,11 @@ export class OrdersService {
               path: assignment.user.unitMemberships[0].unit.path,
             }
           : null,
-        latestSubmission: assignment.submissions[0]
-          ? {
-              driveLink: assignment.submissions[0].driveLink,
-              notes: assignment.submissions[0].notes,
-              submittedAt: assignment.submissions[0].submittedAt,
-            }
-          : null,
+        latestSubmission: serializeLatestSubmission(
+          assignment.submissions[0],
+          order.orderType,
+          postingTargetPlatforms,
+        ),
       })),
       meta: {
         pagination: buildPaginationMeta(parsed.page, parsed.limit, total),
@@ -752,6 +819,23 @@ export class OrdersService {
     return order;
   }
 
+  private endOfDay(date: Date): Date {
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  }
+
+  private buildListOrdersOrderBy(
+    sortBy: 'createdAt' | 'deadline' | 'title' | 'sentAt',
+    sortOrder: 'asc' | 'desc',
+  ): Prisma.OrderOrderByWithRelationInput[] {
+    if (sortBy === 'sentAt') {
+      return [{ sentAt: sortOrder }, { createdAt: sortOrder }];
+    }
+
+    return [{ [sortBy]: sortOrder }];
+  }
+
   private serializeOrder(
     order: {
       id: string;
@@ -762,6 +846,8 @@ export class OrdersService {
       sentiment: string | null;
       engagementActions: Prisma.JsonValue | null;
       reportReason: string | null;
+      postingSourceUrl: string | null;
+      postingTargetPlatforms: Prisma.JsonValue | null;
       status: OrderStatus;
       deadline: Date;
       sentAt: Date | null;
@@ -797,6 +883,8 @@ export class OrdersService {
       sentiment: order.sentiment,
       engagementActions: order.engagementActions,
       reportReason: order.reportReason,
+      postingSourceUrl: order.postingSourceUrl,
+      postingTargetPlatforms: this.parsePostingTargetPlatforms(order.postingTargetPlatforms),
       status: order.status,
       deadline: order.deadline,
       sentAt: order.sentAt,
@@ -864,6 +952,16 @@ export class OrdersService {
     }
 
     return map;
+  }
+
+  private parsePostingTargetPlatforms(
+    value: Prisma.JsonValue | null | undefined,
+  ): SocialPlatform[] | null {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+
+    return value.filter((item): item is SocialPlatform => typeof item === 'string');
   }
 
   private mapSocialTargetsInput(
@@ -952,6 +1050,22 @@ export class OrdersService {
         HttpStatus.BAD_REQUEST,
         'VALIDATION_ERROR',
         'Perintah report akun wajib memiliki alasan report',
+      );
+    }
+
+    if (payload.orderType === 'posting') {
+      if (!payload.postingTargetPlatforms?.length) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Pilih minimal satu target sosmed posting',
+        );
+      }
+    } else if (!payload.targetUrls.length) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'URL target wajib diisi',
       );
     }
 

@@ -1,12 +1,15 @@
-import Link from "next/link";
+import { Suspense } from "react";
 
 import { OrderActions } from "@/components/features/orders/order-actions";
+import { OrderAssignmentsList } from "@/components/features/orders/order-assignments-list";
+import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
+import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
+import { ListViewToggle } from "@/components/komando/list-view-toggle";
 import { PageHero } from "@/components/komando/page-hero";
 import { PageState } from "@/components/komando/page-state";
 import { ServerPagination } from "@/components/komando/server-pagination";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { buildQueryString } from "@/lib/api/client";
@@ -55,24 +58,36 @@ export default async function OrderDetailPage({
         <Card className="border-border/70 shadow-sm lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
             <CardTitle className="text-base">Instruksi</CardTitle>
-            {order.orderType === "komentar" && order.sentiment ? (
-              <CommentSentimentBadge sentiment={order.sentiment} />
+            {order.orderType === "komentar" ? (
+              <>
+                <OrderTypeBadge type="komentar" />
+                {order.sentiment ? <CommentSentimentBadge sentiment={order.sentiment} /> : null}
+              </>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <p className="whitespace-pre-wrap leading-6">{order.description}</p>
-            <OrderTargetUrlsList targets={order.targetUrls ?? []} />
-            {order.narration ? (
-              <p>
-                <span className="text-muted-foreground">Narasi: </span>
-                {order.narration}
-              </p>
-            ) : null}
+            {order.orderType === "posting" ? (
+              <OrderPostingDetails
+                postingSourceUrl={order.postingSourceUrl}
+                postingTargetPlatforms={order.postingTargetPlatforms}
+                deskripsi={order.description}
+                instruksi={order.narration}
+              />
+            ) : (
+              <>
+                <ExpandableText lines={4}>{order.description}</ExpandableText>
+                <OrderTargetUrlsList targets={order.targetUrls ?? []} />
+                {order.narration ? (
+                  <LabeledExpandableText label="Narasi" lines={3}>
+                    {order.narration}
+                  </LabeledExpandableText>
+                ) : null}
+              </>
+            )}
             {order.reportReason ? (
-              <p>
-                <span className="text-muted-foreground">Alasan report: </span>
+              <LabeledExpandableText label="Alasan report" lines={3}>
                 {order.reportReason}
-              </p>
+              </LabeledExpandableText>
             ) : null}
           </CardContent>
         </Card>
@@ -116,32 +131,20 @@ export default async function OrderDetailPage({
       </Card>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Progress Anggota</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Progress Anggota</h2>
+          <Suspense fallback={null}>
+            <ListViewToggle defaultView="card" />
+          </Suspense>
+        </div>
         {assignmentsResponse.data.length ? (
-          <Card className="border-border/70 py-0 shadow-sm">
-            <CardContent className="divide-border divide-y p-0">
-              {assignmentsResponse.data.map((assignment) => (
-                <div key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="font-medium">{assignment.user?.fullName ?? "Anggota"}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {assignment.unit?.name ?? "-"} - @{assignment.user?.username}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={assignment.status} />
-                    {assignment.latestSubmission?.driveLink ? (
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={assignment.latestSubmission.driveLink} target="_blank">
-                          Bukti
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <Suspense fallback={null}>
+            <OrderAssignmentsList
+              assignments={assignmentsResponse.data}
+              orderType={order.orderType}
+              postingTargetPlatforms={order.postingTargetPlatforms ?? []}
+            />
+          </Suspense>
         ) : (
           <PageState title="Belum ada assignment" description="Assignment akan muncul setelah perintah dikirim." />
         )}

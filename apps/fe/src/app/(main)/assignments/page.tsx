@@ -20,8 +20,13 @@ export default async function AssignmentsPage({
   const query = buildQueryString({
     page: params.page,
     limit: params.limit ?? 20,
+    search: params.search,
     status: params.status,
     orderType: params.orderType,
+    submitDate: params.submitDate,
+    deadlineDate: params.deadlineDate,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   });
   const response = await serverApiFetch<Assignment[]>(`/api/v1/assignments/me${query ? `?${query}` : ""}`);
 
@@ -34,6 +39,8 @@ export default async function AssignmentsPage({
       />
 
       <FilterBar
+        searchKey="search"
+        searchPlaceholder="Cari judul atau instruksi..."
         selects={[
           {
             key: "status",
@@ -45,6 +52,10 @@ export default async function AssignmentsPage({
             label: "Jenis",
             options: Object.entries(orderTypeLabel).map(([value, label]) => ({ value, label })),
           },
+        ]}
+        dateFilters={[
+          { key: "submitDate", label: "Submit" },
+          { key: "deadlineDate", label: "Deadline" },
         ]}
       />
 
@@ -59,7 +70,7 @@ export default async function AssignmentsPage({
           <AssignmentsList assignments={response.data} />
         </Suspense>
       ) : (
-        <PageState title="Tidak ada perintah" description="Perintah dari komandan akan tampil di halaman ini." />
+        <PageState title="Tidak ada perintah" description="Perintah yang cocok dengan filter akan tampil di halaman ini." />
       )}
 
       <ServerPagination meta={response.meta?.pagination} searchParams={params} />

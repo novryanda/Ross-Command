@@ -2,8 +2,19 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowUpDownIcon, EllipsisVerticalIcon } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  CloudUploadIcon,
+  EllipsisVerticalIcon,
+  FlagIcon,
+  HeartIcon,
+  MessageSquareIcon,
+} from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { LucideIcon } from "lucide-react";
 
 import {
   CommentSentimentBadge,
@@ -12,6 +23,7 @@ import {
   StatusBadge,
 } from "@/components/komando/badges";
 import { DataTable } from "@/components/data-table/data-table";
+import { ExpandableText } from "@/components/komando/expandable-text";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,44 +32,141 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
-import type { Order } from "@/lib/api/types";
+import type { Order, OrderType } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
 type OrdersTableProps = {
   orders: Order[];
 };
 
+const orderTypeVisual: Record<OrderType, { icon: LucideIcon; className: string }> = {
+  posting: { icon: CloudUploadIcon, className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  engagement: { icon: HeartIcon, className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  komentar: { icon: MessageSquareIcon, className: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  report_akun: { icon: FlagIcon, className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+};
+
+function formatOrderDateTime(value: string) {
+  const date = new Date(value);
+  return {
+    date: new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date),
+  };
+}
+
+function OrderDateCell({ value, emphasizePast }: { value: string; emphasizePast?: boolean }) {
+  const formatted = formatOrderDateTime(value);
+  const isPast = emphasizePast && new Date(value).getTime() < Date.now();
+
+  return (
+    <div className="min-w-28">
+      <p className={cn("text-sm leading-tight", isPast && "text-red-600 dark:text-red-400")}>{formatted.date}</p>
+      <p className={cn("text-muted-foreground text-xs", isPast && "text-red-500/80 dark:text-red-400/80")}>
+        {formatted.time}
+      </p>
+    </div>
+  );
+}
+
+function ServerSortHeader({
+  label,
+  sortKey,
+  activeSortBy,
+  activeSortOrder,
+}: {
+  label: string;
+  sortKey: "sentAt" | "deadline";
+  activeSortBy?: string | null;
+  activeSortOrder?: string | null;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isActive = activeSortBy === sortKey;
+  const sortOrder = isActive && activeSortOrder === "asc" ? "asc" : isActive ? "desc" : undefined;
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="-ml-2 h-7 px-2"
+      onClick={() => {
+        const params = new URLSearchParams(searchParams.toString());
+        const nextOrder = isActive && activeSortOrder === "asc" ? "desc" : "asc";
+        params.set("sortBy", sortKey);
+        params.set("sortOrder", nextOrder);
+        params.set("page", "1");
+        router.push(`${pathname}?${params.toString()}`);
+      }}
+    >
+      {label}
+      {sortOrder === "asc" ? (
+        <ArrowUpIcon className="ml-1 size-3" />
+      ) : sortOrder === "desc" ? (
+        <ArrowDownIcon className="ml-1 size-3" />
+      ) : (
+        <ArrowUpDownIcon className="ml-1 size-3 opacity-50" />
+      )}
+    </Button>
+  );
+}
+
 export function OrdersTable({ orders }: OrdersTableProps) {
+  const searchParams = useSearchParams();
+  const activeSortBy = searchParams.get("sortBy");
+  const activeSortOrder = searchParams.get("sortOrder");
+
   const columns = useMemo<ColumnDef<Order>[]>(
     () => [
       {
-        accessorKey: "title",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 h-7 px-2"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Judul <ArrowUpDownIcon className="ml-1 size-3" />
-          </Button>
-        ),
-        cell: ({ row }) => (
-          <Link href={`/orders/${row.original.id}`} className="text-sm font-medium hover:underline">
-            {row.original.title}
-          </Link>
-        ),
-      },
-      {
-        accessorKey: "orderType",
-        header: "Jenis",
-        cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            <OrderTypeBadge type={row.original.orderType} />
-            {row.original.orderType === "komentar" && row.original.sentiment ? (
-              <CommentSentimentBadge sentiment={row.original.sentiment} />
-            ) : null}
-          </div>
-        ),
+        id: "perintah",
+        meta: { label: "Perintah" },
+        accessorFn: (row) => row.title,
+        header: "Perintah",
+        cell: ({ row }) => {
+          const order = row.original;
+          const visual = orderTypeVisual[order.orderType];
+          const Icon = visual.icon;
+
+          return (
+            <div className="flex min-w-[16rem] items-start gap-3 py-1">
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                  visual.className,
+                )}
+              >
+                <Icon className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Link href={`/orders/${order.id}`} className="line-clamp-1 text-sm font-semibold hover:underline">
+                  {order.title}
+                </Link>
+                <ExpandableText
+                  lines={2}
+                  textClassName="text-muted-foreground text-xs leading-relaxed"
+                >
+                  {order.description}
+                </ExpandableText>
+                <div className="flex flex-wrap gap-1">
+                  <OrderTypeBadge type={order.orderType} />
+                  {order.orderType === "komentar" && order.sentiment ? (
+                    <CommentSentimentBadge sentiment={order.sentiment} />
+                  ) : null}
+                  <StatusBadge status={order.status} />
+                  <DeadlineBadge deadline={order.deadline} />
+                </div>
+              </div>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "status",
@@ -65,42 +174,69 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
-        accessorKey: "deadline",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 h-7 px-2"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Deadline <ArrowUpDownIcon className="ml-1 size-3" />
-          </Button>
-        ),
-        cell: ({ row }) => <DeadlineBadge deadline={row.original.deadline} />,
-        sortingFn: (a, b) => new Date(a.original.deadline).getTime() - new Date(b.original.deadline).getTime(),
-      },
-      {
         id: "progress",
         accessorFn: (row) => row.progress.percentageComplete,
         header: "Progress",
         cell: ({ row }) => (
-          <div className="min-w-[8rem] space-y-1">
-            <div className="text-muted-foreground flex justify-between text-[10px]">
+          <div className="min-w-36 space-y-1.5">
+            <div className="text-muted-foreground flex justify-between text-xs">
               <span>
-                {row.original.progress.totalSubmitted}/{row.original.progress.totalAssigned}
+                {row.original.progress.totalSubmitted}/{row.original.progress.totalAssigned} submit
               </span>
               <span>{row.original.progress.percentageComplete}%</span>
             </div>
-            <Progress value={row.original.progress.percentageComplete} className="h-1.5" />
+            <Progress
+              value={row.original.progress.percentageComplete}
+              className={cn(
+                "h-1.5",
+                row.original.status === "selesai" && "[&_[data-slot=progress-indicator]]:bg-emerald-500",
+                (row.original.status === "expired" || row.original.status === "dibatalkan") &&
+                  "[&_[data-slot=progress-indicator]]:bg-red-500",
+                row.original.status === "aktif" && "[&_[data-slot=progress-indicator]]:bg-foreground",
+                row.original.status === "draft" && "[&_[data-slot=progress-indicator]]:bg-muted-foreground",
+              )}
+            />
           </div>
         ),
       },
       {
+        id: "submit",
+        meta: { label: "Submit" },
+        accessorFn: (row) => row.sentAt ?? row.createdAt,
+        enableSorting: false,
+        header: () => (
+          <ServerSortHeader
+            label="Submit"
+            sortKey="sentAt"
+            activeSortBy={activeSortBy}
+            activeSortOrder={activeSortOrder}
+          />
+        ),
+        cell: ({ row }) => (
+          <OrderDateCell value={row.original.sentAt ?? row.original.createdAt} />
+        ),
+      },
+      {
+        accessorKey: "deadline",
+        meta: { label: "Deadline" },
+        enableSorting: false,
+        header: () => (
+          <ServerSortHeader
+            label="Deadline"
+            sortKey="deadline"
+            activeSortBy={activeSortBy}
+            activeSortOrder={activeSortOrder}
+          />
+        ),
+        cell: ({ row }) => <OrderDateCell value={row.original.deadline} emphasizePast />,
+      },
+      {
         id: "actions",
+        header: "Aksi",
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7" aria-label="Aksi perintah">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Aksi perintah">
                 <EllipsisVerticalIcon className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -115,7 +251,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         enableHiding: false,
       },
     ],
-    [],
+    [activeSortBy, activeSortOrder],
   );
 
   return (

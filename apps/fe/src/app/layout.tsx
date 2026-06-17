@@ -24,13 +24,9 @@ export const metadata: Metadata = {
   description: "Sistem manajemen perintah dan pelaporan operasi sosial media.",
   manifest: "/site.webmanifest",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/favicon.ico",
-    apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
+    icon: [{ url: "/ROSS_favicon.ico", sizes: "any" }],
+    shortcut: "/ROSS_favicon.ico",
+    apple: { url: "/ROSS_favicon.ico", sizes: "180x180" },
   },
   appleWebApp: {
     title: "Komando Center",

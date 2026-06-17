@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import {
+  buildPostingPlatformLinks,
+  getMissingPostingPlatforms,
+  hasAtLeastOnePostingLink,
+} from "@/components/features/assignments/posting-proof-dialog";
+import { platformLabel } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,23 +25,64 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { clientApiFetch } from "@/lib/api/client";
+import type { OrderType, SocialPlatform } from "@/lib/api/types";
 
-export function SubmitProofDialog({ assignmentId }: { assignmentId: string }) {
+type SubmitProofDialogProps = {
+  assignmentId: string;
+  orderType?: OrderType;
+  postingTargetPlatforms?: SocialPlatform[] | null;
+};
+
+export function SubmitProofDialog({
+  assignmentId,
+  orderType = "engagement",
+  postingTargetPlatforms = [],
+}: SubmitProofDialogProps) {
+  const isPosting = orderType === "posting";
+  const targetPlatforms = postingTargetPlatforms ?? [];
   const [open, setOpen] = useState(false);
   const [driveLink, setDriveLink] = useState("");
+  const [platformValues, setPlatformValues] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
+  const missingPlatforms = useMemo(
+    () => (isPosting ? getMissingPostingPlatforms(targetPlatforms, platformValues) : []),
+    [isPosting, platformValues, targetPlatforms],
+  );
+
+  const canSubmit = isPosting
+    ? hasAtLeastOnePostingLink(targetPlatforms, platformValues)
+    : Boolean(driveLink.trim());
+
+  function resetForm() {
+    setDriveLink("");
+    setPlatformValues({});
+    setNotes("");
+  }
+
   async function submit() {
     setSubmitting(true);
     try {
+      const payload = isPosting
+        ? {
+            platformLinks: buildPostingPlatformLinks(targetPlatforms, platformValues),
+            driveLink: driveLink.trim() || undefined,
+            notes: notes || undefined,
+          }
+        : {
+            driveLink,
+            notes: notes || undefined,
+          };
+
       await clientApiFetch(`/api/v1/assignments/me/${assignmentId}/submit`, {
         method: "POST",
-        body: JSON.stringify({ driveLink, notes: notes || undefined }),
+        body: JSON.stringify(payload),
       });
       toast.success("Bukti berhasil dikirim");
       setOpen(false);
+      resetForm();
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal mengirim bukti");
@@ -45,28 +92,87 @@ export function SubmitProofDialog({ assignmentId }: { assignmentId: string }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          resetForm();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm">Submit Bukti</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Submit Bukti Pelaksanaan</DialogTitle>
-          <DialogDescription>Masukkan link Google Drive atau dokumen bukti yang dapat dibuka komandan.</DialogDescription>
+          <DialogDescription>
+            {isPosting
+              ? "Masukkan link posting untuk setiap sosmed target. Boleh dikirim sebagian, asalkan minimal satu link terisi."
+              : "Masukkan link Google Drive atau dokumen bukti yang dapat dibuka komandan."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="driveLink">Link Bukti</Label>
-            <Input id="driveLink" type="url" value={driveLink} onChange={(event) => setDriveLink(event.target.value)} />
-          </div>
+          {isPosting ? (
+            <div className="space-y-3">
+              <div className="grid gap-2">
+                <Label htmlFor="driveLink">Link Drive</Label>
+                <Input
+                  id="driveLink"
+                  type="url"
+                  placeholder="https://drive.google.com/... (opsional)"
+                  value={driveLink}
+                  onChange={(event) => setDriveLink(event.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">Opsional — lampiran tambahan di Google Drive.</p>
+              </div>
+              {targetPlatforms.map((platform) => (
+                <div key={platform} className="grid gap-2">
+                  <Label htmlFor={`proof-${platform}`}>{platformLabel[platform]}</Label>
+                  <Input
+                    id={`proof-${platform}`}
+                    type="url"
+                    placeholder="https://"
+                    value={platformValues[platform] ?? ""}
+                    onChange={(event) =>
+                      setPlatformValues((current) => ({
+                        ...current,
+                        [platform]: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+              {missingPlatforms.length ? (
+                <p className="text-amber-700 text-xs dark:text-amber-300">
+                  Belum diisi: {missingPlatforms.map((platform) => platformLabel[platform]).join(", ")}
+                </p>
+              ) : targetPlatforms.length ? (
+                <p className="text-emerald-700 text-xs dark:text-emerald-300">Semua target sosmed sudah terisi.</p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="driveLink">Link Bukti</Label>
+              <Input
+                id="driveLink"
+                type="url"
+                value={driveLink}
+                onChange={(event) => setDriveLink(event.target.value)}
+              />
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="notes">Catatan</Label>
             <Textarea id="notes" rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-          <Button onClick={submit} disabled={submitting || !driveLink}>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Batal
+          </Button>
+          <Button onClick={submit} disabled={submitting || !canSubmit}>
             {submitting ? <Loader2Icon className="animate-spin" /> : null}
             Kirim
           </Button>

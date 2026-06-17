@@ -23,11 +23,12 @@ export default async function OrdersPage({
   const query = buildQueryString({
     page: params.page,
     limit: params.limit ?? 20,
+    search: params.search,
     status: params.status,
     orderType: params.orderType,
     sentiment: params.orderType === "komentar" ? params.sentiment : undefined,
-    startDate: params.startDate,
-    endDate: params.endDate,
+    submitDate: params.submitDate,
+    deadlineDate: params.deadlineDate,
     sortBy: params.sortBy,
     sortOrder: params.sortOrder,
   });
@@ -50,6 +51,8 @@ export default async function OrdersPage({
       />
 
       <FilterBar
+        searchKey="search"
+        searchPlaceholder="Cari judul atau instruksi..."
         selects={[
           {
             key: "status",
@@ -68,6 +71,10 @@ export default async function OrdersPage({
             visibleWhen: { key: "orderType", equals: "komentar" },
           },
         ]}
+        dateFilters={[
+          { key: "submitDate", label: "Submit" },
+          { key: "deadlineDate", label: "Deadline" },
+        ]}
       />
 
       <div className="flex justify-end">
@@ -81,7 +88,7 @@ export default async function OrdersPage({
           <OrdersList orders={response.data} />
         </Suspense>
       ) : (
-        <PageState title="Belum ada perintah" description="Perintah yang kamu buat akan muncul di sini." />
+        <PageState title="Belum ada perintah" description="Perintah yang cocok dengan filter akan muncul di sini." />
       )}
 
       <ServerPagination meta={response.meta?.pagination} searchParams={params} />
