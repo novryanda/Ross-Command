@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { QuickLoginButtons } from "@/components/features/auth/quick-login-buttons";
+import type { SeedUser } from "@/config/seed-users";
 import { authClient } from "@/lib/auth-client";
 
 const loginSchema = z.object({
@@ -79,10 +80,13 @@ export function LoginForm() {
     router.refresh();
   }
 
-  function handleQuickLogin(username: string, password: string) {
-    form.setValue("username", username, { shouldValidate: true });
-    form.setValue("password", password, { shouldValidate: true });
+  async function handleQuickLogin(user: SeedUser) {
+    if (submitting) return;
+
+    form.setValue("username", user.username, { shouldValidate: true });
+    form.setValue("password", user.password, { shouldValidate: true });
     setError(null);
+    await onSubmit({ username: user.username, password: user.password });
   }
 
   return (
@@ -156,7 +160,7 @@ export function LoginForm() {
               Masuk
             </Button>
             <p className="text-muted-foreground text-center text-xs">Lupa password? Hubungi Admin.</p>
-            <QuickLoginButtons onSelect={handleQuickLogin} />
+            <QuickLoginButtons disabled={submitting} onSelect={handleQuickLogin} />
           </form>
         </Form>
       </CardContent>
