@@ -23,6 +23,14 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
+function getSafeNextPath(value: string | null) {
+  if (!value?.startsWith("/") || value.startsWith("//") || value.startsWith("/login") || value.startsWith("/lock-screen")) {
+    return "/dashboard";
+  }
+
+  return value;
+}
+
 function getErrorMessage(code?: string, message?: string) {
   if (code === "ACCOUNT_LOCKED") return "Akun dikunci sementara. Hubungi Admin untuk membuka akses.";
   if (code === "RATE_LIMIT_EXCEEDED") return "Terlalu banyak percobaan. Coba lagi nanti.";
@@ -38,7 +46,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const next = getSafeNextPath(searchParams.get("next"));
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
