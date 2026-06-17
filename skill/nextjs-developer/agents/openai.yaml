@@ -1,0 +1,7 @@
+interface:
+  display_name: "Next.js Developer"
+  short_description: "Build and maintain Next.js apps"
+  default_prompt: "Use $nextjs-developer to implement this Next.js App Router feature."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "SQL Expert"
+  short_description: "Write and optimize SQL and ORM queries"
+  default_prompt: "Use $sql-expert to design, write, or optimize this SQL or ORM query."
+
+policy:
+  allow_implicit_invocation: true

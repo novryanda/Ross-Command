@@ -1,0 +1,7 @@
+interface:
+  display_name: "Better Auth"
+  short_description: "Implement Better Auth safely in TypeScript"
+  default_prompt: "Use $better-auth to set up authentication for this TypeScript project."
+
+policy:
+  allow_implicit_invocation: true

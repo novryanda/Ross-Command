@@ -1,0 +1,7 @@
+interface:
+  display_name: "Next.js Expert"
+  short_description: "Build production Next.js apps and APIs"
+  default_prompt: "Use $nextjs-expert to solve this Next.js implementation or architecture task."
+
+policy:
+  allow_implicit_invocation: true

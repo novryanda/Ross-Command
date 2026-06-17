@@ -1,0 +1,7 @@
+interface:
+  display_name: "API Patterns"
+  short_description: "Choose and document API design patterns"
+  default_prompt: "Use $api-patterns to design an API strategy for this project."
+
+policy:
+  allow_implicit_invocation: true

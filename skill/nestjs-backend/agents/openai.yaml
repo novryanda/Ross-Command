@@ -1,0 +1,7 @@
+interface:
+  display_name: "NestJS Backend"
+  short_description: "Build backend APIs with NestJS patterns"
+  default_prompt: "Use $nestjs-backend to implement this NestJS backend feature."
+
+policy:
+  allow_implicit_invocation: true

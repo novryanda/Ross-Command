@@ -1,0 +1,7 @@
+interface:
+  display_name: "Architecture"
+  short_description: "Guide architecture decisions and ADRs"
+  default_prompt: "Use $architecture to analyze the architecture trade-offs for this project."
+
+policy:
+  allow_implicit_invocation: true
