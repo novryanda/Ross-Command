@@ -1,40 +1,55 @@
-FROM node:20-bookworm-slim AS base
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates wget \
-  && rm -rf /var/lib/apt/lists/*
+# ============================================================
+# Ross Command - Backend API (production image)
+# ============================================================
 
-FROM base AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
+
+RUN apk add --no-cache --virtual .native-build-deps python3 make g++
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM base AS builder
+FROM node:22-alpine AS build
 WORKDIR /app
+
+RUN apk add --no-cache openssl ca-certificates
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
 RUN npm run build
-RUN npm prune --omit=dev && npm install prisma@6.19.0 --no-save
 
-FROM base AS runner
+FROM node:22-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN groupadd --system --gid 1001 nestjs \
-  && useradd --system --uid 1001 --gid 1001 --create-home nestjs
+RUN apk add --no-cache wget openssl ca-certificates libstdc++ \
+  && addgroup -S nestjs \
+  && adduser -S nestjs -G nestjs
 
-COPY --from=builder --chown=nestjs:nestjs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nestjs /app/dist ./dist
-COPY --from=builder --chown=nestjs:nestjs /app/prisma ./prisma
-COPY --chown=nestjs:nestjs docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x docker-entrypoint.sh
+COPY package.json package-lock.json ./
+RUN apk add --no-cache --virtual .native-build-deps python3 make g++ \
+  && npm ci --omit=dev \
+  && npm install prisma@6.19.0 --no-save \
+  && npm cache clean --force \
+  && apk del .native-build-deps
+
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=build /app/node_modules/prisma ./node_modules/prisma
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+  && chown -R nestjs:nestjs /app
 
 USER nestjs
 
 EXPOSE 3001
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "dist/src/main.js"]

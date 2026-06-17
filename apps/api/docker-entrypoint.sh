@@ -9,4 +9,4 @@ else
 fi
 
 echo "Starting API server..."
-exec node dist/src/main.js
+exec "$@"
