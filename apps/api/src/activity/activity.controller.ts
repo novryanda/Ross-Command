@@ -21,6 +21,7 @@ export class ActivityController {
     );
 
     return successResponse(result.items, undefined, {
+      ...result.meta,
       generatedAt: result.generatedAt,
     });
   }

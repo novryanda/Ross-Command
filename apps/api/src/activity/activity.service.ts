@@ -3,6 +3,7 @@ import { ActivityLogType, type User } from '@prisma/client';
 import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
+import { buildPaginationMeta } from '../common/utils/api-response.util';
 import { listActivityQuerySchema } from './activity.schema';
 
 type ActivityCategory = 'auth' | 'order' | 'submission';
@@ -47,18 +48,49 @@ export class ActivityService {
       );
     }
 
-    const fetchLimit = Math.min(parsed.limit * 3, 300);
+    const fromDate = parsed.fromDate
+      ? this.startOfDay(parsed.fromDate)
+      : undefined;
+    const toDate = parsed.toDate ? this.endOfDay(parsed.toDate) : undefined;
+    const fetchLimit = Math.min(parsed.limit * 5, 500);
+
+    const activityLogWhere: {
+      order?: { createdById: string };
+      id?: string;
+      type?: ActivityLogType | { in: ActivityLogType[] };
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {};
+
+    if (currentUser.role !== 'super_admin') {
+      activityLogWhere.order = {
+        createdById: currentUser.id,
+      };
+    }
+
+    if (parsed.category === 'auth') {
+      activityLogWhere.id = '__never_match_activity_logs__';
+    } else if (parsed.category === 'order') {
+      activityLogWhere.type = {
+        in: [ActivityLogType.order_created, ActivityLogType.order_sent],
+      };
+    } else if (parsed.category === 'submission') {
+      activityLogWhere.type = ActivityLogType.submission_sent;
+    }
+
+    if (fromDate || toDate) {
+      activityLogWhere.createdAt = {
+        ...(fromDate ? { gte: fromDate } : {}),
+        ...(toDate ? { lte: toDate } : {}),
+      };
+    }
+
+    const shouldFetchLoginAttempts =
+      currentUser.role === 'super_admin' &&
+      (!parsed.category || parsed.category === 'auth');
 
     const [activityLogs, loginAttempts] = await Promise.all([
       this.prisma.activityLog.findMany({
-        where:
-          currentUser.role === 'super_admin'
-            ? undefined
-            : {
-                order: {
-                  createdById: currentUser.id,
-                },
-              },
+        where: activityLogWhere,
         include: {
           actorUser: {
             select: {
@@ -78,8 +110,18 @@ export class ActivityService {
         orderBy: { createdAt: 'desc' },
         take: fetchLimit,
       }),
-      currentUser.role === 'super_admin'
+      shouldFetchLoginAttempts
         ? this.prisma.loginAttempt.findMany({
+            where: {
+              ...(fromDate || toDate
+                ? {
+                    attemptedAt: {
+                      ...(fromDate ? { gte: fromDate } : {}),
+                      ...(toDate ? { lte: toDate } : {}),
+                    },
+                  }
+                : {}),
+            },
             include: {
               user: {
                 select: {
@@ -102,15 +144,20 @@ export class ActivityService {
       ...loginAttempts.map((item) =>
         this.serializeLoginAttempt(item, currentUser),
       ),
-    ]
-      .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
-      .slice(0, parsed.limit);
+    ].sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
+
+    const total = items.length;
+    const startIndex = (parsed.page - 1) * parsed.limit;
+    const pagedItems = items.slice(startIndex, startIndex + parsed.limit);
 
     return {
-      items: items.map((item) => ({
+      items: pagedItems.map((item) => ({
         ...item,
         occurredAt: item.occurredAt,
       })),
+      meta: {
+        pagination: buildPaginationMeta(parsed.page, parsed.limit, total),
+      },
       generatedAt: new Date().toISOString(),
     };
   }
@@ -317,5 +364,17 @@ export class ActivityService {
     }
 
     return `/orders/${orderId}`;
+  }
+
+  private startOfDay(date: Date) {
+    const value = new Date(date);
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }
+
+  private endOfDay(date: Date) {
+    const value = new Date(date);
+    value.setHours(23, 59, 59, 999);
+    return value;
   }
 }

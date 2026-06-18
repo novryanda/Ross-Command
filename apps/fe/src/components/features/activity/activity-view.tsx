@@ -1,7 +1,4 @@
-'use client'
-
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
 import {
   AlertTriangleIcon,
   ClipboardCheckIcon,
@@ -14,14 +11,6 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import { PageHeader } from '@/components/showcase'
 import type {
   ActivityCategory,
   ActivityItem,
@@ -88,34 +77,15 @@ const categoryLabels: Record<ActivityCategory, string> = {
 
 export function ActivityView({
   activities = sampleActivities,
-  generatedAt
 }: {
   activities?: ActivityItem[]
-  generatedAt?: string
 }) {
-  const [filter, setFilter] = useState<ActivityCategory | 'all'>('all')
-
-  const sortedActivities = useMemo(
-    () =>
-      [...activities].sort(
-        (left, right) =>
-          new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
-      ),
-    [activities]
-  )
-  const categories = useMemo(
-    () =>
-      Array.from(new Set(sortedActivities.map((activity) => activity.category))) as ActivityCategory[],
-    [sortedActivities]
-  )
-  const filtered = useMemo(
-    () =>
-      filter === 'all'
-        ? sortedActivities
-        : sortedActivities.filter((activity) => activity.category === filter),
-    [filter, sortedActivities]
-  )
-  const grouped = filtered.reduce<Record<string, ActivityItem[]>>((acc, activity) => {
+  const grouped = [...activities]
+    .sort(
+      (left, right) =>
+        new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+    )
+    .reduce<Record<string, ActivityItem[]>>((acc, activity) => {
     const date = formatDateLabel(activity.occurredAt)
     acc[date] = acc[date] ?? []
     acc[date].push(activity)
@@ -124,26 +94,6 @@ export function ActivityView({
 
   return (
     <div className='space-y-6'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <PageHeader
-          title='Activity'
-          description={`Log aktivitas operasional terbaru.${generatedAt ? ` Sinkron terakhir ${formatTime(generatedAt)}.` : ''}`}
-        />
-        <Select value={filter} onValueChange={(value) => setFilter(value as ActivityCategory | 'all')}>
-          <SelectTrigger size='sm' className='w-40 text-sm'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='all'>Semua aktivitas</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {categoryLabels[category]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <div className='space-y-6'>
         {Object.entries(grouped).map(([date, items]) => (
           <div key={date} className='space-y-3'>
@@ -215,7 +165,7 @@ export function ActivityView({
           </div>
         ))}
 
-        {filtered.length === 0 ? (
+        {activities.length === 0 ? (
           <Card>
             <CardContent className='text-muted-foreground flex flex-col items-center gap-2 py-12 text-center text-sm'>
               <AlertTriangleIcon className='size-8 opacity-40' />
