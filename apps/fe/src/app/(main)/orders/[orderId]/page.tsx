@@ -1,9 +1,11 @@
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 
 import { OrderActions } from "@/components/features/orders/order-actions";
 import { OrderAssignmentsList } from "@/components/features/orders/order-assignments-list";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
+import { BackButton } from "@/components/komando/back-button";
 import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { ListViewToggle } from "@/components/komando/list-view-toggle";
@@ -13,6 +15,7 @@ import { ServerPagination } from "@/components/komando/server-pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { buildQueryString } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/types";
 import { serverApiFetch } from "@/lib/api/server";
 import type { Assignment, OrderDetail } from "@/lib/api/types";
 
@@ -30,14 +33,28 @@ export default async function OrderDetailPage({
     limit: queryParams.limit ?? 50,
     status: queryParams.status,
   });
-  const [orderResponse, assignmentsResponse] = await Promise.all([
-    serverApiFetch<OrderDetail>(`/api/v1/orders/${orderId}`),
-    serverApiFetch<Assignment[]>(`/api/v1/orders/${orderId}/assignments${query ? `?${query}` : ""}`),
-  ]);
+  let orderResponse;
+  let assignmentsResponse;
+
+  try {
+    [orderResponse, assignmentsResponse] = await Promise.all([
+      serverApiFetch<OrderDetail>(`/api/v1/orders/${orderId}`),
+      serverApiFetch<Assignment[]>(`/api/v1/orders/${orderId}/assignments${query ? `?${query}` : ""}`),
+    ]);
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+
   const order = orderResponse.data;
 
   return (
     <div className="space-y-6">
+      <BackButton href="/orders" />
+
       <PageHero
         eyebrow="Detail perintah"
         title={order.title}

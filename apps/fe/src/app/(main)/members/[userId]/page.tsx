@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BackButton } from "@/components/komando/back-button";
 import { DeadlineBadge, OrderTypeBadge, PlatformBadge, StatusBadge } from "@/components/komando/badges";
 import { PageHero } from "@/components/komando/page-hero";
 import { PageState } from "@/components/komando/page-state";
@@ -31,6 +32,8 @@ export default async function MemberDetailPage({
 
   return (
     <div className="space-y-6">
+      <BackButton href="/members" />
+
       <PageHero
         eyebrow="Profil anggota"
         title={detail.user.fullName}

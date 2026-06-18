@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { ActivityService } from '../activity/activity.service';
 import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
@@ -29,14 +30,22 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hierarchyService: HierarchyService,
+    private readonly activityService: ActivityService,
   ) {}
 
   async listOrders(commanderId: string, query: unknown) {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = listOrdersQuerySchema.parse(query);
-    const submitDayEnd = parsed.submitDate ? this.endOfDay(parsed.submitDate) : undefined;
-    const deadlineDayEnd = parsed.deadlineDate ? this.endOfDay(parsed.deadlineDate) : undefined;
-    const orderBy = this.buildListOrdersOrderBy(parsed.sortBy, parsed.sortOrder);
+    const submitDayEnd = parsed.submitDate
+      ? this.endOfDay(parsed.submitDate)
+      : undefined;
+    const deadlineDayEnd = parsed.deadlineDate
+      ? this.endOfDay(parsed.deadlineDate)
+      : undefined;
+    const orderBy = this.buildListOrdersOrderBy(
+      parsed.sortBy,
+      parsed.sortOrder,
+    );
     const filterConditions: Prisma.OrderWhereInput[] = [];
 
     if (parsed.search) {
@@ -147,7 +156,9 @@ export class OrdersService {
           engagementActions: parsed.engagementActions,
           reportReason: parsed.reportReason,
           postingSourceUrl:
-            parsed.orderType === 'posting' ? (parsed.postingSourceUrl ?? null) : null,
+            parsed.orderType === 'posting'
+              ? (parsed.postingSourceUrl ?? null)
+              : null,
           postingTargetPlatforms:
             parsed.orderType === 'posting'
               ? (parsed.postingTargetPlatforms ?? [])
@@ -180,8 +191,19 @@ export class OrdersService {
       return created;
     });
 
+    await this.activityService.logOrderCreated({
+      actorUserId: commanderId,
+      orderId: order.id,
+      occurredAt: order.createdAt,
+    });
+
     if (parsed.status === 'aktif') {
       await this.broadcastOrder(order.id, commanderId);
+      await this.activityService.logOrderSent({
+        actorUserId: commanderId,
+        orderId: order.id,
+        occurredAt: order.sentAt ?? new Date(),
+      });
     }
 
     return this.getOrderDetail(commanderId, order.id);
@@ -191,22 +213,24 @@ export class OrdersService {
     const order = await this.ensureCommanderOrder(commanderId, orderId);
     await this.refreshOrderStatus(order.id);
 
-    const [freshOrder, targets, socialTargets] = await this.prisma.$transaction([
-      this.prisma.order.findUniqueOrThrow({
-        where: { id: order.id },
-      }),
-      this.prisma.orderTarget.findMany({
-        where: { orderId: order.id },
-        include: {
-          unit: true,
-          user: true,
-        },
-      }),
-      this.prisma.orderSocialTarget.findMany({
-        where: { orderId: order.id },
-        orderBy: { sortOrder: 'asc' },
-      }),
-    ]);
+    const [freshOrder, targets, socialTargets] = await this.prisma.$transaction(
+      [
+        this.prisma.order.findUniqueOrThrow({
+          where: { id: order.id },
+        }),
+        this.prisma.orderTarget.findMany({
+          where: { orderId: order.id },
+          include: {
+            unit: true,
+            user: true,
+          },
+        }),
+        this.prisma.orderSocialTarget.findMany({
+          where: { orderId: order.id },
+          orderBy: { sortOrder: 'asc' },
+        }),
+      ],
+    );
 
     const progress = await this.getProgress(order.id);
     return {
@@ -247,6 +271,10 @@ export class OrdersService {
 
     const parsed = updateOrderSchema.parse(body);
     const nextStatus = parsed.status ?? order.status;
+    const activatedAt =
+      order.status === 'draft' && parsed.status === 'aktif'
+        ? new Date()
+        : undefined;
     const existingSocialTargets = await this.prisma.orderSocialTarget.findMany({
       where: { orderId },
       orderBy: { sortOrder: 'asc' },
@@ -323,7 +351,12 @@ export class OrdersService {
             ? { postingTargetPlatforms: parsed.postingTargetPlatforms }
             : {}),
           ...(parsed.deadline ? { deadline: parsed.deadline } : {}),
-          ...(parsed.status ? { status: parsed.status } : {}),
+          ...(parsed.status
+            ? {
+                status: parsed.status,
+                ...(activatedAt ? { sentAt: activatedAt } : {}),
+              }
+            : {}),
         },
       });
 
@@ -337,7 +370,11 @@ export class OrdersService {
         });
       }
 
-      if (nextOrderType === 'posting' && (parsed.postingSourceUrl !== undefined || parsed.postingTargetPlatforms !== undefined)) {
+      if (
+        nextOrderType === 'posting' &&
+        (parsed.postingSourceUrl !== undefined ||
+          parsed.postingTargetPlatforms !== undefined)
+      ) {
         await tx.orderSocialTarget.deleteMany({ where: { orderId } });
       }
 
@@ -362,6 +399,11 @@ export class OrdersService {
 
     if (order.status === 'draft' && parsed.status === 'aktif') {
       await this.broadcastOrder(orderId, commanderId);
+      await this.activityService.logOrderSent({
+        actorUserId: commanderId,
+        orderId,
+        occurredAt: activatedAt,
+      });
     }
 
     return this.getOrderDetail(commanderId, orderId);
@@ -399,7 +441,8 @@ export class OrdersService {
               })),
         postingSourceUrl: order.postingSourceUrl ?? undefined,
         postingTargetPlatforms:
-          this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ?? undefined,
+          this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ??
+          undefined,
         narration: order.narration ?? undefined,
         sentiment: order.sentiment ?? undefined,
         engagementActions:
@@ -425,6 +468,10 @@ export class OrdersService {
     });
 
     await this.broadcastOrder(orderId, commanderId);
+    await this.activityService.logOrderSent({
+      actorUserId: commanderId,
+      orderId,
+    });
     return this.getOrderDetail(commanderId, orderId);
   }
 
@@ -884,7 +931,9 @@ export class OrdersService {
       engagementActions: order.engagementActions,
       reportReason: order.reportReason,
       postingSourceUrl: order.postingSourceUrl,
-      postingTargetPlatforms: this.parsePostingTargetPlatforms(order.postingTargetPlatforms),
+      postingTargetPlatforms: this.parsePostingTargetPlatforms(
+        order.postingTargetPlatforms,
+      ),
       status: order.status,
       deadline: order.deadline,
       sentAt: order.sentAt,
@@ -961,7 +1010,9 @@ export class OrdersService {
       return null;
     }
 
-    return value.filter((item): item is SocialPlatform => typeof item === 'string');
+    return value.filter(
+      (item): item is SocialPlatform => typeof item === 'string',
+    );
   }
 
   private mapSocialTargetsInput(

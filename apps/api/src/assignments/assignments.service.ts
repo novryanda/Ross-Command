@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../common/prisma.service';
 import { serializeLatestSubmission } from '../common/utils/submission.util';
 import { ApiException } from '../common/utils/api-exception.util';
@@ -15,13 +16,21 @@ export class AssignmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
+    private readonly activityService: ActivityService,
   ) {}
 
   async listAssignments(userId: string, query: unknown) {
     const parsed = listAssignmentsQuerySchema.parse(query);
-    const submitDayEnd = parsed.submitDate ? this.endOfDay(parsed.submitDate) : undefined;
-    const deadlineDayEnd = parsed.deadlineDate ? this.endOfDay(parsed.deadlineDate) : undefined;
-    const orderBy = this.buildListAssignmentsOrderBy(parsed.sortBy, parsed.sortOrder);
+    const submitDayEnd = parsed.submitDate
+      ? this.endOfDay(parsed.submitDate)
+      : undefined;
+    const deadlineDayEnd = parsed.deadlineDate
+      ? this.endOfDay(parsed.deadlineDate)
+      : undefined;
+    const orderBy = this.buildListAssignmentsOrderBy(
+      parsed.sortBy,
+      parsed.sortOrder,
+    );
     const orderConditions: Prisma.OrderWhereInput[] = [];
 
     if (parsed.orderType) {
@@ -129,7 +138,9 @@ export class AssignmentsService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    const postingTargetPlatforms = Array.isArray(assignment.order.postingTargetPlatforms)
+    const postingTargetPlatforms = Array.isArray(
+      assignment.order.postingTargetPlatforms,
+    )
       ? (assignment.order.postingTargetPlatforms as string[])
       : null;
 
@@ -232,7 +243,7 @@ export class AssignmentsService {
       );
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    const submission = await this.prisma.$transaction(async (tx) => {
       await tx.submission.updateMany({
         where: {
           assignmentId,
@@ -243,7 +254,7 @@ export class AssignmentsService {
         },
       });
 
-      await tx.submission.create({
+      const createdSubmission = await tx.submission.create({
         data: {
           assignmentId,
           userId,
@@ -261,6 +272,16 @@ export class AssignmentsService {
           completedAt: submittedAt,
         },
       });
+
+      return createdSubmission;
+    });
+
+    await this.activityService.logSubmissionSent({
+      actorUserId: userId,
+      orderId: assignment.orderId,
+      assignmentId,
+      submissionId: submission.id,
+      occurredAt: submission.submittedAt,
     });
 
     await this.ordersService.refreshOrderStatus(assignment.orderId);

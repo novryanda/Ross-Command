@@ -1,4 +1,5 @@
 import {
+  ActivityIcon,
   Building2Icon,
   ChartNoAxesCombinedIcon,
   ClipboardCheckIcon,
@@ -36,6 +37,12 @@ export function getNavItems(me: Me): NavConfig {
             { title: 'Manajemen Organisasi', url: '/admin/units', icon: Building2Icon },
             { title: 'Manajemen User', url: '/admin/users', icon: UserCogIcon }
           ]
+        },
+        {
+          label: 'Activity',
+          items: [
+            { title: 'Log Activity', url: '/activity', icon: ActivityIcon },
+            ]
         }
       ]
     }
@@ -50,12 +57,19 @@ export function getNavItems(me: Me): NavConfig {
         { title: 'Anggota Saya', url: '/members', icon: UsersIcon }
       ]
     : []
+  const activityItems = me.isCommander
+    ? [
+        { title: 'Log Activity', url: '/activity', icon: ActivityIcon },
+      ]
+    : []
+
 
   return {
     groups: [
       { items: common },
       ...(memberItems.length ? [{ label: 'Tugas', items: memberItems }] : []),
       ...(commanderItems.length ? [{ label: 'Komando', items: commanderItems }] : []),
+      ...(activityItems.length ? [{ label: 'Log Activity', items: activityItems }] : []),
       { label: 'Akun', items: accountItems }
     ]
   }

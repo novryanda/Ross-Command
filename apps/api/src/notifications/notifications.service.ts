@@ -33,13 +33,6 @@ type ProgressSummary = {
   percentageComplete: number;
 };
 
-const SEVERITY_WEIGHT: Record<NotificationSeverity, number> = {
-  danger: 4,
-  warning: 3,
-  info: 2,
-  success: 1,
-};
-
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -62,9 +55,13 @@ export class NotificationsService {
         user.role !== 'super_admin'
           ? this.getAssignmentNotifications(userId)
           : Promise.resolve([]),
-        this.hierarchyService.isCommander(userId).then((value) =>
-          value ? this.getCommanderNotifications(userId) : Promise.resolve([]),
-        ),
+        this.hierarchyService
+          .isCommander(userId)
+          .then((value) =>
+            value
+              ? this.getCommanderNotifications(userId)
+              : Promise.resolve([]),
+          ),
       ]);
 
     const items = [
@@ -72,11 +69,7 @@ export class NotificationsService {
       ...assignmentItems,
       ...(isCommander ? commanderItems : []),
     ]
-      .sort((a, b) => {
-        const priority = SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity];
-        if (priority !== 0) return priority;
-        return b.createdAt.getTime() - a.createdAt.getTime();
-      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, cappedLimit);
 
     return {
@@ -86,7 +79,9 @@ export class NotificationsService {
     };
   }
 
-  private async getAdminNotifications(limit: number): Promise<NotificationItem[]> {
+  private async getAdminNotifications(
+    limit: number,
+  ): Promise<NotificationItem[]> {
     const now = new Date();
     const [lockedUsers, usersWithoutUnit, unitsWithoutCommander] =
       await Promise.all([
@@ -120,36 +115,42 @@ export class NotificationsService {
       ]);
 
     return [
-      ...lockedUsers.map((user): NotificationItem => ({
-        id: `account-locked:${user.id}`,
-        category: 'account',
-        severity: 'warning',
-        title: 'Akun terkunci',
-        description: `${user.fullName} terkunci sampai ${this.formatDateTime(user.lockedUntil)}.`,
-        href: `/admin/users/${user.id}`,
-        createdAt: user.lockedUntil ?? now,
-        readAt: null,
-      })),
-      ...usersWithoutUnit.map((user): NotificationItem => ({
-        id: `user-without-unit:${user.id}`,
-        category: 'organization',
-        severity: 'info',
-        title: 'User belum masuk satuan',
-        description: `${user.fullName} belum punya satuan aktif.`,
-        href: `/admin/users/${user.id}`,
-        createdAt: user.createdAt,
-        readAt: null,
-      })),
-      ...unitsWithoutCommander.map((unit): NotificationItem => ({
-        id: `unit-without-commander:${unit.id}`,
-        category: 'organization',
-        severity: 'info',
-        title: 'Satuan tanpa komandan',
-        description: `${unit.name} belum memiliki komandan satuan.`,
-        href: '/admin/units',
-        createdAt: unit.updatedAt,
-        readAt: null,
-      })),
+      ...lockedUsers.map(
+        (user): NotificationItem => ({
+          id: `account-locked:${user.id}`,
+          category: 'account',
+          severity: 'warning',
+          title: 'Akun terkunci',
+          description: `${user.fullName} terkunci sampai ${this.formatDateTime(user.lockedUntil)}.`,
+          href: `/admin/users/${user.id}`,
+          createdAt: user.lockedUntil ?? now,
+          readAt: null,
+        }),
+      ),
+      ...usersWithoutUnit.map(
+        (user): NotificationItem => ({
+          id: `user-without-unit:${user.id}`,
+          category: 'organization',
+          severity: 'info',
+          title: 'User belum masuk satuan',
+          description: `${user.fullName} belum punya satuan aktif.`,
+          href: `/admin/users/${user.id}`,
+          createdAt: user.createdAt,
+          readAt: null,
+        }),
+      ),
+      ...unitsWithoutCommander.map(
+        (unit): NotificationItem => ({
+          id: `unit-without-commander:${unit.id}`,
+          category: 'organization',
+          severity: 'info',
+          title: 'Satuan tanpa komandan',
+          description: `${unit.name} belum memiliki komandan satuan.`,
+          href: '/admin/units',
+          createdAt: unit.updatedAt,
+          readAt: null,
+        }),
+      ),
     ];
   }
 
@@ -196,32 +197,34 @@ export class NotificationsService {
             ? 'Deadline perintah terlewat'
             : isNearDeadline
               ? 'Perintah mendekati deadline'
-              : 'Perintah menunggu bukti',
+              : 'Ada perintah baru',
           description: `${assignment.order.title} ${
             isExpired
               ? 'sudah melewati deadline.'
               : isNearDeadline
                 ? `tersisa ${hours} jam.`
-                : 'perlu dikerjakan.'
+                : 'harus dikerjakan.'
           }`,
           href: `/assignments/${assignment.id}`,
           createdAt: assignment.assignedAt,
           readAt: null,
         };
       }),
-      ...recentCompleted.map((assignment): NotificationItem => ({
-        id: `assignment-completed:${assignment.id}`,
-        category: 'submission',
-        severity: assignment.status === 'terlambat' ? 'warning' : 'success',
-        title:
-          assignment.status === 'terlambat'
-            ? 'Bukti terkirim terlambat'
-            : 'Bukti berhasil terkirim',
-        description: `${assignment.order.title} sudah tercatat di progress perintah.`,
-        href: `/assignments/${assignment.id}`,
-        createdAt: assignment.completedAt ?? assignment.updatedAt,
-        readAt: null,
-      })),
+      ...recentCompleted.map(
+        (assignment): NotificationItem => ({
+          id: `assignment-completed:${assignment.id}`,
+          category: 'submission',
+          severity: assignment.status === 'terlambat' ? 'warning' : 'success',
+          title:
+            assignment.status === 'terlambat'
+              ? 'Bukti terkirim terlambat'
+              : 'Bukti berhasil terkirim',
+          description: `${assignment.order.title} sudah tercatat di progress perintah.`,
+          href: `/assignments/${assignment.id}`,
+          createdAt: assignment.completedAt ?? assignment.updatedAt,
+          readAt: null,
+        }),
+      ),
     ];
   }
 
@@ -271,7 +274,8 @@ export class NotificationsService {
         if (!progress || progress.totalPending === 0) return null;
 
         const hours = this.hoursUntil(order.deadline);
-        const isExpired = order.deadline < new Date() || order.status === 'expired';
+        const isExpired =
+          order.deadline < new Date() || order.status === 'expired';
         const isNearDeadline = !isExpired && hours !== null && hours < 24;
 
         if (!isExpired && !isNearDeadline) return null;
@@ -336,8 +340,8 @@ export class NotificationsService {
       const totalLate =
         items.find((item) => item.status === 'terlambat')?._count._all ?? 0;
       const totalPending =
-        items.find((item) => item.status === 'belum_dikerjakan')?._count
-          ._all ?? 0;
+        items.find((item) => item.status === 'belum_dikerjakan')?._count._all ??
+        0;
       const totalSubmitted = totalOnTime + totalLate;
 
       map.set(orderId, {

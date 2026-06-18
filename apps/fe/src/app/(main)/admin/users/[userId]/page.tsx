@@ -1,4 +1,5 @@
 import { PlatformBadge } from "@/components/komando/badges";
+import { BackButton } from "@/components/komando/back-button";
 import { PageHero } from "@/components/komando/page-hero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { serverApiFetch } from "@/lib/api/server";
@@ -15,6 +16,8 @@ export default async function AdminUserDetailPage({
 
   return (
     <div className="space-y-6">
+      <BackButton href="/admin/users" />
+
       <PageHero
         eyebrow="Detail user"
         title={user.fullName}

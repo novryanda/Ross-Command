@@ -62,6 +62,13 @@ export type NotificationCategory =
   | "account"
   | "system";
 export type NotificationSeverity = "info" | "success" | "warning" | "danger";
+export type ActivityCategory = "auth" | "order" | "submission";
+export type ActivityType =
+  | "login_success"
+  | "login_failed"
+  | "order_created"
+  | "order_sent"
+  | "submission_sent";
 
 export type UnitSummary = {
   id: string;
@@ -201,6 +208,21 @@ export type NotificationItem = {
   href: string | null;
   createdAt: string;
   readAt: string | null;
+};
+
+export type ActivityItem = {
+  id: string;
+  category: ActivityCategory;
+  type: ActivityType;
+  actor: {
+    id: string | null;
+    name: string;
+    username: string | null;
+  };
+  title: string;
+  description: string;
+  href: string | null;
+  occurredAt: string;
 };
 
 export type UserDetail = UserListItem & {

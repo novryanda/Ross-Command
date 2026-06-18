@@ -5,6 +5,7 @@ import { PostingProofDialog } from "@/components/features/assignments/posting-pr
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
+import { BackButton } from "@/components/komando/back-button";
 import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { PageHero } from "@/components/komando/page-hero";
@@ -24,6 +25,8 @@ export default async function AssignmentDetailPage({
 
   return (
     <div className="space-y-6">
+      <BackButton href="/assignments" />
+
       <PageHero
         eyebrow="Detail perintah saya"
         title={assignment.order.title}

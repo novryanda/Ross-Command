@@ -47,6 +47,12 @@ enum AssignmentStatus {
   terlambat
 }
 
+enum ActivityLogType {
+  order_created
+  order_sent
+  submission_sent
+}
+
 model User {
   id                  String           @id @default(uuid()) @db.Uuid
   fullName            String           @map("full_name") @db.VarChar(150)
@@ -76,6 +82,7 @@ model User {
   taskAssignments     TaskAssignment[]
   submissions         Submission[]
   loginAttempts       LoginAttempt[]
+  activityLogs        ActivityLog[]    @relation("activity_actor")
 
   @@index([deletedAt])
   @@index([role])
@@ -220,6 +227,7 @@ model Order {
   targets           OrderTarget[]
   socialTargets     OrderSocialTarget[]
   assignments       TaskAssignment[]
+  activityLogs      ActivityLog[]
 
   @@index([createdById])
   @@index([status])
@@ -273,6 +281,7 @@ model TaskAssignment {
   order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user        User             @relation(fields: [userId], references: [id])
   submissions Submission[]
+  activityLogs ActivityLog[]
 
   @@unique([orderId, userId])
   @@index([orderId])
@@ -293,6 +302,7 @@ model Submission {
   createdAt     DateTime       @default(now()) @map("created_at")
   assignment    TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   user          User           @relation(fields: [userId], references: [id])
+  activityLogs  ActivityLog[]
 
   @@index([assignmentId])
   @@index([userId])
@@ -311,4 +321,26 @@ model LoginAttempt {
   @@index([userId])
   @@index([attemptedAt])
   @@map("login_attempts")
+}
+
+model ActivityLog {
+  id           String          @id @default(uuid()) @db.Uuid
+  activityKey  String          @unique @map("activity_key") @db.VarChar(200)
+  type         ActivityLogType
+  actorUserId  String?         @map("actor_user_id") @db.Uuid
+  orderId      String?         @map("order_id") @db.Uuid
+  assignmentId String?         @map("assignment_id") @db.Uuid
+  submissionId String?         @map("submission_id") @db.Uuid
+  createdAt    DateTime        @default(now()) @map("created_at")
+  actorUser    User?           @relation("activity_actor", fields: [actorUserId], references: [id])
+  order        Order?          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignment   TaskAssignment? @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  submission   Submission?     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([actorUserId])
+  @@index([orderId])
+  @@index([assignmentId])
+  @@index([submissionId])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
