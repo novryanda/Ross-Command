@@ -3,6 +3,7 @@
 import { LogInIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEED_USER_GROUPS, type SeedUser } from "@/config/seed-users";
 
 const ENABLE_QUICK_LOGIN = process.env.NEXT_PUBLIC_ENABLE_QUICK_LOGIN !== "false";
@@ -23,30 +24,45 @@ export function QuickLoginButtons({ disabled = false, onSelect }: QuickLoginButt
           sekali klik login
         </span>
       </div>
-      <div className="max-h-48 space-y-3 overflow-y-auto pr-1">
+      <Tabs defaultValue={SEED_USER_GROUPS[0]?.label} className="gap-3">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
+          {SEED_USER_GROUPS.map((group) => (
+            <TabsTrigger
+              key={group.label}
+              value={group.label}
+              className="min-h-8 px-2 text-[11px] leading-tight whitespace-normal"
+            >
+              {group.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
         {SEED_USER_GROUPS.map((group) => (
-          <div key={group.label} className="space-y-1.5">
-            <p className="text-muted-foreground text-[11px] font-medium">{group.label}</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {group.users.map((user) => (
-                <Button
-                  key={user.username}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 justify-start overflow-hidden px-2 text-xs"
-                  disabled={disabled}
-                  title={`${user.name} - ${user.username}`}
-                  onClick={() => onSelect(user)}
-                >
-                  <LogInIcon className="size-3.5" />
-                  <span className="truncate">{user.username}</span>
-                </Button>
-              ))}
+          <TabsContent key={group.label} value={group.label}>
+            <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+              <p className="text-muted-foreground text-[11px] font-medium">
+                {group.users.length} akun tersedia
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {group.users.map((user) => (
+                  <Button
+                    key={user.username}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 justify-start overflow-hidden px-2 text-xs"
+                    disabled={disabled}
+                    title={`${user.name} - ${user.username}`}
+                    onClick={() => onSelect(user)}
+                  >
+                    <LogInIcon className="size-3.5" />
+                    <span className="truncate">{user.username}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
+          </TabsContent>
         ))}
-      </div>
+      </Tabs>
     </div>
   );
 }
