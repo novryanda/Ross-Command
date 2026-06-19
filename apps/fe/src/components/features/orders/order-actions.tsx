@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
+import { DownloadIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { clientApiFetch } from "@/lib/api/client";
 import type { OrderDetail } from "@/lib/api/types";
 
 export function OrderActions({ order }: { order: OrderDetail }) {
-  const [loading, setLoading] = useState<"send" | "cancel" | null>(null);
+  const [loading, setLoading] = useState<"send" | "cancel" | "export" | null>(null);
   const router = useRouter();
 
   async function run(action: "send" | "cancel") {
@@ -23,6 +23,41 @@ export function OrderActions({ order }: { order: OrderDetail }) {
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Aksi gagal diproses");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function exportExcel() {
+    setLoading("export");
+    try {
+      const response = await fetch(`/api/v1/orders/${order.id}/assignments/export`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+        throw new Error(payload?.error?.message ?? "Export Excel gagal diproses");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const disposition = response.headers.get("content-disposition");
+      const fileNameMatch = disposition?.match(/filename="?([^"]+)"?/i);
+      const fileName = fileNameMatch?.[1] ?? `order-${order.id}-progress.xlsx`;
+
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+
+      toast.success("File Excel berhasil diunduh");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Export Excel gagal diproses");
     } finally {
       setLoading(null);
     }
@@ -42,8 +77,9 @@ export function OrderActions({ order }: { order: OrderDetail }) {
           Batalkan
         </Button>
       ) : null}
-      <Button size="sm" variant="outline" asChild>
-        <a href={`/api/v1/orders/${order.id}/assignments/export`}>Export Excel</a>
+      <Button size="sm" variant="outline" disabled={Boolean(loading)} onClick={exportExcel}>
+        {loading === "export" ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+        Export Excel
       </Button>
     </div>
   );
