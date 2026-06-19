@@ -35,7 +35,7 @@ export async function createKomandoAuth(
   );
 
   return betterAuth({
-    appName: 'Komando Center',
+    appName: 'Command Center',
     baseURL: config.baseURL,
     secret: config.secret,
     ...(config.secrets?.length ? { secrets: config.secrets } : {}),

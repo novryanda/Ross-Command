@@ -95,8 +95,8 @@ export function LoginForm() {
       <CardHeader className="space-y-3 text-center">
         <AppLogo variant="hero" className="mx-auto" />
         <div className="space-y-1">
-          <CardTitle className="text-xl">Komando Center</CardTitle>
-          <CardDescription>Sistem Manajemen Operasi Sosial Media</CardDescription>
+          <CardTitle className="text-xl">Command Center</CardTitle>
+          <CardDescription>Sistem Manajemen Operasi Siber</CardDescription>
         </div>
       </CardHeader>
       <CardContent>

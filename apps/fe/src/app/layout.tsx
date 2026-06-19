@@ -18,10 +18,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Komando Center",
-    template: "%s - Komando Center",
+    default: "Command Center",
+    template: "%s - Command Center",
   },
-  description: "Sistem manajemen perintah dan pelaporan operasi sosial media.",
+  description: "Sistem manajemen perintah dan pelaporan operasi siber.",
   manifest: "/site.webmanifest",
   icons: {
     icon: [{ url: "/ROSS_favicon.ico", sizes: "any" }],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     apple: { url: "/ROSS_favicon.ico", sizes: "180x180" },
   },
   appleWebApp: {
-    title: "Komando Center",
+    title: "Command Center",
   },
 };
 

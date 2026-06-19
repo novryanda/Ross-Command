@@ -78,7 +78,7 @@ export function getNavItems(me: Me): NavConfig {
 export const dashboardNav: NavConfig = getNavItems({
   id: 'preview',
   username: 'preview',
-  fullName: 'Komando Center',
+  fullName: 'Command Center',
   nip: null,
   role: 'member',
   isCommander: false,
