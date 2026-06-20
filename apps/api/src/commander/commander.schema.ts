@@ -12,6 +12,7 @@ export const detailMemberQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.enum(['belum_dikerjakan', 'selesai', 'terlambat']).optional(),
   orderType: z
-    .enum(['posting', 'engagement', 'komentar', 'report_akun'])
+    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
+    .transform((value) => (value === 'blasting' ? 'engagement' : value))
     .optional(),
 });

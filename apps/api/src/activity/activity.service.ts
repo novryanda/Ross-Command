@@ -44,7 +44,7 @@ export class ActivityService {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'FORBIDDEN',
-        'Akses log aktivitas hanya untuk super admin dan komandan',
+        'Akses log aktivitas hanya untuk super admin dan pimpinan',
       );
     }
 

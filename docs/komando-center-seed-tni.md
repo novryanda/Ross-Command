@@ -6,10 +6,10 @@
 | Field         | Detail                                                       |
 |---------------|----------------------------------------------------------------|
 | **Dokumen**   | Seed Data Specification — Struktur Organisasi TNI             |
-| **Versi**     | v2.0                                                           |
-| **Tanggal**   | 19 Juni 2026                                                   |
+| **Versi**     | v2.1                                                           |
+| **Tanggal**   | 20 Juni 2026                                                   |
 | **Author**    | System Analyst                                                 |
-| **Status**    | Draft                                                          |
+| **Status**    | Implemented                                                    |
 | **Referensi** | Prisma Schema v2 (final) · API Spec v1.1 · Laporan Harian Monitoring Siber Kodam I/BB |
 
 ### Revision History
@@ -196,7 +196,7 @@ Berdasarkan kop & tembusan surat yang kamu lampirkan, struktur hierarkinya:
 
 ## 4. Daftar Satuan (Unit Tree)
 
-| No | Nama Satuan | Parent | Level | Komandan |
+| No | Nama Satuan | Parent | Level | Pimpinan |
 |---|---|---|---|---|
 | 1 | Mabes AD | — | 0 | `kasad` |
 | 2 | Kodam I/Bukit Barisan | Mabes AD | 1 | `pangdam_ibb` |
@@ -215,7 +215,26 @@ Berdasarkan kop & tembusan surat yang kamu lampirkan, struktur hierarkinya:
 
 ## 5. Daftar Perintah (Orders) — Berdasarkan Isu di Laporan Monitoring Siber
 
-Mengikuti instruksi kamu: **4 jenis perintah variatif** (posting, engagement, komentar, report_akun), dengan isu yang diangkat dari laporan harian yang kamu lampirkan (isu AS-Iran, kenaikan harga BBM, rapat tertutup Komisi I DPR, dan isu MBG/Luhut).
+### Catatan Seed: Membership Wajib Pimpinan Satuan
+
+Setiap baris di bawah wajib ada sebagai `UnitMember` aktif (`removedAt = null`). Ini memastikan `Unit.commanderId` tidak menunjuk user dari satuan lain.
+
+| Pimpinan | Wajib menjadi anggota aktif di satuan |
+|---|---|
+| `kasad` | Mabes AD |
+| `pangdam_ibb` | Kodam I/Bukit Barisan |
+| `danrem_022` | Korem 022/Pantai Timur |
+| `danrem_023` | Korem 023/Kawal Samudera |
+| `danrem_031` | Korem 031/Wira Bima |
+| `danrem_032` | Korem 032/Wirabraja |
+| `dandenintel` | Satbalakdam â€” Denintel |
+| `dandenpom` | Satbalakdam â€” Denpom |
+| `kadenkesyah` | Satbalakdam â€” Denkesyah |
+| `danzidam` | Satbalakdam â€” Zidam |
+
+Total membership aktif seed: **34** (semua user member kecuali `superadmin`).
+
+Mengikuti instruksi kamu: **4 jenis perintah variatif** (posting, Blasting, komentar, report_akun), dengan isu yang diangkat dari laporan harian yang kamu lampirkan (isu AS-Iran, kenaikan harga BBM, rapat tertutup Komisi I DPR, dan isu MBG/Luhut). Secara transisi database masih menyimpan Blasting sebagai enum internal `engagement`, tetapi UI/API menampilkan label **Blasting**.
 
 | No | Judul | Jenis | Isu Sumber | Pembuat | Target | Deadline | Status |
 |---|---|---|---|---|---|---|---|

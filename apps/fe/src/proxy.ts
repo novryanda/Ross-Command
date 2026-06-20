@@ -15,10 +15,6 @@ export function proxy(request: NextRequest) {
   const hasSession = hasSessionCookie(request);
 
   if (isPublic) {
-    if (hasSession && (pathname === "/login" || pathname === "/lock-screen")) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-
     return NextResponse.next();
   }
 

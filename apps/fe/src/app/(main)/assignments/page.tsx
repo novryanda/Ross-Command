@@ -67,13 +67,13 @@ export default async function AssignmentsPage({
 
       {response.data.length ? (
         <Suspense fallback={null}>
-          <AssignmentsList assignments={response.data} />
+          <AssignmentsList assignments={response.data} pagination={response.meta?.pagination} />
         </Suspense>
       ) : (
         <PageState title="Tidak ada perintah" description="Perintah yang cocok dengan filter akan tampil di halaman ini." />
       )}
 
-      <ServerPagination meta={response.meta?.pagination} searchParams={params} />
+      {params.view === "table" ? null : <ServerPagination meta={response.meta?.pagination} searchParams={params} />}
     </div>
   );
 }

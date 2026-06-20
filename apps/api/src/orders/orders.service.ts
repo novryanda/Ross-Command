@@ -5,8 +5,18 @@ import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
-import { serializeLatestSubmission } from '../common/utils/submission.util';
-import { OrderStatus, OrderType, Prisma, SocialPlatform } from '@prisma/client';
+import {
+  emptySubmissionMetrics,
+  serializeLatestSubmission,
+  type SubmissionMetrics,
+} from '../common/utils/submission.util';
+import {
+  OrderStatus,
+  OrderTargetAudience,
+  OrderType,
+  Prisma,
+  SocialPlatform,
+} from '@prisma/client';
 import {
   baseOrderSchema,
   type BaseOrderInput,
@@ -23,6 +33,7 @@ type AssignmentProgress = {
   totalLate: number;
   totalPending: number;
   percentageComplete: number;
+  metricTotals: SubmissionMetrics;
 };
 
 @Injectable()
@@ -143,6 +154,7 @@ export class OrdersService {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = baseOrderSchema.parse(body);
     this.validateOrderPayload(parsed, parsed.status);
+    const parsedTargets = this.dedupeTargetInputs(parsed.targets);
 
     const order = await this.prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -179,9 +191,13 @@ export class OrdersService {
       }
 
       await tx.orderTarget.createMany({
-        data: parsed.targets.map((target) => ({
+        data: parsedTargets.map((target) => ({
           orderId: created.id,
           targetType: target.targetType,
+          targetAudience:
+            target.targetType === 'unit'
+              ? (target.targetAudience ?? 'all_members')
+              : 'direct_user',
           unitId: target.targetType === 'unit' ? (target.unitId ?? null) : null,
           userId:
             target.targetType === 'individual' ? (target.userId ?? null) : null,
@@ -238,6 +254,7 @@ export class OrdersService {
       targets: targets.map((target) => ({
         id: target.id,
         targetType: target.targetType,
+        targetAudience: target.targetAudience,
         resolvedMemberCount: target.resolvedMemberCount ?? 0,
         unit:
           target.unit && target.targetType === 'unit'
@@ -316,6 +333,10 @@ export class OrdersService {
             })
           ).map((target) => ({
             targetType: target.targetType,
+            targetAudience:
+              target.targetType === 'unit'
+                ? this.toInputTargetAudience(target.targetAudience)
+                : undefined,
             unitId: target.unitId ?? undefined,
             userId: target.userId ?? undefined,
           })),
@@ -379,13 +400,18 @@ export class OrdersService {
       }
 
       if (parsed.targets) {
+        const parsedTargets = this.dedupeTargetInputs(parsed.targets);
         await tx.orderTarget.deleteMany({
           where: { orderId },
         });
         await tx.orderTarget.createMany({
-          data: parsed.targets.map((target) => ({
+          data: parsedTargets.map((target) => ({
             orderId,
             targetType: target.targetType,
+            targetAudience:
+              target.targetType === 'unit'
+                ? (target.targetAudience ?? 'all_members')
+                : 'direct_user',
             unitId:
               target.targetType === 'unit' ? (target.unitId ?? null) : null,
             userId:
@@ -452,6 +478,10 @@ export class OrdersService {
         status: 'aktif',
         targets: orderTargets.map((target) => ({
           targetType: target.targetType,
+          targetAudience:
+            target.targetType === 'unit'
+              ? this.toInputTargetAudience(target.targetAudience)
+              : undefined,
           unitId: target.unitId ?? undefined,
           userId: target.userId ?? undefined,
         })),
@@ -543,6 +573,15 @@ export class OrdersService {
           },
           submissions: {
             where: { isLatest: true },
+            include: {
+              submittedBy: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  username: true,
+                },
+              },
+            },
             take: 1,
           },
         },
@@ -571,6 +610,8 @@ export class OrdersService {
               path: assignment.user.unitMemberships[0].unit.path,
             }
           : null,
+        canSubmitForMember:
+          assignment.user.unitMemberships[0]?.unit.commanderId === commanderId,
         latestSubmission: serializeLatestSubmission(
           assignment.submissions[0],
           order.orderType,
@@ -621,6 +662,7 @@ export class OrdersService {
           totalLate: 0,
           totalPending: 0,
           percentageComplete: 0,
+          metricTotals: { ...emptySubmissionMetrics },
         },
         children: [],
       });
@@ -687,7 +729,13 @@ export class OrdersService {
       { header: 'Satuan', key: 'unitName', width: 24 },
       { header: 'Status', key: 'status', width: 18 },
       { header: 'Waktu Submit', key: 'submittedAt', width: 24 },
+      { header: 'Diinput Oleh', key: 'submittedBy', width: 28 },
       { header: 'Link Drive', key: 'driveLink', width: 48 },
+      { header: 'Views', key: 'views', width: 14 },
+      { header: 'Likes', key: 'likes', width: 14 },
+      { header: 'Comments', key: 'comments', width: 14 },
+      { header: 'Shares', key: 'shares', width: 14 },
+      { header: 'Reposts', key: 'reposts', width: 14 },
       { header: 'Catatan', key: 'notes', width: 40 },
     ];
 
@@ -705,7 +753,13 @@ export class OrdersService {
         submittedAt: item.latestSubmission?.submittedAt
           ? item.latestSubmission.submittedAt.toISOString()
           : '-',
+        submittedBy: item.latestSubmission?.submittedBy?.fullName ?? '-',
         driveLink: item.latestSubmission?.driveLink ?? '-',
+        views: item.latestSubmission?.metrics.views ?? 0,
+        likes: item.latestSubmission?.metrics.likes ?? 0,
+        comments: item.latestSubmission?.metrics.comments ?? 0,
+        shares: item.latestSubmission?.metrics.shares ?? 0,
+        reposts: item.latestSubmission?.metrics.reposts ?? 0,
         notes: item.latestSubmission?.notes ?? '-',
       });
     }
@@ -734,6 +788,7 @@ export class OrdersService {
       assignments.find((item) => item.status === 'belum_dikerjakan')?._count
         ._all ?? 0;
     const totalSubmitted = totalOnTime + totalLate;
+    const metricTotals = await this.getMetricTotals(orderId);
 
     return {
       totalAssigned,
@@ -745,6 +800,7 @@ export class OrdersService {
         totalAssigned === 0
           ? 0
           : Math.round((totalSubmitted / totalAssigned) * 10000) / 100,
+      metricTotals,
     };
   }
 
@@ -784,24 +840,10 @@ export class OrdersService {
     const memberIds = new Set<string>();
 
     for (const target of targets) {
-      let resolvedMembers: string[] = [];
-      if (target.targetType === 'unit' && target.unitId) {
-        await this.hierarchyService.assertUnitInHierarchy(
-          commanderId,
-          target.unitId,
-        );
-        resolvedMembers = await this.hierarchyService.resolveUnitMemberIds(
-          target.unitId,
-        );
-      }
-
-      if (target.targetType === 'individual' && target.userId) {
-        await this.hierarchyService.assertUserInHierarchy(
-          commanderId,
-          target.userId,
-        );
-        resolvedMembers = [target.userId];
-      }
+      const resolvedMembers = await this.resolveTargetMemberIds(
+        commanderId,
+        target,
+      );
 
       resolvedMembers.forEach((memberId) => memberIds.add(memberId));
 
@@ -950,6 +992,7 @@ export class OrdersService {
           totalLate: 0,
           totalPending: 0,
           percentageComplete: 0,
+          metricTotals: { ...emptySubmissionMetrics },
         } satisfies AssignmentProgress),
     };
   }
@@ -959,17 +1002,20 @@ export class OrdersService {
       return new Map<string, AssignmentProgress>();
     }
 
-    const grouped = await this.prisma.taskAssignment.groupBy({
-      by: ['orderId', 'status'],
-      where: {
-        orderId: {
-          in: orderIds,
+    const [grouped, metricTotalsMap] = await Promise.all([
+      this.prisma.taskAssignment.groupBy({
+        by: ['orderId', 'status'],
+        where: {
+          orderId: {
+            in: orderIds,
+          },
         },
-      },
-      _count: {
-        _all: true,
-      },
-    });
+        _count: {
+          _all: true,
+        },
+      }),
+      this.getMetricTotalsMap(orderIds),
+    ]);
 
     const map = new Map<string, AssignmentProgress>();
     for (const orderId of orderIds) {
@@ -997,7 +1043,61 @@ export class OrdersService {
           totalAssigned === 0
             ? 0
             : Math.round((totalSubmitted / totalAssigned) * 10000) / 100,
+        metricTotals:
+          metricTotalsMap.get(orderId) ?? { ...emptySubmissionMetrics },
       });
+    }
+
+    return map;
+  }
+
+  private async getMetricTotals(orderId: string): Promise<SubmissionMetrics> {
+    const map = await this.getMetricTotalsMap([orderId]);
+    return map.get(orderId) ?? { ...emptySubmissionMetrics };
+  }
+
+  private async getMetricTotalsMap(orderIds: string[]) {
+    const map = new Map<string, SubmissionMetrics>();
+    if (!orderIds.length) {
+      return map;
+    }
+
+    for (const orderId of orderIds) {
+      map.set(orderId, { ...emptySubmissionMetrics });
+    }
+
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        isLatest: true,
+        assignment: {
+          orderId: {
+            in: orderIds,
+          },
+        },
+      },
+      select: {
+        views: true,
+        likes: true,
+        comments: true,
+        shares: true,
+        reposts: true,
+        assignment: {
+          select: {
+            orderId: true,
+          },
+        },
+      },
+    });
+
+    for (const submission of submissions) {
+      const current =
+        map.get(submission.assignment.orderId) ?? { ...emptySubmissionMetrics };
+      current.views += submission.views;
+      current.likes += submission.likes;
+      current.comments += submission.comments;
+      current.shares += submission.shares;
+      current.reposts += submission.reposts;
+      map.set(submission.assignment.orderId, current);
     }
 
     return map;
@@ -1129,6 +1229,18 @@ export class OrdersService {
         );
       }
 
+      if (
+        target.targetType === 'unit' &&
+        target.targetAudience &&
+        !['all_members', 'unit_leaders'].includes(target.targetAudience)
+      ) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Mode target satuan tidak valid',
+        );
+      }
+
       if (target.targetType === 'individual' && !target.userId) {
         throw new ApiException(
           HttpStatus.BAD_REQUEST,
@@ -1137,5 +1249,75 @@ export class OrdersService {
         );
       }
     }
+  }
+
+  private dedupeTargetInputs(targets: BaseOrderInput['targets']) {
+    const map = new Map<string, BaseOrderInput['targets'][number]>();
+
+    for (const target of targets) {
+      const audience =
+        target.targetType === 'unit'
+          ? (target.targetAudience ?? 'all_members')
+          : 'direct_user';
+
+      map.set(
+        [
+          target.targetType,
+          audience,
+          target.unitId ?? '',
+          target.userId ?? '',
+        ].join(':'),
+        target,
+      );
+    }
+
+    return Array.from(map.values());
+  }
+
+  private async resolveTargetMemberIds(
+    commanderId: string,
+    target: {
+      targetType: 'unit' | 'individual';
+      targetAudience: OrderTargetAudience;
+      unitId: string | null;
+      userId: string | null;
+    },
+  ) {
+    if (target.targetType === 'unit' && target.unitId) {
+      await this.hierarchyService.assertUnitInHierarchy(
+        commanderId,
+        target.unitId,
+      );
+
+      if (target.targetAudience === 'unit_leaders') {
+        return this.hierarchyService.resolveUnitLeaderIds(target.unitId);
+      }
+
+      return this.hierarchyService.resolveUnitMemberIds(target.unitId);
+    }
+
+    if (target.targetType === 'individual' && target.userId) {
+      await this.hierarchyService.assertUserInHierarchy(
+        commanderId,
+        target.userId,
+      );
+      return [target.userId];
+    }
+
+    return [];
+  }
+
+  private toInputTargetAudience(
+    targetAudience: OrderTargetAudience | null | undefined,
+  ): 'all_members' | 'unit_leaders' | undefined {
+    if (targetAudience === 'unit_leaders') {
+      return 'unit_leaders';
+    }
+
+    if (targetAudience === 'all_members') {
+      return 'all_members';
+    }
+
+    return undefined;
   }
 }

@@ -31,7 +31,7 @@ export default async function ProfilePage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatsCard title="Komandan" value={me.isCommander ? "Ya" : "Tidak"} icon={UserIcon} />
+        <StatsCard title="Pimpinan" value={me.isCommander ? "Ya" : "Tidak"} icon={UserIcon} />
         <StatsCard title="Akun Sosmed" value={me.socialAccountCount} icon={Share2Icon} />
         <StatsCard
           title="Bergabung"

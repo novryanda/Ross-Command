@@ -41,6 +41,12 @@ enum OrderTargetType {
   individual
 }
 
+enum OrderTargetAudience {
+  all_members
+  unit_leaders
+  direct_user
+}
+
 enum AssignmentStatus {
   belum_dikerjakan
   selesai
@@ -54,35 +60,36 @@ enum ActivityLogType {
 }
 
 model User {
-  id                  String           @id @default(uuid()) @db.Uuid
-  fullName            String           @map("full_name") @db.VarChar(150)
-  email               String           @unique @db.VarChar(255)
-  emailVerified       Boolean          @default(true) @map("email_verified")
-  username            String           @unique @db.VarChar(50)
-  displayUsername     String?          @map("display_username") @db.VarChar(150)
-  image               String?          @db.Text
-  role                String           @default("member") @db.VarChar(50)
-  banned              Boolean          @default(false)
-  banReason           String?          @map("ban_reason") @db.Text
-  banExpires          DateTime?        @map("ban_expires")
-  nip                 String?          @unique @db.VarChar(50)
-  failedLoginAttempts Int              @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime?        @map("locked_until")
-  lastLoginAt         DateTime?        @map("last_login_at")
-  deletedAt           DateTime?        @map("deleted_at")
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-  sessions            Session[]
-  accounts            Account[]
-  commandedUnits      Unit[]           @relation("commanded_units")
-  unitMemberships     UnitMember[]
-  socialAccounts      SocialAccount[]
-  createdOrders       Order[]          @relation("created_orders")
-  directTargets       OrderTarget[]    @relation("direct_target_users")
-  taskAssignments     TaskAssignment[]
-  submissions         Submission[]
-  loginAttempts       LoginAttempt[]
-  activityLogs        ActivityLog[]    @relation("activity_actor")
+  id                     String           @id @default(uuid()) @db.Uuid
+  fullName               String           @map("full_name") @db.VarChar(150)
+  email                  String           @unique @db.VarChar(255)
+  emailVerified          Boolean          @default(true) @map("email_verified")
+  username               String           @unique @db.VarChar(50)
+  displayUsername        String?          @map("display_username") @db.VarChar(150)
+  image                  String?          @db.Text
+  role                   String           @default("member") @db.VarChar(50)
+  banned                 Boolean          @default(false)
+  banReason              String?          @map("ban_reason") @db.Text
+  banExpires             DateTime?        @map("ban_expires")
+  nip                    String?          @unique @db.VarChar(50)
+  failedLoginAttempts    Int              @default(0) @map("failed_login_attempts")
+  lockedUntil            DateTime?        @map("locked_until")
+  lastLoginAt            DateTime?        @map("last_login_at")
+  deletedAt              DateTime?        @map("deleted_at")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+  sessions               Session[]
+  accounts               Account[]
+  commandedUnits         Unit[]           @relation("commanded_units")
+  unitMemberships        UnitMember[]
+  socialAccounts         SocialAccount[]
+  createdOrders          Order[]          @relation("created_orders")
+  directTargets          OrderTarget[]    @relation("direct_target_users")
+  taskAssignments        TaskAssignment[]
+  submissions            Submission[]
+  representedSubmissions Submission[]     @relation("submitted_by_user")
+  loginAttempts          LoginAttempt[]
+  activityLogs           ActivityLog[]    @relation("activity_actor")
 
   @@index([deletedAt])
   @@index([role])
@@ -206,28 +213,28 @@ model SocialAccount {
 }
 
 model Order {
-  id                String           @id @default(uuid()) @db.Uuid
-  createdById       String           @map("created_by") @db.Uuid
-  title             String           @db.VarChar(255)
-  orderType         OrderType        @map("order_type")
-  description       String           @db.Text
-  narration         String?          @db.Text
-  sentiment         OrderSentiment?
-  engagementActions Json?            @map("engagement_actions")
-  reportReason      String?          @map("report_reason") @db.Text
-  postingSourceUrl  String?          @map("posting_source_url") @db.Text
-  postingTargetPlatforms Json?       @map("posting_target_platforms")
-  status            OrderStatus      @default(draft)
-  deadline          DateTime
-  sentAt            DateTime?        @map("sent_at")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  deletedAt         DateTime?        @map("deleted_at")
-  createdBy         User             @relation("created_orders", fields: [createdById], references: [id])
-  targets           OrderTarget[]
-  socialTargets     OrderSocialTarget[]
-  assignments       TaskAssignment[]
-  activityLogs      ActivityLog[]
+  id                     String              @id @default(uuid()) @db.Uuid
+  createdById            String              @map("created_by") @db.Uuid
+  title                  String              @db.VarChar(255)
+  orderType              OrderType           @map("order_type")
+  description            String              @db.Text
+  narration              String?             @db.Text
+  sentiment              OrderSentiment?
+  engagementActions      Json?               @map("engagement_actions")
+  reportReason           String?             @map("report_reason") @db.Text
+  postingSourceUrl       String?             @map("posting_source_url") @db.Text
+  postingTargetPlatforms Json?               @map("posting_target_platforms")
+  status                 OrderStatus         @default(draft)
+  deadline               DateTime
+  sentAt                 DateTime?           @map("sent_at")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+  deletedAt              DateTime?           @map("deleted_at")
+  createdBy              User                @relation("created_orders", fields: [createdById], references: [id])
+  targets                OrderTarget[]
+  socialTargets          OrderSocialTarget[]
+  assignments            TaskAssignment[]
+  activityLogs           ActivityLog[]
 
   @@index([createdById])
   @@index([status])
@@ -255,13 +262,14 @@ model OrderTarget {
   unitId              String?         @map("unit_id") @db.Uuid
   userId              String?         @map("user_id") @db.Uuid
   targetType          OrderTargetType @map("target_type")
+  targetAudience      OrderTargetAudience @default(all_members) @map("target_audience")
   resolvedMemberCount Int?            @map("resolved_member_count")
   createdAt           DateTime        @default(now()) @map("created_at")
   order               Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   unit                Unit?           @relation(fields: [unitId], references: [id])
   user                User?           @relation("direct_target_users", fields: [userId], references: [id])
 
-  @@unique([orderId, unitId])
+  @@unique([orderId, unitId, targetAudience])
   @@unique([orderId, userId])
   @@index([orderId])
   @@index([unitId])
@@ -270,17 +278,17 @@ model OrderTarget {
 }
 
 model TaskAssignment {
-  id          String           @id @default(uuid()) @db.Uuid
-  orderId     String           @map("order_id") @db.Uuid
-  userId      String           @map("user_id") @db.Uuid
-  status      AssignmentStatus @default(belum_dikerjakan)
-  assignedAt  DateTime         @default(now()) @map("assigned_at")
-  completedAt DateTime?        @map("completed_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id])
-  submissions Submission[]
+  id           String           @id @default(uuid()) @db.Uuid
+  orderId      String           @map("order_id") @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  status       AssignmentStatus @default(belum_dikerjakan)
+  assignedAt   DateTime         @default(now()) @map("assigned_at")
+  completedAt  DateTime?        @map("completed_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  order        Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id])
+  submissions  Submission[]
   activityLogs ActivityLog[]
 
   @@unique([orderId, userId])
@@ -291,21 +299,30 @@ model TaskAssignment {
 }
 
 model Submission {
-  id            String         @id @default(uuid()) @db.Uuid
-  assignmentId  String         @map("assignment_id") @db.Uuid
-  userId        String         @map("user_id") @db.Uuid
-  driveLink     String?        @map("drive_link") @db.Text
-  platformLinks Json?          @map("platform_links")
-  notes         String?        @db.Text
-  isLatest      Boolean        @default(true) @map("is_latest")
-  submittedAt   DateTime       @default(now()) @map("submitted_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  assignment    TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  user          User           @relation(fields: [userId], references: [id])
-  activityLogs  ActivityLog[]
+  id                String         @id @default(uuid()) @db.Uuid
+  assignmentId      String         @map("assignment_id") @db.Uuid
+  userId            String         @map("user_id") @db.Uuid
+  submittedByUserId String         @map("submitted_by_user_id") @db.Uuid
+  submissionSource  String         @default("self") @map("submission_source") @db.VarChar(30)
+  driveLink         String?        @map("drive_link") @db.Text
+  platformLinks     Json?          @map("platform_links")
+  views             Int            @default(0)
+  likes             Int            @default(0)
+  comments          Int            @default(0)
+  shares            Int            @default(0)
+  reposts           Int            @default(0)
+  notes             String?        @db.Text
+  isLatest          Boolean        @default(true) @map("is_latest")
+  submittedAt       DateTime       @default(now()) @map("submitted_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  assignment        TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id])
+  submittedBy       User           @relation("submitted_by_user", fields: [submittedByUserId], references: [id])
+  activityLogs      ActivityLog[]
 
   @@index([assignmentId])
   @@index([userId])
+  @@index([submittedByUserId])
   @@index([assignmentId, isLatest])
   @@map("submissions")
 }

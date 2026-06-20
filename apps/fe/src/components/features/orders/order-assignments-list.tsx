@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 
 import { PostingCompletenessBadge } from "@/components/features/assignments/posting-completeness-badge";
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
+import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
+import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
 import { OrderAssignmentsTable } from "@/components/features/orders/order-assignments-table";
 import { StatusBadge } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
@@ -15,15 +17,18 @@ export function OrderAssignmentsList({
   assignments,
   orderType,
   postingTargetPlatforms = [],
+  orderId,
 }: {
   assignments: Assignment[];
   orderType?: OrderType;
   postingTargetPlatforms?: SocialPlatform[];
+  orderId: string;
 }) {
   const searchParams = useSearchParams();
   const viewParam = searchParams.get("view");
   const view = viewParam === "card" || viewParam === "table" ? viewParam : "card";
   const isPosting = orderType === "posting";
+  const isBlasting = orderType === "engagement" || orderType === "blasting";
 
   if (view === "table") {
     return (
@@ -31,6 +36,7 @@ export function OrderAssignmentsList({
         assignments={assignments}
         orderType={orderType}
         postingTargetPlatforms={postingTargetPlatforms}
+        orderId={orderId}
       />
     );
   }
@@ -45,8 +51,16 @@ export function OrderAssignmentsList({
               <p className="text-muted-foreground text-xs">
                 {assignment.unit?.name ?? "-"} - @{assignment.user?.username}
               </p>
+              {assignment.latestSubmission ? (
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {assignment.latestSubmission.isRepresented ? "Diwakili Pimpinan" : "Mandiri"}
+                  {assignment.latestSubmission.submittedBy?.fullName
+                    ? ` oleh ${assignment.latestSubmission.submittedBy.fullName}`
+                    : ""}
+                </p>
+              ) : null}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={assignment.status} />
               {isPosting && assignment.latestSubmission?.postingCompleteness ? (
                 <PostingCompletenessBadge
@@ -54,7 +68,12 @@ export function OrderAssignmentsList({
                   missingPlatforms={assignment.latestSubmission.missingPlatforms}
                 />
               ) : null}
-              {assignment.latestSubmission ? (
+              {isBlasting && assignment.canSubmitForMember ? (
+                <BlastingMetricsInlineForm
+                  assignment={assignment}
+                  submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
+                />
+              ) : assignment.latestSubmission ? (
                 isPosting && assignment.latestSubmission.platformLinks?.length ? (
                   <PostingProofDialog
                     submission={assignment.latestSubmission}
@@ -67,6 +86,21 @@ export function OrderAssignmentsList({
                     </Link>
                   </Button>
                 ) : null
+              ) : null}
+              {!isBlasting && assignment.canSubmitForMember ? (
+                <SubmitProofDialog
+                  assignmentId={assignment.id}
+                  orderType={orderType}
+                  postingTargetPlatforms={postingTargetPlatforms}
+                  submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
+                  initialSubmission={assignment.latestSubmission}
+                  title={assignment.latestSubmission ? "Edit Bukti Anggota" : "Input Bukti Anggota"}
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      {assignment.latestSubmission ? "Edit Bukti" : "Input Bukti"}
+                    </Button>
+                  }
+                />
               ) : null}
             </div>
           </div>

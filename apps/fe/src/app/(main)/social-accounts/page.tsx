@@ -12,7 +12,7 @@ export default async function SocialAccountsPage() {
       <PageHero
         eyebrow="Kesiapan akun"
         title="Akun Sosmed"
-        description="Kelola akun sosial media yang digunakan untuk melaksanakan perintah posting, engagement, komentar, dan report."
+        description="Kelola akun sosial media yang digunakan untuk melaksanakan perintah posting, blasting, komentar, dan report."
       />
 
       {response.data.length ? (
@@ -20,7 +20,7 @@ export default async function SocialAccountsPage() {
       ) : (
         <div className="space-y-4">
           <SocialAccountsManager accounts={[]} />
-          <PageState title="Belum ada akun sosmed" description="Tambahkan akun pertama agar komandan bisa melihat kesiapan pelaksanaan." />
+          <PageState title="Belum ada akun sosmed" description="Tambahkan akun pertama agar pimpinan bisa melihat kesiapan pelaksanaan." />
         </div>
       )}
     </div>

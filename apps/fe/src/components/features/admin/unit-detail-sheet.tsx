@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon, UsersIcon } from "lucide-react";
+import { Loader2Icon, PencilIcon, UsersIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -14,6 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { clientApiFetch } from "@/lib/api/client";
 import type { UnitDetail, UnitNode } from "@/lib/api/types";
 
@@ -30,11 +37,25 @@ function formatDate(value?: string) {
 
 type UnitDetailSheetProps = {
   unit: UnitNode | null;
+  units: UnitNode[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function UnitDetailSheet({ unit, open, onOpenChange }: UnitDetailSheetProps) {
+function flattenUnits(units: UnitNode[]): UnitNode[] {
+  return units.flatMap((item) => [item, ...flattenUnits(item.children ?? [])]);
+}
+
+export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailSheetProps) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    parentId: "root",
+    description: "",
+    commanderId: "none",
+  });
   const detailQuery = useQuery({
     queryKey: ["units", "detail", unit?.id],
     queryFn: async () => (await clientApiFetch<UnitDetail>(`/api/v1/units/${unit!.id}`)).data,
@@ -42,6 +63,43 @@ export function UnitDetailSheet({ unit, open, onOpenChange }: UnitDetailSheetPro
   });
 
   const detail = detailQuery.data;
+  const unitOptions = flattenUnits(units).filter(
+    (item) => item.id !== detail?.id && !item.path.startsWith(detail?.path ?? "__"),
+  );
+
+  useEffect(() => {
+    if (!detail) return;
+    setForm({
+      name: detail.name,
+      parentId: detail.parent?.id ?? "root",
+      description: detail.description ?? "",
+      commanderId: detail.commander?.id ?? "none",
+    });
+  }, [detail]);
+
+  async function save() {
+    if (!detail) return;
+    setSaving(true);
+    try {
+      await clientApiFetch(`/api/v1/units/${detail.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: form.name,
+          parentId: form.parentId === "root" ? null : form.parentId,
+          description: form.description || null,
+          commanderId: form.commanderId === "none" ? null : form.commanderId,
+        }),
+      });
+      toast.success("Satuan berhasil diperbarui");
+      setEditing(false);
+      await detailQuery.refetch();
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal memperbarui satuan");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -49,7 +107,7 @@ export function UnitDetailSheet({ unit, open, onOpenChange }: UnitDetailSheetPro
         <SheetHeader className="border-b p-5 pb-4">
           <SheetTitle>{unit?.name ?? "Detail Satuan"}</SheetTitle>
           <SheetDescription>
-            Informasi satuan, komandan, dan daftar anggota aktif.
+            Informasi satuan, pimpinan, dan daftar anggota aktif.
           </SheetDescription>
         </SheetHeader>
 
@@ -64,14 +122,69 @@ export function UnitDetailSheet({ unit, open, onOpenChange }: UnitDetailSheetPro
           ) : detail ? (
             <div className="space-y-6">
               <section className="space-y-3">
-                <h3 className="text-sm font-medium">Informasi Umum</h3>
-                <dl className="grid gap-3 text-sm">
-                  <InfoRow label="Nama" value={detail.name} />
-                  <InfoRow label="Level" value={`Level ${detail.depthLevel}`} />
-                  <InfoRow label="Parent" value={detail.parent?.name ?? "Root"} />
-                  <InfoRow label="Komandan" value={detail.commander?.fullName ?? "Belum ditetapkan"} />
-                  <InfoRow label="Deskripsi" value={detail.description?.trim() || "Tidak ada deskripsi"} />
-                </dl>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-medium">Informasi Umum</h3>
+                  <Button size="sm" variant="outline" onClick={() => setEditing((value) => !value)}>
+                    <PencilIcon className="size-3.5" />
+                    {editing ? "Batal Edit" : "Edit"}
+                  </Button>
+                </div>
+                {editing ? (
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="unit-name">Nama Satuan</Label>
+                      <Input
+                        id="unit-name"
+                        value={form.name}
+                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Parent</Label>
+                      <Select value={form.parentId} onValueChange={(value) => setForm((current) => ({ ...current, parentId: value }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="root">Root</SelectItem>
+                          {unitOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.depthLevel > 0 ? `${"- ".repeat(option.depthLevel)}${option.name}` : option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Deskripsi</Label>
+                      <Textarea
+                        rows={3}
+                        value={form.description}
+                        onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Pimpinan</Label>
+                      <Select value={form.commanderId} onValueChange={(value) => setForm((current) => ({ ...current, commanderId: value }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Tanpa Pimpinan</SelectItem>
+                          {detail.members.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <dl className="grid gap-3 text-sm">
+                    <InfoRow label="Nama" value={detail.name} />
+                    <InfoRow label="Level" value={`Level ${detail.depthLevel}`} />
+                    <InfoRow label="Parent" value={detail.parent?.name ?? "Root"} />
+                    <InfoRow label="Pimpinan" value={detail.commander?.fullName ?? "Belum ditetapkan"} />
+                    <InfoRow label="Deskripsi" value={detail.description?.trim() || "Tidak ada deskripsi"} />
+                  </dl>
+                )}
               </section>
 
               <Separator />
@@ -123,9 +236,15 @@ export function UnitDetailSheet({ unit, open, onOpenChange }: UnitDetailSheetPro
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t p-3">
+          {editing ? (
+            <Button size="sm" disabled={saving || !form.name.trim()} onClick={save}>
+              {saving ? <Loader2Icon className="animate-spin" /> : null}
+              Simpan
+            </Button>
+          ) : null}
           {detail?.commander?.id ? (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/admin/users/${detail.commander.id}`}>Profil Komandan</Link>
+              <Link href={`/admin/users/${detail.commander.id}`}>Profil Pimpinan</Link>
             </Button>
           ) : null}
           <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>

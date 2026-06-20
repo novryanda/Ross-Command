@@ -2,7 +2,6 @@ import { MembersTable } from "@/components/features/members/members-table";
 import { FilterBar } from "@/components/komando/filter-bar";
 import { PageHero } from "@/components/komando/page-hero";
 import { PageState } from "@/components/komando/page-state";
-import { ServerPagination } from "@/components/komando/server-pagination";
 import { buildQueryString } from "@/lib/api/client";
 import { serverApiFetch } from "@/lib/api/server";
 import type { UnitNode, UserListItem } from "@/lib/api/types";
@@ -53,11 +52,10 @@ export default async function MembersPage({
           ]}
         />
         {members.data.length ? (
-          <MembersTable members={members.data} />
+          <MembersTable members={members.data} pagination={members.meta?.pagination} />
         ) : (
           <PageState title="Tidak ada anggota" description="Tidak ada anggota yang cocok dengan filter saat ini." />
         )}
-        <ServerPagination meta={members.meta?.pagination} searchParams={params} />
       </div>
     </div>
   );

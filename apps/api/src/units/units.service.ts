@@ -162,7 +162,11 @@ export class UnitsService {
       ? await this.getActiveUnit(parsed.parentId)
       : null;
     if (parsed.commanderId) {
-      await this.ensureActiveUser(parsed.commanderId);
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Pimpinan satuan hanya dapat dipilih setelah anggota ditambahkan ke satuan',
+      );
     }
 
     await this.ensureSiblingNameAvailable(parsed.parentId ?? null, parsed.name);
@@ -176,7 +180,7 @@ export class UnitsService {
         parentId: parsed.parentId ?? null,
         name: parsed.name,
         description: parsed.description,
-        commanderId: parsed.commanderId ?? null,
+        commanderId: null,
         path,
         depthLevel,
       },
@@ -206,7 +210,7 @@ export class UnitsService {
     }
 
     if (parsed.commanderId) {
-      await this.ensureActiveUser(parsed.commanderId);
+      await this.ensureDirectUnitMember(unitId, parsed.commanderId);
     }
 
     if (parsed.name && parsed.name !== current.name) {
@@ -350,6 +354,15 @@ export class UnitsService {
           where: { id: currentMembership.id },
           data: { removedAt: new Date() },
         });
+        await tx.unit.updateMany({
+          where: {
+            id: currentMembership.unitId,
+            commanderId: parsed.userId,
+          },
+          data: {
+            commanderId: null,
+          },
+        });
       }
 
       await tx.unitMember.create({
@@ -390,6 +403,15 @@ export class UnitsService {
         where: { id: activeMembership.id },
         data: { removedAt: new Date() },
       }),
+      this.prisma.unit.updateMany({
+        where: {
+          id: unitId,
+          commanderId: userId,
+        },
+        data: {
+          commanderId: null,
+        },
+      }),
       this.prisma.unitMember.create({
         data: {
           unitId: parsed.targetUnitId,
@@ -427,6 +449,32 @@ export class UnitsService {
         HttpStatus.NOT_FOUND,
         'NOT_FOUND',
         'User tidak ditemukan',
+      );
+    }
+  }
+
+  private async ensureDirectUnitMember(unitId: string, userId: string) {
+    await this.ensureActiveUser(userId);
+
+    const membership = await this.prisma.unitMember.findFirst({
+      where: {
+        unitId,
+        userId,
+        removedAt: null,
+        unit: {
+          deletedAt: null,
+        },
+        user: {
+          deletedAt: null,
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Pimpinan satuan harus merupakan anggota aktif langsung di satuan tersebut',
       );
     }
   }

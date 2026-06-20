@@ -51,7 +51,7 @@ const sampleActivities: ActivityItem[] = [
     id: 'sample-1',
     category: 'order',
     type: 'order_created',
-    actor: { id: null, name: 'Komandan Pusat', username: 'komando_pusat' },
+    actor: { id: null, name: 'Pimpinan Pusat', username: 'komando_pusat' },
     title: 'Perintah dibuat',
     description: 'Upload Konten Kampanye Juni',
     href: null,

@@ -26,21 +26,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Stepper } from "@/components/wizard-stepper";
 import { clientApiFetch } from "@/lib/api/client";
-import type { Order, OrderType, SocialPlatform, UnitNode, UserListItem } from "@/lib/api/types";
+import type { Order, OrderTargetAudience, OrderType, SocialPlatform, UnitNode } from "@/lib/api/types";
 
-const ENGAGEMENT_ACTIONS = ["like", "share", "repost"] as const;
+const BLASTING_ACTIONS = ["like", "share", "repost"] as const;
 
 const defaultDescription: Record<Exclude<OrderType, "posting">, string> = {
   engagement: "Lakukan like, share, dan repost pada URL target.",
+  blasting: "Lakukan like, share, dan repost pada URL target.",
   komentar: "Berikan komentar sesuai narasi pada URL target.",
   report_akun: "Laporkan akun target sesuai alasan yang ditentukan.",
 };
 
 const steps = [
   { id: "detail", title: "Detail", description: "Jenis dan instruksi" },
-  { id: "target", title: "Target", description: "Satuan atau individu" },
+  { id: "target", title: "Target", description: "Satuan dan mode distribusi" },
   { id: "review", title: "Review", description: "Simpan atau kirim" },
 ];
+
+const targetAudienceLabel: Record<Exclude<OrderTargetAudience, "direct_user">, string> = {
+  all_members: "Seluruh Satuan",
+  unit_leaders: "Pimpinan Satuan",
+};
 
 function resolveDescription(orderType: OrderType, description: string) {
   const trimmed = description.trim();
@@ -63,10 +69,17 @@ type OrderDraft = {
   sentiment: "positive" | "negative" | "";
   engagementActions: string[];
   reportReason: string;
+  targetAudience: Exclude<OrderTargetAudience, "direct_user">;
   deadline: string;
 };
 
-export function OrderForm({ units, members }: { units: UnitNode[]; members: UserListItem[] }) {
+export function OrderForm({
+  units,
+  currentUserId,
+}: {
+  units: UnitNode[];
+  currentUserId: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState<"draft" | "aktif" | null>(null);
@@ -83,12 +96,31 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
     sentiment: "",
     engagementActions: [],
     reportReason: "",
+    targetAudience: "all_members",
     deadline: "",
   });
 
   const isPosting = draft.orderType === "posting";
+  const isBlasting = draft.orderType === "engagement" || draft.orderType === "blasting";
   const requiresNarration = draft.orderType === "komentar";
   const requiresReport = draft.orderType === "report_akun";
+  const targetCounts = useMemo(
+    () => ({
+      allMembers: targets.filter((target) => target.targetAudience === "all_members").length,
+      unitLeaders: targets.filter((target) => target.targetAudience === "unit_leaders").length,
+    }),
+    [targets],
+  );
+  const targetModeSummary = useMemo(() => {
+    const parts = [];
+    if (targetCounts.allMembers > 0) {
+      parts.push(`${targetCounts.allMembers} seluruh satuan`);
+    }
+    if (targetCounts.unitLeaders > 0) {
+      parts.push(`${targetCounts.unitLeaders} pimpinan satuan`);
+    }
+    return parts.length ? parts.join(" + ") : targetAudienceLabel[draft.targetAudience];
+  }, [draft.targetAudience, targetCounts.allMembers, targetCounts.unitLeaders]);
 
   const canContinue = useMemo(() => {
     if (step === 0) {
@@ -151,7 +183,7 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
             narration: draft.narration || undefined,
             sentiment: draft.sentiment || undefined,
             engagementActions:
-              draft.orderType === "engagement" ? [...ENGAGEMENT_ACTIONS] : undefined,
+              isBlasting ? [...BLASTING_ACTIONS] : undefined,
             reportReason: draft.reportReason || undefined,
             deadline: new Date(draft.deadline).toISOString(),
             status,
@@ -195,7 +227,7 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
                     ...current,
                     orderType,
                     sentiment: orderType === "komentar" ? current.sentiment : "",
-                    engagementActions: orderType === "engagement" ? [...ENGAGEMENT_ACTIONS] : [],
+                    engagementActions: orderType === "blasting" ? [...BLASTING_ACTIONS] : [],
                   }));
                 }}
               >
@@ -204,7 +236,7 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="posting">Posting</SelectItem>
-                  <SelectItem value="engagement">Engagement</SelectItem>
+                  <SelectItem value="blasting">Blasting</SelectItem>
                   <SelectItem value="komentar">Komentar</SelectItem>
                   <SelectItem value="report_akun">Report Akun</SelectItem>
                 </SelectContent>
@@ -288,7 +320,14 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
             <CardTitle className="text-base">Pilih Target</CardTitle>
           </CardHeader>
           <CardContent>
-            <TargetPicker units={units} members={members} value={targets} onChange={setTargets} />
+            <TargetPicker
+              units={units}
+              currentUserId={currentUserId}
+              value={targets}
+              onChange={setTargets}
+              targetAudience={draft.targetAudience}
+              onTargetAudienceChange={(targetAudience) => setField("targetAudience", targetAudience)}
+            />
           </CardContent>
         </Card>
       ) : null}
@@ -336,6 +375,10 @@ export function OrderForm({ units, members }: { units: UnitNode[]; members: User
                 </ul>
               </div>
             )}
+            <p>
+              <span className="text-muted-foreground">Mode Target:</span>{" "}
+              {targetModeSummary}
+            </p>
             <p><span className="text-muted-foreground">Target:</span> {targets.length} target</p>
             <p><span className="text-muted-foreground">Deadline:</span> {draft.deadline ? new Date(draft.deadline).toLocaleString("id-ID") : "-"}</p>
           </CardContent>

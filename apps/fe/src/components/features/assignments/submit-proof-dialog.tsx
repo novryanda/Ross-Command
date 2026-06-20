@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Loader2Icon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -25,25 +26,55 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { clientApiFetch } from "@/lib/api/client";
-import type { OrderType, SocialPlatform } from "@/lib/api/types";
+import type { OrderType, SocialPlatform, Submission, SubmissionMetrics } from "@/lib/api/types";
 
 type SubmitProofDialogProps = {
   assignmentId: string;
   orderType?: OrderType;
   postingTargetPlatforms?: SocialPlatform[] | null;
+  submitUrl?: string;
+  trigger?: ReactNode;
+  title?: string;
+  initialSubmission?: Submission | null;
+};
+
+const metricFields: Array<{ key: keyof SubmissionMetrics; label: string }> = [
+  { key: "views", label: "Views" },
+  { key: "likes", label: "Like" },
+  { key: "comments", label: "Comment" },
+  { key: "shares", label: "Share" },
+  { key: "reposts", label: "Repost" },
+];
+
+const emptyMetrics: SubmissionMetrics = {
+  views: 0,
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  reposts: 0,
 };
 
 export function SubmitProofDialog({
   assignmentId,
   orderType = "engagement",
   postingTargetPlatforms = [],
+  submitUrl,
+  trigger,
+  title = "Submit Bukti Pelaksanaan",
+  initialSubmission,
 }: SubmitProofDialogProps) {
   const isPosting = orderType === "posting";
+  const isBlasting = orderType === "engagement" || orderType === "blasting";
   const targetPlatforms = postingTargetPlatforms ?? [];
   const [open, setOpen] = useState(false);
-  const [driveLink, setDriveLink] = useState("");
-  const [platformValues, setPlatformValues] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState("");
+  const [driveLink, setDriveLink] = useState(() => initialSubmission?.driveLink ?? "");
+  const [platformValues, setPlatformValues] = useState<Record<string, string>>(() =>
+    buildInitialPlatformValues(initialSubmission),
+  );
+  const [metrics, setMetrics] = useState<SubmissionMetrics>(
+    () => initialSubmission?.metrics ?? emptyMetrics,
+  );
+  const [notes, setNotes] = useState(() => initialSubmission?.notes ?? "");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -54,29 +85,38 @@ export function SubmitProofDialog({
 
   const canSubmit = isPosting
     ? hasAtLeastOnePostingLink(targetPlatforms, platformValues)
-    : Boolean(driveLink.trim());
+    : Boolean(driveLink.trim()) || (isBlasting && Object.values(metrics).some((value) => value > 0));
 
   function resetForm() {
-    setDriveLink("");
-    setPlatformValues({});
-    setNotes("");
+    setDriveLink(initialSubmission?.driveLink ?? "");
+    setPlatformValues(buildInitialPlatformValues(initialSubmission));
+    setMetrics(initialSubmission?.metrics ?? emptyMetrics);
+    setNotes(initialSubmission?.notes ?? "");
+  }
+
+  function setMetricValue(key: keyof SubmissionMetrics, value: string) {
+    const numericValue = Math.max(0, Number.parseInt(value || "0", 10) || 0);
+    setMetrics((current) => ({ ...current, [key]: numericValue }));
   }
 
   async function submit() {
     setSubmitting(true);
     try {
+      const payloadMetrics = isBlasting ? metrics : emptyMetrics;
       const payload = isPosting
         ? {
             platformLinks: buildPostingPlatformLinks(targetPlatforms, platformValues),
             driveLink: driveLink.trim() || undefined,
+            metrics: payloadMetrics,
             notes: notes || undefined,
           }
         : {
-            driveLink,
+            driveLink: driveLink.trim() || undefined,
+            metrics: payloadMetrics,
             notes: notes || undefined,
           };
 
-      await clientApiFetch(`/api/v1/assignments/me/${assignmentId}/submit`, {
+      await clientApiFetch(submitUrl ?? `/api/v1/assignments/me/${assignmentId}/submit`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -102,15 +142,16 @@ export function SubmitProofDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">Submit Bukti</Button>
+        {trigger ?? <Button size="sm">Submit Bukti</Button>}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Submit Bukti Pelaksanaan</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {isPosting
               ? "Masukkan link posting untuk setiap sosmed target. Boleh dikirim sebagian, asalkan minimal satu link terisi."
-              : "Masukkan link Google Drive atau dokumen bukti yang dapat dibuka komandan."}
+              : "Masukkan link Google Drive atau dokumen bukti yang dapat dibuka pimpinan."}{" "}
+            Submit ulang akan tercatat sebagai aktivitas baru.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -163,6 +204,22 @@ export function SubmitProofDialog({
               />
             </div>
           )}
+          {isBlasting ? (
+            <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2">
+              {metricFields.map((field) => (
+                <div key={field.key} className="grid gap-2">
+                  <Label htmlFor={`metric-${field.key}`}>{field.label}</Label>
+                  <Input
+                    id={`metric-${field.key}`}
+                    type="number"
+                    min={0}
+                    value={metrics[field.key]}
+                    onChange={(event) => setMetricValue(field.key, event.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="notes">Catatan</Label>
             <Textarea id="notes" rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
@@ -179,5 +236,11 @@ export function SubmitProofDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function buildInitialPlatformValues(submission?: Submission | null) {
+  return Object.fromEntries(
+    (submission?.platformLinks ?? []).map((link) => [link.platform, link.url]),
   );
 }

@@ -69,7 +69,7 @@ export const SEED_USER_GROUPS: SeedUserGroup[] = [
     ],
   },
   {
-    label: "Komandan Satuan",
+    label: "Pimpinan Satuan",
     users: [
       {
         name: "Kolonel Inf. Ridwan Hutapea",

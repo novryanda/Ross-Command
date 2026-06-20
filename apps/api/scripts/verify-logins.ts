@@ -12,12 +12,12 @@ const prisma = new PrismaClient({
 
 const testAccounts = [
   { username: 'superadmin', password: 'Admin@1234!' },
-  { username: 'jend_ahmad', password: 'Jenderal@123!' },
-  { username: 'kol_budi', password: 'Kolonel@123!' },
-  { username: 'kol_hendra', password: 'Kolonel@123!' },
-  { username: 'kpt_sari', password: 'Kapten@123!' },
-  { username: 'budi_santoso', password: 'Anggota@123!' },
-  { username: 'rina_marlina', password: 'Anggota@123!' },
+  { username: 'kasad', password: 'Komando@123!' },
+  { username: 'pangdam_ibb', password: 'Komando@123!' },
+  { username: 'danrem_022', password: 'Komandan@123!' },
+  { username: 'dandenintel', password: 'Komandan@123!' },
+  { username: 'joko_susilo', password: 'Anggota@123!' },
+  { username: 'dwi_cahyono', password: 'Anggota@123!' },
 ] as const;
 
 async function main() {

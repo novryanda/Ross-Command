@@ -110,8 +110,28 @@ export class CommanderService {
   }
 
   async listMembersByUnit(commanderId: string) {
-    const units =
+    const hierarchyUnits =
       await this.hierarchyService.getSubtreeUnitsForCommander(commanderId);
+    const units = await this.prisma.unit.findMany({
+      where: {
+        id: {
+          in: hierarchyUnits.map((unit) => unit.id),
+        },
+        deletedAt: null,
+      },
+      include: {
+        commander: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: {
+        path: 'asc',
+      },
+    });
     const memberships = await this.prisma.unitMember.findMany({
       where: {
         unitId: {
@@ -141,6 +161,7 @@ export class CommanderService {
         name: unit.name,
         path: unit.path,
         depthLevel: unit.depthLevel,
+        commander: unit.commander,
         directMembers:
           membershipMap.get(unit.id)?.map((membership) => ({
             id: membership.user.id,

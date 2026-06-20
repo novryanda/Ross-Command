@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2Icon, PlusIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { LayoutGridIcon, Loader2Icon, PlusIcon, TableIcon } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { UnitAdminTree } from "@/components/features/admin/unit-admin-tree";
@@ -30,7 +30,7 @@ function flattenUnits(units: UnitNode[]): UnitNode[] {
   return units.flatMap((unit) => [unit, ...flattenUnits(unit.children ?? [])]);
 }
 
-export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: UserListItem[] }) {
+export function UnitAdminManager({ units }: { units: UnitNode[]; users: UserListItem[] }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<UnitNode | null>(null);
@@ -39,10 +39,25 @@ export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: U
     parentId: "root",
     name: "",
     description: "",
-    commanderId: "none",
   });
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const unitOptions = flattenUnits(units);
+  const viewParam = searchParams.get("view");
+  const view = viewParam === "card" ? "card" : "table";
+
+  function setView(nextView: "card" | "table") {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextView === "table") {
+      params.delete("view");
+    } else {
+      params.set("view", nextView);
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
 
   function openDetail(unit: UnitNode) {
     setSelectedUnit(unit);
@@ -58,12 +73,11 @@ export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: U
           parentId: form.parentId === "root" ? null : form.parentId,
           name: form.name,
           description: form.description || undefined,
-          commanderId: form.commanderId === "none" ? null : form.commanderId,
         }),
       });
       toast.success("Satuan ditambahkan");
       setOpen(false);
-      setForm({ parentId: "root", name: "", description: "", commanderId: "none" });
+      setForm({ parentId: "root", name: "", description: "" });
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal menambah satuan");
@@ -103,16 +117,6 @@ export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: U
             <Label>Deskripsi</Label>
             <Textarea rows={3} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
           </div>
-          <div className="grid gap-2">
-            <Label>Komandan</Label>
-            <Select value={form.commanderId} onValueChange={(value) => setForm((current) => ({ ...current, commanderId: value }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Tanpa Komandan</SelectItem>
-                {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.fullName}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
@@ -127,16 +131,22 @@ export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: U
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="tree" className="space-y-4">
+      <Tabs value={view} onValueChange={(value) => setView(value as "card" | "table")} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList>
-            <TabsTrigger value="tree">Tree</TabsTrigger>
-            <TabsTrigger value="table">Table</TabsTrigger>
+          <TabsList className="grid h-auto grid-cols-2 gap-1 p-1">
+            <TabsTrigger value="table" className="min-w-24">
+              <TableIcon className="size-4" />
+              Table
+            </TabsTrigger>
+            <TabsTrigger value="card" className="min-w-24">
+              <LayoutGridIcon className="size-4" />
+              Card
+            </TabsTrigger>
           </TabsList>
           {units.length ? null : addUnitButton}
         </div>
 
-        <TabsContent value="tree" className="space-y-4">
+        <TabsContent value="card" className="space-y-4">
           {units.length ? (
             <>
               <div className="flex justify-end">{addUnitButton}</div>
@@ -170,6 +180,7 @@ export function UnitAdminManager({ units, users }: { units: UnitNode[]; users: U
 
       <UnitDetailSheet
         unit={selectedUnit}
+        units={units}
         open={detailOpen}
         onOpenChange={(value) => {
           setDetailOpen(value);

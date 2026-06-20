@@ -2,7 +2,6 @@ import { UserAdminManager } from "@/components/features/admin/user-admin-manager
 import { FilterBar } from "@/components/komando/filter-bar";
 import { PageHero } from "@/components/komando/page-hero";
 import { PageState } from "@/components/komando/page-state";
-import { ServerPagination } from "@/components/komando/server-pagination";
 import { buildQueryString } from "@/lib/api/client";
 import { serverApiFetch } from "@/lib/api/server";
 import type { UnitNode, UserListItem } from "@/lib/api/types";
@@ -48,8 +47,11 @@ export default async function AdminUsersPage({
           },
         ]}
       />
-      {users.data.length ? <UserAdminManager users={users.data} units={units.data} /> : <PageState title="Tidak ada user" />}
-      <ServerPagination meta={users.meta?.pagination} searchParams={params} />
+      {users.data.length ? (
+        <UserAdminManager users={users.data} units={units.data} pagination={users.meta?.pagination} />
+      ) : (
+        <PageState title="Tidak ada user" />
+      )}
     </div>
   );
 }

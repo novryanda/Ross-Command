@@ -12,14 +12,20 @@ import {
 } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Assignment } from "@/lib/api/types";
+import type { Assignment, PaginationMeta } from "@/lib/api/types";
 
-export function AssignmentsList({ assignments }: { assignments: Assignment[] }) {
+export function AssignmentsList({
+  assignments,
+  pagination,
+}: {
+  assignments: Assignment[];
+  pagination?: PaginationMeta;
+}) {
   const searchParams = useSearchParams();
   const view = searchParams.get("view") === "card" ? "card" : "table";
 
   if (view === "table") {
-    return <AssignmentsTable assignments={assignments} />;
+    return <AssignmentsTable assignments={assignments} pagination={pagination} />;
   }
 
   return (

@@ -95,7 +95,7 @@ function UnitTreeNode({
               <p className="truncate text-sm font-medium">{node.name}</p>
               <p className="text-muted-foreground truncate text-xs">
                 Level {node.depthLevel}
-                {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
+                {node.commander ? ` - Pimpinan: ${node.commander.fullName}` : ""}
               </p>
             </div>
             <Badge variant="secondary" className="gap-1 rounded-sm">
@@ -109,7 +109,7 @@ function UnitTreeNode({
               <p className="truncate text-sm font-medium">{node.name}</p>
               <p className="text-muted-foreground truncate text-xs">
                 Level {node.depthLevel}
-                {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
+                {node.commander ? ` - Pimpinan: ${node.commander.fullName}` : ""}
               </p>
             </div>
             <Badge variant="secondary" className="gap-1 rounded-sm">

@@ -55,4 +55,27 @@ export class AssignmentsController {
     );
     return successResponse(result, 'Bukti berhasil dikirim');
   }
+
+}
+
+@Controller('orders')
+@UseGuards(SessionAuthGuard)
+export class AssignmentRepresentedController {
+  constructor(private readonly assignmentsService: AssignmentsService) {}
+
+  @Post(':orderId/assignments/:assignmentId/submit')
+  async submitRepresentedProof(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Param('assignmentId') assignmentId: string,
+    @Body() body: unknown,
+  ) {
+    const result = await this.assignmentsService.submitRepresentedProof(
+      currentUser.user.id,
+      orderId,
+      assignmentId,
+      body,
+    );
+    return successResponse(result, 'Bukti anggota berhasil dikirim');
+  }
 }

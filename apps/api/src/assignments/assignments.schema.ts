@@ -7,7 +7,8 @@ export const listAssignmentsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.enum(['belum_dikerjakan', 'selesai', 'terlambat']).optional(),
   orderType: z
-    .enum(['posting', 'engagement', 'komentar', 'report_akun'])
+    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
+    .transform((value) => (value === 'blasting' ? 'engagement' : value))
     .optional(),
   submitDate: z.coerce.date().optional(),
   deadlineDate: z.coerce.date().optional(),
@@ -24,5 +25,14 @@ const platformProofLinkSchema = z.object({
 export const submitProofSchema = z.object({
   driveLink: z.string().trim().url().optional(),
   platformLinks: z.array(platformProofLinkSchema).optional(),
+  metrics: z
+    .object({
+      views: z.coerce.number().int().min(0).default(0),
+      likes: z.coerce.number().int().min(0).default(0),
+      comments: z.coerce.number().int().min(0).default(0),
+      shares: z.coerce.number().int().min(0).default(0),
+      reposts: z.coerce.number().int().min(0).default(0),
+    })
+    .optional(),
   notes: z.string().trim().max(5000).optional(),
 });

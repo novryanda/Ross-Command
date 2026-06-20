@@ -85,13 +85,13 @@ export default async function OrdersPage({
 
       {response.data.length ? (
         <Suspense fallback={null}>
-          <OrdersList orders={response.data} />
+          <OrdersList orders={response.data} pagination={response.meta?.pagination} />
         </Suspense>
       ) : (
         <PageState title="Belum ada perintah" description="Perintah yang cocok dengan filter akan muncul di sini." />
       )}
 
-      <ServerPagination meta={response.meta?.pagination} searchParams={params} />
+      {params.view === "table" ? null : <ServerPagination meta={response.meta?.pagination} searchParams={params} />}
     </div>
   );
 }

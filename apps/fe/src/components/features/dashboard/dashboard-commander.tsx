@@ -15,7 +15,7 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
     <div className="space-y-6">
       <PageHero
         eyebrow="Komando"
-        title="Dashboard Komandan"
+        title="Dashboard Pimpinan"
         description="Pantau perintah aktif, anggota yang belum submit, dan progress pelaksanaan di bawah struktur komando."
         actions={
           <Button asChild size="sm">

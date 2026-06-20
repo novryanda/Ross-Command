@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/data-table/data-table";
-import type { UserListItem } from "@/lib/api/types";
+import type { PaginationMeta, UserListItem } from "@/lib/api/types";
 
 function getInitials(name: string) {
   return name
@@ -27,9 +27,10 @@ function getInitials(name: string) {
 
 type MembersTableProps = {
   members: UserListItem[];
+  pagination?: PaginationMeta;
 };
 
-export function MembersTable({ members }: MembersTableProps) {
+export function MembersTable({ members, pagination }: MembersTableProps) {
   const columns = useMemo<ColumnDef<UserListItem>[]>(
     () => [
       {
@@ -102,6 +103,7 @@ export function MembersTable({ members }: MembersTableProps) {
       enableColumnVisibility
       defaultPageSize={20}
       pageSizeOptions={[10, 20, 50]}
+      serverPagination={pagination}
       emptyMessage="Tidak ada anggota ditemukan."
     />
   );

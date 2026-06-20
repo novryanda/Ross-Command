@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/data-table/data-table";
-import type { UserListItem } from "@/lib/api/types";
+import type { PaginationMeta, UserListItem } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 const roleLabel: Record<string, string> = {
@@ -55,6 +55,7 @@ function formatLastLogin(value?: string | null) {
 type UsersAdminTableProps = {
   users: UserListItem[];
   toolbarActions?: ReactNode;
+  pagination?: PaginationMeta;
   onEdit: (user: UserListItem) => void;
   onResetPassword: (user: UserListItem) => void;
   onUnlock: (user: UserListItem) => void;
@@ -64,6 +65,7 @@ type UsersAdminTableProps = {
 export function UsersAdminTable({
   users,
   toolbarActions,
+  pagination,
   onEdit,
   onResetPassword,
   onUnlock,
@@ -194,6 +196,7 @@ export function UsersAdminTable({
       enableColumnVisibility
       defaultPageSize={20}
       pageSizeOptions={[10, 20, 50]}
+      serverPagination={pagination}
       emptyMessage="Tidak ada user ditemukan."
       toolbarActions={toolbarActions}
     />

@@ -15,7 +15,7 @@ export default async function AdminUnitsPage() {
       <PageHero
         eyebrow="Admin"
         title="Manajemen Organisasi"
-        description="Kelola tree satuan, struktur parent-child, komandan satuan, serta pemindahan anggota antar satuan."
+        description="Kelola tree satuan, struktur parent-child, pimpinan satuan, serta pemindahan anggota antar satuan."
       />
       {units.data.length ? (
         <UnitAdminManager units={units.data} users={users.data} />

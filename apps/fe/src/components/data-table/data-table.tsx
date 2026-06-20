@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 import {
   type Column,
@@ -56,6 +57,7 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { usePagination } from '@/hooks/use-pagination'
+import type { PaginationMeta } from '@/lib/api/types'
 
 export type DataTableColumnMeta = {
   label?: string
@@ -100,6 +102,8 @@ export type DataTableProps<TData> = {
   defaultPageSize?: number
   emptyMessage?: string
   paginationItemsToDisplay?: number
+  showFooter?: boolean
+  serverPagination?: PaginationMeta
 }
 
 export function DataTable<TData>({
@@ -114,8 +118,12 @@ export function DataTable<TData>({
   pageSizeOptions = [10, 25, 50, 100],
   defaultPageSize = 10,
   emptyMessage = 'No results.',
-  paginationItemsToDisplay = 5
+  paginationItemsToDisplay = 5,
+  showFooter = true,
+  serverPagination
 }: DataTableProps<TData>) {
+  const router = useRouter()
+  const isServerPaginated = Boolean(serverPagination)
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -136,20 +144,41 @@ export function DataTable<TData>({
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
+    ...(isServerPaginated
+      ? {
+          manualPagination: true,
+          pageCount: serverPagination?.totalPages ?? 1
+        }
+      : {}),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel()
+    ...(!isServerPaginated
+      ? {
+          getPaginationRowModel: getPaginationRowModel()
+        }
+      : {})
   })
 
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
-  const totalCount = table.getFilteredRowModel().rows.length
+  const totalCount = serverPagination?.total ?? table.getFilteredRowModel().rows.length
+  const currentPage = serverPagination?.page ?? (table.getState().pagination.pageIndex + 1)
+  const totalPages = serverPagination?.totalPages ?? (table.getPageCount() || 1)
+  const currentPageSize = serverPagination?.limit ?? pagination.pageSize
 
   const { pages, showLeftEllipsis, showRightEllipsis } = usePagination({
-    currentPage: table.getState().pagination.pageIndex + 1,
-    totalPages: table.getPageCount() || 1,
+    currentPage,
+    totalPages,
     paginationItemsToDisplay
   })
+
+  function pushPagination(nextPage: number, nextLimit = currentPageSize) {
+    const url = new URL(window.location.href)
+    const params = new URLSearchParams(url.search)
+    params.set('page', String(nextPage))
+    params.set('limit', String(nextLimit))
+    router.push(`${url.pathname}?${params.toString()}`)
+  }
 
   return (
     <Card className='gap-0 py-0'>
@@ -258,96 +287,120 @@ export function DataTable<TData>({
         </Table>
       </div>
 
-      <div className='flex flex-wrap items-center justify-between gap-3 border-t px-3 py-3'>
-        <p className='text-muted-foreground text-xs'>
-          {selectedCount > 0
-            ? `${selectedCount} of ${totalCount} row(s) selected`
-            : `${totalCount} row(s) total`}
-        </p>
+      {showFooter ? (
+        <div className='flex flex-wrap items-center justify-between gap-3 border-t px-3 py-3'>
+          <p className='text-muted-foreground text-xs'>
+            {selectedCount > 0
+              ? `${selectedCount} of ${totalCount} row(s) selected`
+              : `${totalCount} row(s) total`}
+          </p>
 
-        <div className='flex items-center gap-3'>
-          <div className='flex items-center gap-2'>
-            <span className='text-muted-foreground text-xs'>Rows</span>
-            <Select
-              value={String(pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger size='sm' className='h-7 w-16 text-xs'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {pageSizeOptions.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-2'>
+              <span className='text-muted-foreground text-xs'>Rows</span>
+              <Select
+                value={String(currentPageSize)}
+                onValueChange={(value) => {
+                  if (isServerPaginated) {
+                    pushPagination(1, Number(value))
+                    return
+                  }
 
-          <span className='text-muted-foreground hidden text-xs sm:inline'>
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
-          </span>
+                  table.setPageSize(Number(value))
+                }}
+              >
+                <SelectTrigger size='sm' className='h-7 w-16 text-xs'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Pagination className='mx-0 w-auto justify-end'>
-            <PaginationContent>
-              <PaginationItem>
+            <span className='text-muted-foreground hidden text-xs sm:inline'>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <Pagination className='mx-0 w-auto justify-end'>
+              <PaginationContent>
+                <PaginationItem>
                 <PaginationPrevious
-                  aria-disabled={!table.getCanPreviousPage()}
-                  className={`h-7 px-2 text-xs ${!table.getCanPreviousPage() ? 'pointer-events-none opacity-50' : ''}`}
+                  aria-disabled={isServerPaginated ? currentPage <= 1 : !table.getCanPreviousPage()}
+                  className={`h-7 px-2 text-xs ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
                   onClick={(e) => {
                     e.preventDefault()
+                    if (isServerPaginated) {
+                      if (currentPage > 1) pushPagination(currentPage - 1)
+                      return
+                    }
+
                     if (table.getCanPreviousPage()) table.previousPage()
                   }}
                 />
-              </PaginationItem>
-
-              {showLeftEllipsis && (
-                <PaginationItem>
-                  <PaginationEllipsis className='size-7' />
                 </PaginationItem>
-              )}
 
-              {pages.map((page) => {
-                const isActive = page === table.getState().pagination.pageIndex + 1
-
-                return (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      size='icon'
-                      isActive={isActive}
-                      className='size-7 text-xs'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        table.setPageIndex(page - 1)
-                      }}
-                    >
-                      {page}
-                    </PaginationLink>
+                {showLeftEllipsis && (
+                  <PaginationItem>
+                    <PaginationEllipsis className='size-7' />
                   </PaginationItem>
-                )
-              })}
+                )}
 
-              {showRightEllipsis && (
+                {pages.map((page) => {
+                  const isActive = page === currentPage
+
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        size='icon'
+                        isActive={isActive}
+                        className='size-7 text-xs'
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (isServerPaginated) {
+                            pushPagination(page)
+                            return
+                          }
+
+                          table.setPageIndex(page - 1)
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                })}
+
+                {showRightEllipsis && (
+                  <PaginationItem>
+                    <PaginationEllipsis className='size-7' />
+                  </PaginationItem>
+                )}
+
                 <PaginationItem>
-                  <PaginationEllipsis className='size-7' />
-                </PaginationItem>
-              )}
-
-              <PaginationItem>
                 <PaginationNext
-                  aria-disabled={!table.getCanNextPage()}
-                  className={`h-7 px-2 text-xs ${!table.getCanNextPage() ? 'pointer-events-none opacity-50' : ''}`}
+                  aria-disabled={isServerPaginated ? currentPage >= totalPages : !table.getCanNextPage()}
+                  className={`h-7 px-2 text-xs ${currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
                   onClick={(e) => {
                     e.preventDefault()
+                    if (isServerPaginated) {
+                      if (currentPage < totalPages) pushPagination(currentPage + 1)
+                      return
+                    }
+
                     if (table.getCanNextPage()) table.nextPage()
                   }}
                 />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
-      </div>
+      ) : null}
     </Card>
   )
 }

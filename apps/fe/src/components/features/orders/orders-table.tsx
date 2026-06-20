@@ -32,16 +32,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
-import type { Order, OrderType } from "@/lib/api/types";
+import type { Order, OrderType, PaginationMeta } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 type OrdersTableProps = {
   orders: Order[];
+  pagination?: PaginationMeta;
 };
 
 const orderTypeVisual: Record<OrderType, { icon: LucideIcon; className: string }> = {
   posting: { icon: CloudUploadIcon, className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
   engagement: { icon: HeartIcon, className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  blasting: { icon: HeartIcon, className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   komentar: { icon: MessageSquareIcon, className: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
   report_akun: { icon: FlagIcon, className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
 };
@@ -118,7 +120,7 @@ function ServerSortHeader({
   );
 }
 
-export function OrdersTable({ orders }: OrdersTableProps) {
+export function OrdersTable({ orders, pagination }: OrdersTableProps) {
   const searchParams = useSearchParams();
   const activeSortBy = searchParams.get("sortBy");
   const activeSortOrder = searchParams.get("sortOrder");
@@ -262,6 +264,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
       enableColumnVisibility
       defaultPageSize={20}
       pageSizeOptions={[10, 20, 50]}
+      serverPagination={pagination}
       emptyMessage="Tidak ada perintah ditemukan."
     />
   );

@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 export const engagementActionSchema = z.enum(['like', 'share', 'repost']);
 
+export const orderTypeInputSchema = z
+  .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
+  .transform((value) => (value === 'blasting' ? 'engagement' : value));
+
 export const socialPlatformSchema = z.enum([
   'instagram',
   'twitter_x',
@@ -16,15 +20,21 @@ export const orderSocialTargetSchema = z.object({
   url: z.string().trim().url(),
 });
 
+export const targetAudienceSchema = z.enum([
+  'all_members',
+  'unit_leaders',
+]);
+
 export const targetSchema = z.object({
   targetType: z.enum(['unit', 'individual']),
+  targetAudience: targetAudienceSchema.optional(),
   unitId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
 });
 
 export const orderFieldsSchema = z.object({
   title: z.string().trim().min(3).max(255),
-  orderType: z.enum(['posting', 'engagement', 'komentar', 'report_akun']),
+  orderType: orderTypeInputSchema,
   description: z.string().trim().min(3),
   targetUrls: z.array(orderSocialTargetSchema).max(20).default([]),
   postingSourceUrl: z.string().trim().url().optional(),
@@ -76,7 +86,8 @@ export const listOrdersQuerySchema = z.object({
     .enum(['draft', 'aktif', 'selesai', 'expired', 'dibatalkan'])
     .optional(),
   orderType: z
-    .enum(['posting', 'engagement', 'komentar', 'report_akun'])
+    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
+    .transform((value) => (value === 'blasting' ? 'engagement' : value))
     .optional(),
   sentiment: z.enum(['positive', 'negative']).optional(),
   submitDate: z.coerce.date().optional(),

@@ -25,7 +25,7 @@ export default async function AdminUserDetailPage({
       >
         <div className="grid gap-3 md:grid-cols-3">
           <Info label="NIP" value={user.nip ?? "-"} />
-          <Info label="Komandan" value={user.isCommander ? "Ya" : "Tidak"} />
+          <Info label="Pimpinan" value={user.isCommander ? "Ya" : "Tidak"} />
           <Info label="Status" value={user.isLocked ? "Dikunci" : "Aktif"} />
         </div>
       </PageHero>

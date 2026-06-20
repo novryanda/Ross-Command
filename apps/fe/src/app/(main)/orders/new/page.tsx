@@ -1,12 +1,12 @@
 import { OrderForm } from "@/components/features/orders/order-form";
 import { PageHero } from "@/components/komando/page-hero";
-import { serverApiFetch } from "@/lib/api/server";
-import type { UnitNode, UserListItem } from "@/lib/api/types";
+import { getMe, serverApiFetch } from "@/lib/api/server";
+import type { UnitNode } from "@/lib/api/types";
 
 export default async function NewOrderPage() {
-  const [units, members] = await Promise.all([
+  const [units, me] = await Promise.all([
     serverApiFetch<UnitNode[]>("/api/v1/commander/members/by-unit"),
-    serverApiFetch<UserListItem[]>("/api/v1/commander/members?limit=100"),
+    getMe(),
   ]);
 
   return (
@@ -14,9 +14,9 @@ export default async function NewOrderPage() {
       <PageHero
         eyebrow="Wizard perintah"
         title="Buat Perintah Baru"
-        description="Susun instruksi, pilih target satuan atau individu, lalu simpan sebagai draft atau langsung kirim ke anggota."
+        description="Susun instruksi, pilih target satuan, lalu tentukan apakah perintah dikirim ke seluruh anggota atau cukup ke pimpinan satuan."
       />
-      <OrderForm units={units.data} members={members.data} />
+      <OrderForm units={units.data} currentUserId={me.id} />
     </div>
   );
 }

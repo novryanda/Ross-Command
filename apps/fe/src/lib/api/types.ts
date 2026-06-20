@@ -43,10 +43,11 @@ export class ApiRequestError extends Error {
 }
 
 export type Role = "super_admin" | "member";
-export type OrderType = "posting" | "engagement" | "komentar" | "report_akun";
+export type OrderType = "posting" | "engagement" | "blasting" | "komentar" | "report_akun";
 export type OrderStatus = "draft" | "aktif" | "selesai" | "expired" | "dibatalkan";
 export type AssignmentStatus = "belum_dikerjakan" | "selesai" | "terlambat";
 export type SocialPlatform = "instagram" | "twitter_x" | "facebook" | "tiktok" | "youtube" | "other";
+export type OrderTargetAudience = "all_members" | "unit_leaders" | "direct_user";
 
 export type OrderSocialTarget = {
   id?: string;
@@ -98,6 +99,7 @@ export type ProgressSummary = {
   totalLate: number;
   totalPending: number;
   percentageComplete: number;
+  metricTotals: SubmissionMetrics;
 };
 
 export type Order = {
@@ -140,6 +142,7 @@ export type OrderDetail = Order & {
   targets: Array<{
     id: string;
     targetType: "unit" | "individual";
+    targetAudience: OrderTargetAudience;
     resolvedMemberCount: number;
     unit: UnitSummary | null;
     user: Pick<UserListItem, "id" | "fullName" | "username"> | null;
@@ -153,10 +156,22 @@ export type PlatformProofLink = {
 
 export type PostingCompleteness = "lengkap" | "sebagian";
 
+export type SubmissionMetrics = {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  reposts: number;
+};
+
 export type Submission = {
   id?: string;
   driveLink?: string | null;
   platformLinks?: PlatformProofLink[] | null;
+  metrics: SubmissionMetrics;
+  submissionSource?: "self" | "represented" | string;
+  submittedBy?: Pick<UserListItem, "id" | "fullName" | "username"> | null;
+  isRepresented?: boolean;
   postingCompleteness?: PostingCompleteness | null;
   missingPlatforms?: SocialPlatform[];
   notes: string | null;
@@ -188,6 +203,7 @@ export type Assignment = {
     deadline: string;
   };
   latestSubmission: Submission | null;
+  canSubmitForMember?: boolean;
 };
 
 export type SocialAccount = {

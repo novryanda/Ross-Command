@@ -31,7 +31,8 @@ const statusClass: Record<OrderStatus | AssignmentStatus, string> = {
 
 const orderTypeLabel: Record<OrderType, string> = {
   posting: "Posting",
-  engagement: "Engagement",
+  engagement: "Blasting",
+  blasting: "Blasting",
   komentar: "Komentar",
   report_akun: "Report Akun",
 };
@@ -39,6 +40,7 @@ const orderTypeLabel: Record<OrderType, string> = {
 const orderTypeClass: Record<OrderType, string> = {
   posting: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   engagement: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  blasting: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   komentar: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   report_akun: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };

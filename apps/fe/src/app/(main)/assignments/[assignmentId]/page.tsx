@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PostingCompletenessBadge } from "@/components/features/assignments/posting-completeness-badge";
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
+import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { BackButton } from "@/components/komando/back-button";
@@ -22,6 +23,7 @@ export default async function AssignmentDetailPage({
   const { assignmentId } = await params;
   const response = await serverApiFetch<Assignment>(`/api/v1/assignments/me/${assignmentId}`);
   const assignment = response.data;
+  const isBlasting = assignment.order.orderType === "engagement" || assignment.order.orderType === "blasting";
 
   return (
     <div className="space-y-6">
@@ -33,15 +35,24 @@ export default async function AssignmentDetailPage({
         description={
           assignment.order.orderType === "posting"
             ? "Baca instruksi pelaksanaan, unggah posting ke sosmed target, lalu submit link tiap platform."
-            : "Baca instruksi pelaksanaan, buka target, lalu submit bukti melalui link Drive."
+            : isBlasting
+              ? "Baca instruksi pelaksanaan, buka target, lalu input metrik blasting."
+              : "Baca instruksi pelaksanaan, buka target, lalu submit bukti melalui link Drive."
         }
-        actions={
+        actions={isBlasting ? null : (
           <SubmitProofDialog
             assignmentId={assignment.id}
             orderType={assignment.order.orderType}
             postingTargetPlatforms={assignment.order.postingTargetPlatforms}
+            initialSubmission={assignment.latestSubmission}
+            title={assignment.latestSubmission ? "Edit Bukti Pelaksanaan" : "Submit Bukti Pelaksanaan"}
+            trigger={
+              <Button size="sm">
+                {assignment.latestSubmission ? "Edit Bukti" : "Submit Bukti"}
+              </Button>
+            }
           />
-        }
+        )}
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={assignment.order.orderType} />
@@ -92,6 +103,22 @@ export default async function AssignmentDetailPage({
         </CardContent>
       </Card>
 
+      {isBlasting ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {assignment.latestSubmission ? "Edit Metrik Blasting" : "Input Metrik Blasting"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BlastingMetricsInlineForm
+              assignment={assignment}
+              submitUrl={`/api/v1/assignments/me/${assignment.id}/submit`}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Bukti Terakhir</CardTitle>
@@ -131,6 +158,19 @@ export default async function AssignmentDetailPage({
                   {assignment.latestSubmission.notes}
                 </p>
               ) : null}
+              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                <Metric label="Views" value={assignment.latestSubmission.metrics.views} />
+                <Metric label="Like" value={assignment.latestSubmission.metrics.likes} />
+                <Metric label="Comment" value={assignment.latestSubmission.metrics.comments} />
+                <Metric label="Share" value={assignment.latestSubmission.metrics.shares} />
+                <Metric label="Repost" value={assignment.latestSubmission.metrics.reposts} />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Diinput: {assignment.latestSubmission.isRepresented ? "Diwakili Pimpinan" : "Mandiri"}
+                {assignment.latestSubmission.submittedBy?.fullName
+                  ? ` oleh ${assignment.latestSubmission.submittedBy.fullName}`
+                  : ""}
+              </p>
               <p className="text-muted-foreground text-xs">
                 Dikirim: {new Date(assignment.latestSubmission.submittedAt).toLocaleString("id-ID")}
               </p>
@@ -140,6 +180,15 @@ export default async function AssignmentDetailPage({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border bg-background/70 p-2">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

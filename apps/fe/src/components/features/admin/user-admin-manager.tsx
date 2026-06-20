@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { clientApiFetch } from "@/lib/api/client";
-import type { Role, UnitNode, UserListItem } from "@/lib/api/types";
+import type { PaginationMeta, Role, UnitNode, UserListItem } from "@/lib/api/types";
 
 type UserFormState = {
   id?: string;
@@ -44,7 +44,15 @@ function flattenUnits(units: UnitNode[]): UnitNode[] {
   return units.flatMap((unit) => [unit, ...flattenUnits(unit.children ?? [])]);
 }
 
-export function UserAdminManager({ users, units }: { users: UserListItem[]; units: UnitNode[] }) {
+export function UserAdminManager({
+  users,
+  units,
+  pagination,
+}: {
+  users: UserListItem[];
+  units: UnitNode[];
+  pagination?: PaginationMeta;
+}) {
   const [open, setOpen] = useState(false);
   const [resetUser, setResetUser] = useState<UserListItem | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -115,6 +123,7 @@ export function UserAdminManager({ users, units }: { users: UserListItem[]; unit
     <div className="space-y-4">
       <UsersAdminTable
         users={users}
+        pagination={pagination}
         onEdit={edit}
         onResetPassword={setResetUser}
         onUnlock={(user) => run("/api/v1/auth/admin/unlock-user", "POST", { userId: user.id }, "Akun dibuka")}

@@ -127,6 +127,13 @@ export default async function OrderDetailPage({
               <Info label="Pending" value={order.progress.totalPending} />
               <Info label="Late" value={order.progress.totalLate} />
             </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <Info label="Views" value={order.progress.metricTotals.views} />
+              <Info label="Like" value={order.progress.metricTotals.likes} />
+              <Info label="Comment" value={order.progress.metricTotals.comments} />
+              <Info label="Share" value={order.progress.metricTotals.shares} />
+              <Info label="Repost" value={order.progress.metricTotals.reposts} />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -140,7 +147,7 @@ export default async function OrderDetailPage({
             <div key={target.id} className="rounded-md border bg-muted/20 p-3 text-sm">
               <p className="font-medium">{target.unit?.name ?? target.user?.fullName ?? "Target"}</p>
               <p className="text-muted-foreground text-xs">
-                {target.targetType} - {target.resolvedMemberCount} anggota
+                {describeTargetAudience(target.targetAudience, target.resolvedMemberCount)}
               </p>
             </div>
           ))}
@@ -160,6 +167,7 @@ export default async function OrderDetailPage({
               assignments={assignmentsResponse.data}
               orderType={order.orderType}
               postingTargetPlatforms={order.postingTargetPlatforms ?? []}
+              orderId={order.id}
             />
           </Suspense>
         ) : (
@@ -178,4 +186,16 @@ function Info({ label, value }: { label: string; value: number }) {
       <p className="text-sm font-semibold tabular-nums">{value}</p>
     </div>
   );
+}
+
+function describeTargetAudience(targetAudience: OrderDetail["targets"][number]["targetAudience"], count: number) {
+  if (targetAudience === "unit_leaders") {
+    return `Pimpinan satuan saja - ${count} pimpinan`;
+  }
+
+  if (targetAudience === "direct_user") {
+    return `Target individu - ${count} anggota`;
+  }
+
+  return `Seluruh satuan - ${count} anggota`;
 }

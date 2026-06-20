@@ -118,7 +118,7 @@ export function UnitsAdminTable({ units, toolbarActions, onSelect }: UnitsAdminT
       },
       {
         id: "commanderName",
-        header: "Komandan",
+        header: "Pimpinan",
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
             {row.original.commander?.fullName ?? "—"}
@@ -191,7 +191,7 @@ export function UnitsAdminTable({ units, toolbarActions, onSelect }: UnitsAdminT
     <Card className="gap-0 py-0">
       <div className="flex flex-wrap items-center gap-2 border-b p-3">
         <Input
-          placeholder="Cari satuan atau komandan..."
+          placeholder="Cari satuan atau pimpinan..."
           value={globalFilter}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="h-8 w-full max-w-xs text-sm"

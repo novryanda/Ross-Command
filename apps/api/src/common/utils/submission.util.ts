@@ -5,6 +5,22 @@ export type PlatformProofLink = {
 
 export type PostingCompleteness = 'lengkap' | 'sebagian';
 
+export type SubmissionMetrics = {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  reposts: number;
+};
+
+export const emptySubmissionMetrics: SubmissionMetrics = {
+  views: 0,
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  reposts: 0,
+};
+
 export function parsePlatformLinks(value: unknown): PlatformProofLink[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -58,10 +74,23 @@ export function computePostingCompleteness(
 
 type SubmissionRecord = {
   id: string;
+  userId?: string;
+  submittedByUserId?: string;
+  submissionSource?: string;
   driveLink: string | null;
   platformLinks: unknown;
+  views?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  reposts?: number;
   notes: string | null;
   submittedAt: Date;
+  submittedBy?: {
+    id: string;
+    fullName: string;
+    username: string;
+  } | null;
 };
 
 export function serializeLatestSubmission(
@@ -83,6 +112,27 @@ export function serializeLatestSubmission(
     id: submission.id,
     driveLink: submission.driveLink,
     platformLinks,
+    metrics: {
+      views: submission.views ?? 0,
+      likes: submission.likes ?? 0,
+      comments: submission.comments ?? 0,
+      shares: submission.shares ?? 0,
+      reposts: submission.reposts ?? 0,
+    },
+    submissionSource: submission.submissionSource ?? 'self',
+    submittedBy:
+      submission.submittedBy ??
+      (submission.submittedByUserId
+        ? {
+            id: submission.submittedByUserId,
+            fullName: '',
+            username: '',
+          }
+        : null),
+    isRepresented:
+      submission.submissionSource === 'represented' ||
+      (Boolean(submission.submittedByUserId) &&
+        submission.submittedByUserId !== submission.userId),
     notes: submission.notes,
     submittedAt: submission.submittedAt,
     postingCompleteness: postingMeta.postingCompleteness,

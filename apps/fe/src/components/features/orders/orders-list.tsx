@@ -13,14 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { Order } from "@/lib/api/types";
+import type { Order, PaginationMeta } from "@/lib/api/types";
 
-export function OrdersList({ orders }: { orders: Order[] }) {
+export function OrdersList({ orders, pagination }: { orders: Order[]; pagination?: PaginationMeta }) {
   const searchParams = useSearchParams();
   const view = searchParams.get("view") === "card" ? "card" : "table";
 
   if (view === "table") {
-    return <OrdersTable orders={orders} />;
+    return <OrdersTable orders={orders} pagination={pagination} />;
   }
 
   return (

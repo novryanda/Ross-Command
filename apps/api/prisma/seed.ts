@@ -57,13 +57,22 @@ type SeedOrder = {
   sentAt: Date | null;
   createdByKey: string;
   targetUnitKeys: string[];
+  targetLeaderUnitKeys?: string[];
   targetUserKeys?: string[];
 };
 
 type SeedSubmission = {
   driveLink?: string;
   platformLinks?: Array<{ platform: SeedPlatform; url: string }>;
+  metrics?: {
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    reposts: number;
+  };
   notes?: string;
+  submittedByUserKey?: string;
   submittedAt: Date;
 };
 
@@ -481,7 +490,8 @@ const socialAccounts: SeedSocialAccount[] = [
 ];
 
 const membershipPlan: Array<{ userKey: string; unitKey: string }> = [
-  { userKey: 'pangdam_ibb', unitKey: 'mabes_ad' },
+  { userKey: 'kasad', unitKey: 'mabes_ad' },
+  { userKey: 'pangdam_ibb', unitKey: 'kodam_ibb' },
   { userKey: 'kasdam_ibb', unitKey: 'kodam_ibb' },
   { userKey: 'irdam_ibb', unitKey: 'kodam_ibb' },
   { userKey: 'asops_kasdam', unitKey: 'kodam_ibb' },
@@ -490,6 +500,10 @@ const membershipPlan: Array<{ userKey: string; unitKey: string }> = [
   { userKey: 'danrem_023', unitKey: 'korem_023' },
   { userKey: 'danrem_031', unitKey: 'korem_031' },
   { userKey: 'danrem_032', unitKey: 'korem_032' },
+  { userKey: 'dandenintel', unitKey: 'denintel' },
+  { userKey: 'dandenpom', unitKey: 'denpom' },
+  { userKey: 'kadenkesyah', unitKey: 'denkesyah' },
+  { userKey: 'danzidam', unitKey: 'zidam' },
   { userKey: 'joko_susilo', unitKey: 'korem_022' },
   { userKey: 'agus_salim', unitKey: 'korem_022' },
   { userKey: 'dwi_cahyono', unitKey: 'korem_022' },
@@ -512,7 +526,7 @@ const membershipPlan: Array<{ userKey: string; unitKey: string }> = [
   { userKey: 'catur_nugraha', unitKey: 'zidam' },
 ];
 
-const orders: SeedOrder[] = [
+const baseOrders: SeedOrder[] = [
   {
     key: 'order_1',
     title: 'Counter Narasi Provokasi Konflik AS-Iran',
@@ -644,6 +658,169 @@ const orders: SeedOrder[] = [
     targetUnitKeys: [],
   },
 ];
+
+const scenarioTargetSets: Array<{
+  key: string;
+  label: string;
+  createdByKey: string;
+  targetUnitKeys: string[];
+  targetLeaderUnitKeys: string[];
+}> = [
+  {
+    key: 'root_kodam',
+    label: 'Root ke Kodam',
+    createdByKey: 'kasad',
+    targetUnitKeys: ['kodam_ibb'],
+    targetLeaderUnitKeys: ['kodam_ibb'],
+  },
+  {
+    key: 'kodam_korem',
+    label: 'Kodam ke Korem',
+    createdByKey: 'pangdam_ibb',
+    targetUnitKeys: ['korem_022', 'korem_023', 'korem_031', 'korem_032'],
+    targetLeaderUnitKeys: ['korem_022', 'korem_023', 'korem_031', 'korem_032'],
+  },
+  {
+    key: 'kodam_satbalak',
+    label: 'Kodam ke Satbalakdam',
+    createdByKey: 'pangdam_ibb',
+    targetUnitKeys: ['denintel', 'denpom', 'denkesyah', 'zidam'],
+    targetLeaderUnitKeys: ['denintel', 'denpom', 'denkesyah', 'zidam'],
+  },
+];
+
+const scenarioTypeTemplates: Record<
+  SeedOrderType,
+  {
+    label: string;
+    title: string;
+    description: string;
+  }
+> = {
+  posting: {
+    label: 'Posting',
+    title: 'Publikasi Narasi Positif Terpadu',
+    description:
+      'Laksanakan publikasi narasi positif sesuai bahan dan platform yang ditentukan.',
+  },
+  engagement: {
+    label: 'Blasting',
+    title: 'Blasting Penguatan Narasi Resmi',
+    description:
+      'Input hasil blasting berupa views, like, comment, share, dan repost pada target yang ditentukan.',
+  },
+  komentar: {
+    label: 'Komentar',
+    title: 'Komentar Penyejuk Isu Publik',
+    description:
+      'Berikan komentar yang menyejukkan dan menjaga kondusivitas ruang digital.',
+  },
+  report_akun: {
+    label: 'Report Akun',
+    title: 'Report Akun Penyebar Disinformasi',
+    description:
+      'Laporkan akun atau konten yang terindikasi menyebarkan disinformasi sesuai arahan.',
+  },
+};
+
+function createScenarioOrders(): SeedOrder[] {
+  const targetModes: Array<{
+    key: 'satuan' | 'pimpinan' | 'campuran';
+    label: string;
+  }> = [
+    { key: 'satuan', label: 'Satuan' },
+    { key: 'pimpinan', label: 'Pimpinan Satuan' },
+    { key: 'campuran', label: 'Satuan dan Pimpinan' },
+  ];
+  const orderTypes: SeedOrderType[] = [
+    'posting',
+    'engagement',
+    'komentar',
+    'report_akun',
+  ];
+  const scenarios: SeedOrder[] = [];
+  let index = 7;
+
+  for (const targetSet of scenarioTargetSets) {
+    for (const orderType of orderTypes) {
+      for (const targetMode of targetModes) {
+        const template = scenarioTypeTemplates[orderType];
+        const status: SeedOrderStatus =
+          index % 11 === 0 ? 'expired' : index % 17 === 0 ? 'draft' : 'aktif';
+        const sentAt = status === 'draft' ? null : hoursFromNow(-((index % 12) + 1));
+        const deadline =
+          status === 'expired'
+            ? hoursFromNow(-((index % 8) + 2))
+            : hoursFromNow(12 + (index % 72));
+
+        scenarios.push({
+          key: `scenario_${String(index).padStart(2, '0')}_${targetSet.key}_${orderType}_${targetMode.key}`,
+          title: `${template.label} - ${targetSet.label} - ${targetMode.label}`,
+          orderType,
+          description: template.description,
+          narration:
+            orderType === 'komentar'
+              ? 'Tetap gunakan bahasa yang santun, faktual, dan menenangkan.'
+              : orderType === 'posting'
+                ? 'Gunakan narasi resmi, hindari opini personal, dan sertakan tagar sesuai arahan.'
+                : undefined,
+          sentiment: orderType === 'komentar' ? 'positive' : undefined,
+          engagementActions:
+            orderType === 'engagement' ? ['like', 'share', 'repost'] : undefined,
+          reportReason:
+            orderType === 'report_akun'
+              ? 'Disinformasi / provokasi ruang digital'
+              : undefined,
+          postingSourceUrl:
+            orderType === 'posting'
+              ? `https://drive.google.com/file/d/seed-posting-${index}/view`
+              : undefined,
+          postingTargetPlatforms:
+            orderType === 'posting'
+              ? ['instagram', 'facebook', 'twitter_x']
+              : undefined,
+          socialTargets:
+            orderType === 'posting'
+              ? [
+                  {
+                    platform: 'instagram',
+                    url: `https://instagram.com/p/seed-posting-${index}`,
+                  },
+                  {
+                    platform: 'facebook',
+                    url: `https://facebook.com/official/posts/seed-posting-${index}`,
+                  },
+                  {
+                    platform: 'twitter_x',
+                    url: `https://x.com/official/status/seed-posting-${index}`,
+                  },
+                ]
+              : [
+                  {
+                    platform: orderType === 'engagement' ? 'instagram' : 'other',
+                    url: `https://monitoring.internal/target/${index}`,
+                  },
+                ],
+          status,
+          deadline,
+          sentAt,
+          createdByKey: targetSet.createdByKey,
+          targetUnitKeys:
+            targetMode.key === 'pimpinan' ? [] : targetSet.targetUnitKeys,
+          targetLeaderUnitKeys:
+            targetMode.key === 'satuan' ? [] : targetSet.targetLeaderUnitKeys,
+        });
+
+        index += 1;
+      }
+    }
+  }
+
+  return scenarios;
+}
+
+const scenarioOrders = createScenarioOrders();
+const orders: SeedOrder[] = [...baseOrders, ...scenarioOrders];
 
 const assignmentStatuses: Record<
   string,
@@ -903,8 +1080,103 @@ const submissionSpecs: Record<
   },
 };
 
+function createAutoSubmission(
+  order: SeedOrder,
+  userKey: string,
+  memberIndex: number,
+): SeedSubmission | undefined {
+  if (order.status === 'draft') {
+    return undefined;
+  }
+
+  if (order.status === 'aktif' && memberIndex % 4 === 3) {
+    return undefined;
+  }
+
+  if (order.status === 'expired' && memberIndex % 3 === 2) {
+    return undefined;
+  }
+
+  const submittedAt =
+    order.status === 'expired'
+      ? hoursFromNow(-((memberIndex % 10) + 1))
+      : hoursFromNow(-((memberIndex % 8) + 0.5));
+  const submittedByUserKey = resolveRepresentedSubmitterKey(
+    order,
+    userKey,
+    memberIndex,
+  );
+
+  if (order.orderType === 'posting') {
+    const platforms = order.postingTargetPlatforms?.length
+      ? order.postingTargetPlatforms
+      : (['instagram'] as SeedPlatform[]);
+
+    return {
+      platformLinks: platforms.map((platform) => ({
+        platform,
+        url: `https://${platform}.com/seed/${order.key}/${userKey}`,
+      })),
+      notes: submittedByUserKey
+        ? 'Bukti posting diinput oleh pimpinan satuan.'
+        : 'Bukti posting diinput mandiri.',
+      submittedByUserKey,
+      submittedAt,
+    };
+  }
+
+  if (order.orderType === 'engagement') {
+    const base = (memberIndex + 1) * 37;
+
+    return {
+      metrics: {
+        views: base * 12,
+        likes: base * 3,
+        comments: base,
+        shares: Math.max(1, Math.floor(base / 2)),
+        reposts: Math.max(1, Math.floor(base / 3)),
+      },
+      notes: submittedByUserKey
+        ? 'Metrik blasting direkap dan diinput oleh pimpinan satuan.'
+        : 'Metrik blasting diinput mandiri.',
+      submittedByUserKey,
+      submittedAt,
+    };
+  }
+
+  return {
+    driveLink: `https://drive.google.com/file/d/${order.key}-${userKey}/view`,
+    notes:
+      order.orderType === 'komentar'
+        ? 'Screenshot komentar pelaksanaan sudah diunggah.'
+        : 'Bukti pelaporan akun sudah diunggah.',
+    submittedByUserKey,
+    submittedAt,
+  };
+}
+
+function resolveRepresentedSubmitterKey(
+  order: SeedOrder,
+  userKey: string,
+  memberIndex: number,
+) {
+  if (!order.targetUnitKeys.length || memberIndex % 3 !== 1) {
+    return undefined;
+  }
+
+  const unitKey = getUnitKeyForUser(userKey);
+  const commanderKey = units.find((unit) => unit.key === unitKey)?.commanderKey;
+
+  if (!commanderKey || commanderKey === userKey) {
+    return undefined;
+  }
+
+  return commanderKey;
+}
+
 async function main() {
   guardSeedExecution();
+  validateSeedMembershipPlan();
 
   console.log('Menjalankan seed Komando Center TNI...\n');
 
@@ -951,6 +1223,7 @@ async function main() {
       joinedAt: hoursFromNow(-(membershipPlan.length + index + 1)),
     })),
   });
+  await assertUnitCommandersHaveActiveMembership();
   console.log(`   OK ${membershipPlan.length} membership dibuat`);
 
   console.log('\n4. Membuat akun sosial media...');
@@ -1038,6 +1311,7 @@ async function main() {
         data: {
           orderId: createdOrder.id,
           targetType: 'unit',
+          targetAudience: 'all_members',
           unitId,
           resolvedMemberCount: memberIds.length,
         },
@@ -1052,18 +1326,43 @@ async function main() {
         data: {
           orderId: createdOrder.id,
           targetType: 'individual',
+          targetAudience: 'direct_user',
           userId,
           resolvedMemberCount: 1,
         },
       });
     }
 
+    for (const unitKey of order.targetLeaderUnitKeys ?? []) {
+      const unitId = getRequiredMapValue(unitIds, unitKey, 'unit');
+      const leaderIds = await resolveUnitLeaderIds(unitId);
+      leaderIds.forEach((leaderId) => resolvedMemberIds.add(leaderId));
+
+      await prisma.orderTarget.create({
+        data: {
+          orderId: createdOrder.id,
+          targetType: 'unit',
+          targetAudience: 'unit_leaders',
+          unitId,
+          resolvedMemberCount: leaderIds.length,
+        },
+      });
+    }
+
     const orderedMemberIds = Array.from(resolvedMemberIds);
-    for (const memberId of orderedMemberIds) {
+    for (const [memberIndex, memberId] of orderedMemberIds.entries()) {
       const userKey = getUserKeyById(userIds, memberId);
+      const explicitSubmission = submissionSpecs[order.key]?.[userKey];
+      const autoSubmission =
+        explicitSubmission ?? createAutoSubmission(order, userKey, memberIndex);
+      const submission = explicitSubmission ?? autoSubmission;
       const status =
-        assignmentStatuses[order.key]?.[userKey] ?? 'belum_dikerjakan';
-      const submission = submissionSpecs[order.key]?.[userKey];
+        assignmentStatuses[order.key]?.[userKey] ??
+        (submission
+          ? order.status === 'expired'
+            ? 'terlambat'
+            : 'selesai'
+          : 'belum_dikerjakan');
 
       const assignment = await prisma.taskAssignment.create({
         data: {
@@ -1083,12 +1382,33 @@ async function main() {
         continue;
       }
 
+      const submittedByUserKey = submission.submittedByUserKey ?? userKey;
+      const submittedByUserId = getRequiredMapValue(
+        userIds,
+        submittedByUserKey,
+        'user',
+      );
+      const metrics = submission.metrics ?? {
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        reposts: 0,
+      };
       const createdSubmission = await prisma.submission.create({
         data: {
           assignmentId: assignment.id,
           userId: memberId,
+          submittedByUserId,
+          submissionSource:
+            submittedByUserId === memberId ? 'self' : 'represented',
           driveLink: submission.driveLink ?? null,
           platformLinks: submission.platformLinks ?? undefined,
+          views: metrics.views,
+          likes: metrics.likes,
+          comments: metrics.comments,
+          shares: metrics.shares,
+          reposts: metrics.reposts,
           notes: submission.notes ?? null,
           submittedAt: submission.submittedAt,
           isLatest: true,
@@ -1149,6 +1469,69 @@ function guardSeedExecution() {
   if (isProductionLike && !allowProductionSeed) {
     throw new Error(
       'Seed ke database production/non-local diblokir. Set ALLOW_PRODUCTION_SEED=true jika memang ingin reset dan seed database ini.',
+    );
+  }
+}
+
+function validateSeedMembershipPlan() {
+  const activeMembershipKeys = new Set(
+    membershipPlan.map((membership) =>
+      [membership.userKey, membership.unitKey].join(':'),
+    ),
+  );
+  const missingCommanders = units
+    .filter(
+      (unit) =>
+        !activeMembershipKeys.has([unit.commanderKey, unit.key].join(':')),
+    )
+    .map((unit) => `${unit.name} -> ${unit.commanderKey}`);
+
+  if (missingCommanders.length) {
+    throw new Error(
+      [
+        'Seed tidak valid: setiap pimpinan satuan wajib menjadi anggota aktif langsung satuannya.',
+        ...missingCommanders.map((item) => `- ${item}`),
+      ].join('\n'),
+    );
+  }
+}
+
+async function assertUnitCommandersHaveActiveMembership() {
+  const unitsWithCommanders = await prisma.unit.findMany({
+    select: {
+      name: true,
+      commanderId: true,
+      commander: {
+        select: {
+          username: true,
+        },
+      },
+      memberships: {
+        where: {
+          removedAt: null,
+        },
+        select: {
+          userId: true,
+        },
+      },
+    },
+  });
+  const invalidUnits = unitsWithCommanders.filter(
+    (unit) =>
+      unit.commanderId &&
+      !unit.memberships.some(
+        (membership) => membership.userId === unit.commanderId,
+      ),
+  );
+
+  if (invalidUnits.length) {
+    throw new Error(
+      [
+        'Seed gagal: ada pimpinan satuan yang bukan anggota aktif langsung satuannya.',
+        ...invalidUnits.map(
+          (unit) => `- ${unit.name} -> ${unit.commander?.username ?? '-'}`,
+        ),
+      ].join('\n'),
     );
   }
 }
@@ -1287,6 +1670,41 @@ async function resolveUnitMemberIds(unitId: string) {
   return memberships.map((membership) => membership.userId);
 }
 
+async function resolveUnitLeaderIds(unitId: string) {
+  const unit = await prisma.unit.findUnique({
+    where: {
+      id: unitId,
+    },
+  });
+
+  if (!unit) {
+    throw new Error(`Unit tidak ditemukan: ${unitId}`);
+  }
+
+  const units = await prisma.unit.findMany({
+    where: {
+      deletedAt: null,
+      commanderId: {
+        not: null,
+      },
+      path: {
+        startsWith: unit.path,
+      },
+      commander: {
+        deletedAt: null,
+      },
+    },
+    distinct: ['commanderId'],
+    select: {
+      commanderId: true,
+    },
+  });
+
+  return units
+    .map((unit) => unit.commanderId)
+    .filter((commanderId): commanderId is string => Boolean(commanderId));
+}
+
 function getEnvOrThrow(name: string) {
   const value = process.env[name];
   if (!value) {
@@ -1341,6 +1759,15 @@ function getUserKeyById(userIds: Map<string, string>, userId: string) {
   }
 
   throw new Error(`User key untuk id "${userId}" tidak ditemukan`);
+}
+
+function getUnitKeyForUser(userKey: string) {
+  const membership = membershipPlan.find((item) => item.userKey === userKey);
+  if (!membership) {
+    throw new Error(`Membership untuk user "${userKey}" tidak ditemukan`);
+  }
+
+  return membership.unitKey;
 }
 
 function hoursFromNow(hours: number) {

@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRightIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { UnitNode } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
@@ -45,14 +43,30 @@ function UnitAdminTreeNode({
       onClick={() => onSelect(node)}
     >
       <CardContent className="flex items-center gap-3 p-3">
-        <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
-          <UsersIcon className="size-4" />
-        </div>
+        {hasChildren ? (
+          <button
+            type="button"
+            className="bg-muted hover:bg-muted/80 flex size-8 shrink-0 items-center justify-center rounded-md transition-colors"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setOpen((current) => !current);
+            }}
+            aria-expanded={open}
+            aria-label={open ? `Tutup ${node.name}` : `Buka ${node.name}`}
+          >
+            {open ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+          </button>
+        ) : (
+          <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+            <UsersIcon className="size-4" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{node.name}</p>
           <p className="text-muted-foreground truncate text-xs">
             Level {node.depthLevel}
-            {node.commander ? ` · Komandan: ${node.commander.fullName}` : ""}
+            {node.commander ? ` - Pimpinan: ${node.commander.fullName}` : ""}
           </p>
         </div>
         <Badge variant="secondary" className="gap-1 rounded-sm">
@@ -63,33 +77,18 @@ function UnitAdminTreeNode({
     </Card>
   );
 
-  if (!hasChildren) {
-    return <div>{card}</div>;
-  }
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="flex items-start gap-1">
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mt-2 size-7 shrink-0"
-            aria-label={open ? "Tutup cabang satuan" : "Buka cabang satuan"}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ChevronRightIcon className={cn("size-4 transition-transform", open && "rotate-90")} />
-          </Button>
-        </CollapsibleTrigger>
-        <div className="min-w-0 flex-1 space-y-2">{card}</div>
-      </div>
-      <CollapsibleContent>
-        <div className="ml-8 space-y-2 border-l pl-3">
-          {node.children.map((child) => (
-            <UnitAdminTreeNode key={child.id} node={child} depth={depth + 1} onSelect={onSelect} />
-          ))}
+    <div className="space-y-2">
+      {card}
+      {hasChildren && open ? (
+        <div className="ml-5 border-l pl-3">
+          <div className="space-y-2">
+            {node.children.map((child) => (
+              <UnitAdminTreeNode key={child.id} node={child} depth={depth + 1} onSelect={onSelect} />
+            ))}
+          </div>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      ) : null}
+    </div>
   );
 }

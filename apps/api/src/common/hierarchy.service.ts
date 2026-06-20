@@ -45,7 +45,7 @@ export class HierarchyService {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'FORBIDDEN',
-        'Akses hanya untuk komandan',
+        'Akses hanya untuk pimpinan',
       );
     }
     return units;
@@ -114,7 +114,7 @@ export class HierarchyService {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'OUT_OF_HIERARCHY',
-        'User target berada di luar cakupan hierarki komandan',
+        'User target berada di luar cakupan hierarki pimpinan',
       );
     }
   }
@@ -129,7 +129,7 @@ export class HierarchyService {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'OUT_OF_HIERARCHY',
-        'Satuan target berada di luar cakupan hierarki komandan',
+        'Satuan target berada di luar cakupan hierarki pimpinan',
       );
     }
   }
@@ -170,5 +170,45 @@ export class HierarchyService {
     });
 
     return memberships.map((membership) => membership.userId);
+  }
+
+  async resolveUnitLeaderIds(unitId: string): Promise<string[]> {
+    const targetUnit = await this.prisma.unit.findFirst({
+      where: {
+        id: unitId,
+        deletedAt: null,
+      },
+    });
+
+    if (!targetUnit) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Satuan tidak ditemukan',
+      );
+    }
+
+    const units = await this.prisma.unit.findMany({
+      where: {
+        deletedAt: null,
+        commanderId: {
+          not: null,
+        },
+        path: {
+          startsWith: targetUnit.path,
+        },
+        commander: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        commanderId: true,
+      },
+      distinct: ['commanderId'],
+    });
+
+    return units
+      .map((unit) => unit.commanderId)
+      .filter((commanderId): commanderId is string => Boolean(commanderId));
   }
 }

@@ -2,7 +2,10 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../common/prisma.service';
-import { serializeLatestSubmission } from '../common/utils/submission.util';
+import {
+  emptySubmissionMetrics,
+  serializeLatestSubmission,
+} from '../common/utils/submission.util';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
 import { OrdersService } from '../orders/orders.service';
@@ -78,6 +81,15 @@ export class AssignmentsService {
           order: true,
           submissions: {
             where: { isLatest: true },
+            include: {
+              submittedBy: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  username: true,
+                },
+              },
+            },
             take: 1,
           },
         },
@@ -118,6 +130,15 @@ export class AssignmentsService {
         order: true,
         submissions: {
           where: { isLatest: true },
+          include: {
+            submittedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                username: true,
+              },
+            },
+          },
           take: 1,
         },
       },
@@ -177,11 +198,72 @@ export class AssignmentsService {
   }
 
   async submitProof(userId: string, assignmentId: string, body: unknown) {
+    return this.submitAssignmentProof({
+      actorUserId: userId,
+      targetUserId: userId,
+      assignmentId,
+      body,
+      submissionSource: 'self',
+    });
+  }
+
+  async submitRepresentedProof(
+    actorUserId: string,
+    orderId: string,
+    assignmentId: string,
+    body: unknown,
+  ) {
+    const assignment = await this.prisma.taskAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        orderId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Assignment tidak ditemukan',
+      );
+    }
+
+    await this.ensureDirectUnitLeader(actorUserId, assignment.userId);
+
+    return this.submitAssignmentProof({
+      actorUserId,
+      targetUserId: assignment.userId,
+      assignmentId,
+      orderId,
+      body,
+      submissionSource: 'represented',
+    });
+  }
+
+  private async submitAssignmentProof({
+    actorUserId,
+    targetUserId,
+    assignmentId,
+    orderId,
+    body,
+    submissionSource,
+  }: {
+    actorUserId: string;
+    targetUserId: string;
+    assignmentId: string;
+    orderId?: string;
+    body: unknown;
+    submissionSource: 'self' | 'represented';
+  }) {
     const parsed = submitProofSchema.parse(body);
     const assignment = await this.prisma.taskAssignment.findFirst({
       where: {
         id: assignmentId,
-        userId,
+        userId: targetUserId,
+        ...(orderId ? { orderId } : {}),
       },
       include: {
         order: true,
@@ -208,11 +290,14 @@ export class AssignmentsService {
     const nextStatus =
       submittedAt <= assignment.order.deadline ? 'selesai' : 'terlambat';
     const isPosting = assignment.order.orderType === 'posting';
+    const isBlasting = assignment.order.orderType === 'engagement';
     const postingTargetPlatforms = Array.isArray(
       assignment.order.postingTargetPlatforms,
     )
       ? (assignment.order.postingTargetPlatforms as string[])
       : [];
+    const metrics = parsed.metrics ?? emptySubmissionMetrics;
+    const hasAnyMetric = Object.values(metrics).some((value) => value > 0);
 
     if (isPosting) {
       const platformLinks = parsed.platformLinks ?? [];
@@ -235,11 +320,13 @@ export class AssignmentsService {
           'Platform bukti tidak sesuai target posting',
         );
       }
-    } else if (!parsed.driveLink) {
+    } else if (!parsed.driveLink && !(isBlasting && hasAnyMetric)) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
         'VALIDATION_ERROR',
-        'Link bukti wajib diisi',
+        isBlasting
+          ? 'Isi link bukti atau minimal satu metrik blasting'
+          : 'Link bukti wajib diisi',
       );
     }
 
@@ -257,9 +344,16 @@ export class AssignmentsService {
       const createdSubmission = await tx.submission.create({
         data: {
           assignmentId,
-          userId,
+          userId: targetUserId,
+          submittedByUserId: actorUserId,
+          submissionSource,
           driveLink: parsed.driveLink ?? null,
           platformLinks: isPosting ? (parsed.platformLinks ?? []) : undefined,
+          views: metrics.views,
+          likes: metrics.likes,
+          comments: metrics.comments,
+          shares: metrics.shares,
+          reposts: metrics.reposts,
           notes: parsed.notes,
           submittedAt,
         },
@@ -277,7 +371,7 @@ export class AssignmentsService {
     });
 
     await this.activityService.logSubmissionSent({
-      actorUserId: userId,
+      actorUserId,
       orderId: assignment.orderId,
       assignmentId,
       submissionId: submission.id,
@@ -285,7 +379,36 @@ export class AssignmentsService {
     });
 
     await this.ordersService.refreshOrderStatus(assignment.orderId);
-    return this.getAssignmentDetail(userId, assignmentId);
+    return this.getAssignmentDetail(targetUserId, assignmentId);
+  }
+
+  private async ensureDirectUnitLeader(actorUserId: string, targetUserId: string) {
+    const targetMembership = await this.prisma.unitMember.findFirst({
+      where: {
+        userId: targetUserId,
+        removedAt: null,
+        unit: {
+          deletedAt: null,
+        },
+        user: {
+          deletedAt: null,
+        },
+      },
+      include: {
+        unit: true,
+      },
+      orderBy: {
+        joinedAt: 'desc',
+      },
+    });
+
+    if (!targetMembership || targetMembership.unit.commanderId !== actorUserId) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Hanya pimpinan satuan langsung yang dapat menginput bukti anggota ini',
+      );
+    }
   }
 
   private endOfDay(date: Date): Date {
