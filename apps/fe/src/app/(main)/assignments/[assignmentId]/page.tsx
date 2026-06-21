@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PostingCompletenessBadge } from "@/components/features/assignments/posting-completeness-badge";
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
+import { RepresentativePostingProofDialog } from "@/components/features/assignments/representative-posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
 import { TargetMetricTotalsSection } from "@/components/features/orders/target-metric-section";
@@ -40,20 +41,28 @@ export default async function AssignmentDetailPage({
               ? "Baca instruksi pelaksanaan, buka target, lalu input metrik blasting."
               : "Baca instruksi pelaksanaan, buka target, lalu submit bukti melalui link Drive."
         }
-        actions={isBlasting ? null : (
-          <SubmitProofDialog
-            assignmentId={assignment.id}
-            orderType={assignment.order.orderType}
-            postingTargetPlatforms={assignment.order.postingTargetPlatforms}
-            initialSubmission={assignment.latestSubmission}
-            title={assignment.latestSubmission ? "Edit Bukti Pelaksanaan" : "Submit Bukti Pelaksanaan"}
-            trigger={
-              <Button size="sm">
-                {assignment.latestSubmission ? "Edit Bukti" : "Submit Bukti"}
-              </Button>
-            }
-          />
-        )}
+        actions={
+          isBlasting ? null : assignment.order.orderType === "posting" && assignment.canSubmitForMember ? (
+            <RepresentativePostingProofDialog
+              orderId={assignment.order.id}
+              postingTargetPlatforms={assignment.order.postingTargetPlatforms}
+              trigger={<Button size="sm">Submit Bukti</Button>}
+            />
+          ) : (
+            <SubmitProofDialog
+              assignmentId={assignment.id}
+              orderType={assignment.order.orderType}
+              postingTargetPlatforms={assignment.order.postingTargetPlatforms}
+              initialSubmission={assignment.latestSubmission}
+              title={assignment.latestSubmission ? "Edit Bukti Pelaksanaan" : "Submit Bukti Pelaksanaan"}
+              trigger={
+                <Button size="sm">
+                  {assignment.latestSubmission ? "Edit Bukti" : "Submit Bukti"}
+                </Button>
+              }
+            />
+          )
+        }
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={assignment.order.orderType} />

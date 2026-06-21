@@ -172,6 +172,10 @@ export class AssignmentsService {
     )
       ? (assignment.order.postingTargetPlatforms as string[])
       : null;
+    const canSubmitForMember = await this.canSubmitForAnyMember(
+      userId,
+      assignment.orderId,
+    );
 
     return {
       id: assignment.id,
@@ -202,6 +206,7 @@ export class AssignmentsService {
         assignment.order.orderType,
         postingTargetPlatforms,
       ),
+      canSubmitForMember,
     };
   }
 
@@ -258,6 +263,7 @@ export class AssignmentsService {
   ) {
     const parsed = bulkSubmissionQuerySchema.parse(query);
     const order = await this.ensureBulkSubmissionOrder(actorUserId, orderId);
+    await this.ensureRepresentedMemberAssignments(actorUserId, orderId);
     const actor = await this.getActor(actorUserId);
     const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
       ? (order.postingTargetPlatforms as string[])
@@ -374,6 +380,7 @@ export class AssignmentsService {
   async bulkSubmitProof(actorUserId: string, orderId: string, body: unknown) {
     const parsed = bulkSubmissionRequestSchema.parse(body);
     const order = await this.ensureBulkSubmissionOrder(actorUserId, orderId);
+    await this.ensureRepresentedMemberAssignments(actorUserId, orderId);
     const actor = await this.getActor(actorUserId);
     const isSuperAdmin = actor.role === 'super_admin';
     const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
@@ -535,6 +542,17 @@ export class AssignmentsService {
       }
     }
 
+    if (totalSubmitted > 0) {
+      await this.markRepresentingLeaderAssignmentSubmitted({
+        actorUserId,
+        orderId,
+        deadline: order.deadline,
+        postingTargetPlatforms,
+        results,
+        totalSubmitted,
+      });
+    }
+
     await this.ordersService.refreshOrderStatus(orderId);
 
     return {
@@ -601,7 +619,10 @@ export class AssignmentsService {
       select: { id: true },
     });
 
-    if (!hasAssignableMember) {
+    const hasRepresentedLeaderAssignment =
+      await this.hasRepresentedLeaderAssignment(actorUserId, orderId);
+
+    if (!hasAssignableMember && !hasRepresentedLeaderAssignment) {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'FORBIDDEN',
@@ -610,6 +631,284 @@ export class AssignmentsService {
     }
 
     return order;
+  }
+
+  private async canSubmitForAnyMember(actorUserId: string, orderId: string) {
+    const actor = await this.getActor(actorUserId);
+    if (actor.role === 'super_admin') {
+      return true;
+    }
+
+    const assignedDirectMember = await this.prisma.taskAssignment.findFirst({
+      where: {
+        orderId,
+        userId: { not: actorUserId },
+        user: {
+          deletedAt: null,
+          unitMemberships: {
+            some: {
+              removedAt: null,
+              unit: {
+                commanderId: actorUserId,
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (assignedDirectMember) {
+      return true;
+    }
+
+    return this.hasRepresentedLeaderAssignment(actorUserId, orderId);
+  }
+
+  private async hasRepresentedLeaderAssignment(
+    actorUserId: string,
+    orderId: string,
+  ) {
+    const representedUnitIds = await this.getRepresentedUnitIdsForLeader(
+      actorUserId,
+      orderId,
+    );
+
+    if (!representedUnitIds.length) {
+      return false;
+    }
+
+    const representedMember = await this.prisma.unitMember.findFirst({
+      where: {
+        userId: { not: actorUserId },
+        unitId: { in: representedUnitIds },
+        removedAt: null,
+        user: { deletedAt: null },
+      },
+      select: { id: true },
+    });
+
+    return Boolean(representedMember);
+  }
+
+  private async ensureRepresentedMemberAssignments(
+    actorUserId: string,
+    orderId: string,
+  ) {
+    const representedUnitIds = await this.getRepresentedUnitIdsForLeader(
+      actorUserId,
+      orderId,
+    );
+
+    if (!representedUnitIds.length) {
+      return;
+    }
+
+    const memberships = await this.prisma.unitMember.findMany({
+      where: {
+        userId: { not: actorUserId },
+        unitId: { in: representedUnitIds },
+        removedAt: null,
+        user: { deletedAt: null },
+      },
+      select: { userId: true },
+    });
+
+    const memberIds = Array.from(
+      new Set(memberships.map((membership) => membership.userId)),
+    );
+
+    if (!memberIds.length) {
+      return;
+    }
+
+    const existingAssignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        orderId,
+        userId: { in: memberIds },
+      },
+      select: { userId: true },
+    });
+    const existingUserIds = new Set(
+      existingAssignments.map((assignment) => assignment.userId),
+    );
+    const data = memberIds
+      .filter((memberId) => !existingUserIds.has(memberId))
+      .map((memberId) => ({
+        orderId,
+        userId: memberId,
+      }));
+
+    if (data.length) {
+      await this.prisma.taskAssignment.createMany({ data });
+    }
+  }
+
+  private async getRepresentedUnitIdsForLeader(
+    actorUserId: string,
+    orderId: string,
+  ) {
+    const leaderAssignment = await this.prisma.taskAssignment.findFirst({
+      where: {
+        orderId,
+        userId: actorUserId,
+      },
+      select: { id: true },
+    });
+
+    if (!leaderAssignment) {
+      return [];
+    }
+
+    const [targetUnits, commandedUnits] = await this.prisma.$transaction([
+      this.prisma.orderTarget.findMany({
+        where: {
+          orderId,
+          targetAudience: 'unit_leaders',
+          unit: { deletedAt: null },
+        },
+        select: {
+          unit: {
+            select: {
+              path: true,
+            },
+          },
+        },
+      }),
+      this.prisma.unit.findMany({
+        where: {
+          commanderId: actorUserId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          path: true,
+        },
+      }),
+    ]);
+
+    const targetPaths = targetUnits
+      .map((target) => target.unit?.path)
+      .filter((path): path is string => Boolean(path));
+
+    return commandedUnits
+      .filter((unit) =>
+        targetPaths.some((targetPath) => unit.path.startsWith(targetPath)),
+      )
+      .map((unit) => unit.id);
+  }
+
+  private async markRepresentingLeaderAssignmentSubmitted({
+    actorUserId,
+    orderId,
+    deadline,
+    postingTargetPlatforms,
+    results,
+    totalSubmitted,
+  }: {
+    actorUserId: string;
+    orderId: string;
+    deadline: Date;
+    postingTargetPlatforms: string[];
+    results: Array<{
+      assignmentId: string;
+      status: 'submitted' | 'skipped' | 'error';
+      parsedLinks?: ParsedLink[];
+    }>;
+    totalSubmitted: number;
+  }) {
+    const shouldRepresent = await this.hasRepresentedLeaderAssignment(
+      actorUserId,
+      orderId,
+    );
+
+    if (!shouldRepresent) {
+      return;
+    }
+
+    const leaderAssignment = await this.prisma.taskAssignment.findFirst({
+      where: {
+        orderId,
+        userId: actorUserId,
+      },
+      select: { id: true },
+    });
+
+    if (!leaderAssignment) {
+      return;
+    }
+
+    const linkByPlatform = new Map<string, string>();
+    for (const result of results) {
+      if (result.status !== 'submitted') {
+        continue;
+      }
+
+      for (const link of result.parsedLinks ?? []) {
+        if (
+          postingTargetPlatforms.length &&
+          !postingTargetPlatforms.includes(link.platform)
+        ) {
+          continue;
+        }
+
+        if (!linkByPlatform.has(link.platform)) {
+          linkByPlatform.set(link.platform, link.url);
+        }
+      }
+    }
+
+    const submittedAt = new Date();
+    const nextStatus = submittedAt <= deadline ? 'selesai' : 'terlambat';
+    const platformLinks = Array.from(linkByPlatform.entries()).map(
+      ([platform, url]) => ({
+        platform,
+        url,
+      }),
+    );
+
+    const submission = await this.prisma.$transaction(async (tx) => {
+      await tx.submission.updateMany({
+        where: {
+          assignmentId: leaderAssignment.id,
+          isLatest: true,
+        },
+        data: {
+          isLatest: false,
+        },
+      });
+
+      const createdSubmission = await tx.submission.create({
+        data: {
+          assignmentId: leaderAssignment.id,
+          userId: actorUserId,
+          submittedByUserId: actorUserId,
+          submissionSource: 'pimpinan',
+          platformLinks: platformLinks.length ? platformLinks : undefined,
+          notes: `Mewakili ${totalSubmitted} anggota satuan.`,
+          submittedAt,
+        },
+      });
+
+      await tx.taskAssignment.update({
+        where: { id: leaderAssignment.id },
+        data: {
+          status: nextStatus,
+          completedAt: submittedAt,
+        },
+      });
+
+      return createdSubmission;
+    });
+
+    await this.activityService.logSubmissionSent({
+      actorUserId,
+      orderId,
+      assignmentId: leaderAssignment.id,
+      submissionId: submission.id,
+      occurredAt: submission.submittedAt,
+    });
   }
 
   private async getActor(userId: string) {
