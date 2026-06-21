@@ -15,21 +15,21 @@ export function PageHero({ eyebrow, title, description, actions, children, class
   return (
     <section
       className={cn(
-        "border-border/70 bg-card/95 overflow-hidden rounded-lg border shadow-sm",
+        "border-border/70 bg-card/95 min-w-0 overflow-hidden rounded-lg border shadow-sm",
         className,
       )}
     >
-      <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
+      <div className="flex min-w-0 flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-2">
           {eyebrow ? (
             <p className="text-primary text-xs font-semibold uppercase tracking-normal">{eyebrow}</p>
           ) : null}
           <div className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-normal md:text-2xl">{title}</h1>
+            <h1 className="min-w-0 break-words text-xl font-semibold tracking-normal md:text-2xl">{title}</h1>
             {description ? <p className="text-muted-foreground max-w-3xl text-sm">{description}</p> : null}
           </div>
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">{actions}</div> : null}
       </div>
       {children ? <div className="border-t bg-muted/30 px-5 py-3">{children}</div> : null}
     </section>

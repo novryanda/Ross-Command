@@ -1401,7 +1401,7 @@ async function main() {
           userId: memberId,
           submittedByUserId,
           submissionSource:
-            submittedByUserId === memberId ? 'self' : 'represented',
+            submittedByUserId === memberId ? 'self' : 'pimpinan',
           driveLink: submission.driveLink ?? null,
           platformLinks: submission.platformLinks ?? undefined,
           views: metrics.views,

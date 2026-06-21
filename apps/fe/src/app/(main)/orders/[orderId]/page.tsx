@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { OrderActions } from "@/components/features/orders/order-actions";
 import { OrderAssignmentsList } from "@/components/features/orders/order-assignments-list";
+import { TargetMetricTotalsSection } from "@/components/features/orders/target-metric-section";
+import { isBlastingOrderType } from "@/lib/order-utils";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { BackButton } from "@/components/komando/back-button";
@@ -12,8 +15,9 @@ import { ListViewToggle } from "@/components/komando/list-view-toggle";
 import { PageHero } from "@/components/komando/page-hero";
 import { PageState } from "@/components/komando/page-state";
 import { ServerPagination } from "@/components/komando/server-pagination";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import { buildQueryString } from "@/lib/api/client";
 import { ApiRequestError } from "@/lib/api/types";
 import { serverApiFetch } from "@/lib/api/server";
@@ -58,7 +62,7 @@ export default async function OrderDetailPage({
       <PageHero
         eyebrow="Detail perintah"
         title={order.title}
-        description="Instruksi, target, progress anggota, dan bukti pelaksanaan dari perintah ini."
+        description="Instruksi, target, progres anggota, dan bukti pelaksanaan dari perintah ini."
         actions={<OrderActions order={order} />}
       >
         <div className="flex flex-wrap gap-1.5">
@@ -111,28 +115,43 @@ export default async function OrderDetailPage({
 
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">Progress</CardTitle>
+            <CardTitle className="text-base">Progres</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="text-muted-foreground flex justify-between text-xs">
-                <span>{order.progress.totalSubmitted}/{order.progress.totalAssigned} submit</span>
+                <span>{order.progress.totalSubmitted}/{order.progress.totalAssigned} terkirim</span>
                 <span>{order.progress.percentageComplete}%</span>
               </div>
-              <Progress value={order.progress.percentageComplete} />
+              <ToneProgressBar value={order.progress.percentageComplete} />
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <Info label="Assigned" value={order.progress.totalAssigned} />
-              <Info label="Submit" value={order.progress.totalSubmitted} />
-              <Info label="Pending" value={order.progress.totalPending} />
-              <Info label="Late" value={order.progress.totalLate} />
+              <Info label="Ditugaskan" value={order.progress.totalAssigned} />
+              <Info label="Sudah Kirim" value={order.progress.totalSubmitted} />
+              <Info label="Menunggu" value={order.progress.totalPending} />
+              <Info label="Terlambat" value={order.progress.totalLate} />
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <Info label="Views" value={order.progress.metricTotals.views} />
-              <Info label="Like" value={order.progress.metricTotals.likes} />
-              <Info label="Comment" value={order.progress.metricTotals.comments} />
-              <Info label="Share" value={order.progress.metricTotals.shares} />
-              <Info label="Repost" value={order.progress.metricTotals.reposts} />
+            {isBlastingOrderType(order.orderType) ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <Info label="Tayangan" value={order.progress.metricTotals.views} />
+                  <Info label="Suka" value={order.progress.metricTotals.likes} />
+                  <Info label="Komentar" value={order.progress.metricTotals.comments} />
+                  <Info label="Bagikan" value={order.progress.metricTotals.shares} />
+                  <Info label="Repost" value={order.progress.metricTotals.reposts} />
+                </div>
+                {order.progress.targetMetricTotals?.length ? (
+                  <TargetMetricTotalsSection targets={order.progress.targetMetricTotals} />
+                ) : null}
+              </>
+            ) : null}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button asChild variant="outline" className="w-full">
+                <Link href={`/orders/${order.id}/monitoring?tab=perorangan`}>Pantau Perorangan</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href={`/orders/${order.id}/monitoring?tab=persatuan`}>Pantau Persatuan</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -156,7 +175,7 @@ export default async function OrderDetailPage({
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Progress Anggota</h2>
+          <h2 className="text-sm font-semibold">Progres Anggota</h2>
           <Suspense fallback={null}>
             <ListViewToggle defaultView="card" />
           </Suspense>
@@ -167,6 +186,7 @@ export default async function OrderDetailPage({
               assignments={assignmentsResponse.data}
               orderType={order.orderType}
               postingTargetPlatforms={order.postingTargetPlatforms ?? []}
+              targetUrls={order.targetUrls}
               orderId={order.id}
             />
           </Suspense>
@@ -183,7 +203,7 @@ function Info({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border bg-background/70 p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="text-sm font-semibold tabular-nums">{value}</p>
+      <p className="text-sm font-semibold tabular-nums">{value.toLocaleString("id-ID")}</p>
     </div>
   );
 }

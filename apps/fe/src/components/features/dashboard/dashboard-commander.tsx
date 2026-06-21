@@ -7,7 +7,7 @@ import { PageState } from "@/components/komando/page-state";
 import { StatsCard } from "@/components/komando/stats-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import type { DashboardCommander } from "@/lib/api/types";
 
 export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
@@ -63,7 +63,7 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
                       <span>{order.progress.totalSubmitted}/{order.progress.totalAssigned} submit</span>
                       <span>{order.progress.percentageComplete}%</span>
                     </div>
-                    <Progress value={order.progress.percentageComplete} />
+                    <ToneProgressBar value={order.progress.percentageComplete} />
                   </div>
                 </CardContent>
               </Card>

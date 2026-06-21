@@ -12,7 +12,7 @@ import {
 } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import type { Order, PaginationMeta } from "@/lib/api/types";
 
 export function OrdersList({ orders, pagination }: { orders: Order[]; pagination?: PaginationMeta }) {
@@ -53,7 +53,7 @@ export function OrdersList({ orders, pagination }: { orders: Order[]; pagination
                 </span>
                 <span>{order.progress.percentageComplete}%</span>
               </div>
-              <Progress value={order.progress.percentageComplete} />
+              <ToneProgressBar value={order.progress.percentageComplete} />
             </div>
           </CardContent>
         </Card>

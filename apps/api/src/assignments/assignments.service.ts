@@ -4,12 +4,19 @@ import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../common/prisma.service';
 import {
   emptySubmissionMetrics,
+  hasAnyMetric,
+  normalizeMetrics,
   serializeLatestSubmission,
+  sumTargetMetricEntries,
 } from '../common/utils/submission.util';
+import { parseLinks, type ParsedLink } from '../common/utils/url-parser';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
+import { HierarchyService } from '../common/hierarchy.service';
 import { OrdersService } from '../orders/orders.service';
 import {
+  bulkSubmissionQuerySchema,
+  bulkSubmissionRequestSchema,
   listAssignmentsQuerySchema,
   submitProofSchema,
 } from './assignments.schema';
@@ -20,6 +27,7 @@ export class AssignmentsService {
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
     private readonly activityService: ActivityService,
+    private readonly hierarchyService: HierarchyService,
   ) {}
 
   async listAssignments(userId: string, query: unknown) {
@@ -239,8 +247,390 @@ export class AssignmentsService {
       assignmentId,
       orderId,
       body,
-      submissionSource: 'represented',
+      submissionSource: 'pimpinan',
     });
+  }
+
+  async listBulkSubmissionAssignments(
+    actorUserId: string,
+    orderId: string,
+    query: unknown,
+  ) {
+    const parsed = bulkSubmissionQuerySchema.parse(query);
+    const order = await this.ensureBulkSubmissionOrder(actorUserId, orderId);
+    const actor = await this.getActor(actorUserId);
+    const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
+      ? (order.postingTargetPlatforms as string[])
+      : null;
+    const isSuperAdmin = actor.role === 'super_admin';
+    const commandingUnitIds = isSuperAdmin
+      ? null
+      : (await this.hierarchyService.getCommandingUnits(actorUserId)).map(
+          (unit) => unit.id,
+        );
+
+    const assignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        orderId,
+        ...(parsed.unitId
+          ? {
+              user: {
+                unitMemberships: {
+                  some: {
+                    unitId: parsed.unitId,
+                    removedAt: null,
+                  },
+                },
+              },
+            }
+          : {}),
+        ...(commandingUnitIds
+          ? {
+              user: {
+                unitMemberships: {
+                  some: {
+                    removedAt: null,
+                    unit: {
+                      id: { in: commandingUnitIds },
+                      deletedAt: null,
+                    },
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            unitMemberships: {
+              where: { removedAt: null },
+              include: {
+                unit: {
+                  select: {
+                    id: true,
+                    commanderId: true,
+                  },
+                },
+              },
+              take: 1,
+            },
+          },
+        },
+        submissions: {
+          where: { isLatest: true },
+          include: {
+            submittedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                username: true,
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+      orderBy: [{ status: 'asc' }, { assignedAt: 'asc' }],
+    });
+
+    const now = new Date();
+    const isLocked =
+      order.status !== 'aktif' || now.getTime() > order.deadline.getTime();
+
+    return {
+      order: {
+        id: order.id,
+        title: order.title,
+        status: order.status,
+        deadline: order.deadline,
+        postingTargetPlatforms,
+      },
+      isLocked,
+      assignments: assignments.map((assignment) => ({
+        id: assignment.id,
+        userId: assignment.userId,
+        status: assignment.status,
+        user: {
+          id: assignment.user.id,
+          fullName: assignment.user.fullName,
+          username: assignment.user.username,
+        },
+        canSubmitForMember:
+          isSuperAdmin ||
+          assignment.user.unitMemberships[0]?.unit.commanderId === actorUserId,
+        latestSubmission: serializeLatestSubmission(
+          assignment.submissions[0],
+          order.orderType,
+          postingTargetPlatforms,
+        ),
+      })),
+    };
+  }
+
+  async bulkSubmitProof(actorUserId: string, orderId: string, body: unknown) {
+    const parsed = bulkSubmissionRequestSchema.parse(body);
+    const order = await this.ensureBulkSubmissionOrder(actorUserId, orderId);
+    const actor = await this.getActor(actorUserId);
+    const isSuperAdmin = actor.role === 'super_admin';
+    const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
+      ? (order.postingTargetPlatforms as string[])
+      : [];
+
+    const now = new Date();
+    if (order.status !== 'aktif') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Perintah tidak aktif dan tidak dapat menerima submission',
+      );
+    }
+
+    if (now.getTime() > order.deadline.getTime()) {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Deadline perintah sudah lewat',
+      );
+    }
+
+    const results: Array<{
+      assignmentId: string;
+      userId: string;
+      status: 'submitted' | 'skipped' | 'error';
+      reason?: string;
+      parsedLinks?: ParsedLink[];
+    }> = [];
+
+    let totalSubmitted = 0;
+    let totalSkipped = 0;
+
+    for (const item of parsed.submissions) {
+      const platformLinks = parseLinks(item.rawLinks);
+
+      if (!platformLinks.length) {
+        results.push({
+          assignmentId: item.assignmentId,
+          userId: item.userId,
+          status: 'skipped',
+          reason: 'Tidak ada URL valid yang terdeteksi',
+        });
+        totalSkipped += 1;
+        continue;
+      }
+
+      try {
+        const assignment = await this.prisma.taskAssignment.findFirst({
+          where: {
+            id: item.assignmentId,
+            orderId,
+            userId: item.userId,
+          },
+          include: {
+            order: true,
+            user: {
+              include: {
+                unitMemberships: {
+                  where: { removedAt: null },
+                  include: { unit: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        });
+
+        if (!assignment) {
+          results.push({
+            assignmentId: item.assignmentId,
+            userId: item.userId,
+            status: 'error',
+            reason: 'Assignment tidak ditemukan untuk order ini',
+          });
+          continue;
+        }
+
+        if (!isSuperAdmin) {
+          await this.ensureDirectUnitLeader(actorUserId, assignment.userId);
+        }
+
+        const submittedAt = new Date();
+        const nextStatus =
+          submittedAt <= assignment.order.deadline ? 'selesai' : 'terlambat';
+
+        const submission = await this.prisma.$transaction(async (tx) => {
+          await tx.submission.updateMany({
+            where: {
+              assignmentId: item.assignmentId,
+              isLatest: true,
+            },
+            data: {
+              isLatest: false,
+            },
+          });
+
+          const createdSubmission = await tx.submission.create({
+            data: {
+              assignmentId: item.assignmentId,
+              userId: item.userId,
+              submittedByUserId: actorUserId,
+              submissionSource: 'pimpinan',
+              platformLinks,
+              notes: item.notes ?? null,
+              submittedAt,
+            },
+          });
+
+          await tx.taskAssignment.update({
+            where: { id: item.assignmentId },
+            data: {
+              status: nextStatus,
+              completedAt: submittedAt,
+            },
+          });
+
+          return createdSubmission;
+        });
+
+        await this.activityService.logSubmissionSent({
+          actorUserId,
+          orderId,
+          assignmentId: item.assignmentId,
+          submissionId: submission.id,
+          occurredAt: submission.submittedAt,
+        });
+
+        const hasNonTargetPlatform =
+          postingTargetPlatforms.length > 0 &&
+          platformLinks.some(
+            (link) => !postingTargetPlatforms.includes(link.platform),
+          );
+
+        results.push({
+          assignmentId: item.assignmentId,
+          userId: item.userId,
+          status: 'submitted',
+          parsedLinks: platformLinks,
+          ...(hasNonTargetPlatform
+            ? {
+                reason:
+                  'Beberapa platform tidak sesuai target perintah, submission tetap dicatat',
+              }
+            : {}),
+        });
+        totalSubmitted += 1;
+      } catch (error) {
+        results.push({
+          assignmentId: item.assignmentId,
+          userId: item.userId,
+          status: 'error',
+          reason:
+            error instanceof ApiException
+              ? error.message
+              : 'Gagal memproses submission',
+        });
+      }
+    }
+
+    await this.ordersService.refreshOrderStatus(orderId);
+
+    return {
+      success: totalSubmitted > 0,
+      totalSubmitted,
+      totalSkipped,
+      results,
+    };
+  }
+
+  private async ensureBulkSubmissionOrder(actorUserId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        deletedAt: null,
+      },
+    });
+
+    if (!order) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Order tidak ditemukan',
+      );
+    }
+
+    if (order.orderType !== 'posting') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Bulk submission hanya tersedia untuk perintah posting',
+      );
+    }
+
+    const actor = await this.getActor(actorUserId);
+    if (actor.role === 'super_admin' || order.createdById === actorUserId) {
+      return order;
+    }
+
+    const commandingUnits = await this.hierarchyService.getCommandingUnits(actorUserId);
+    if (!commandingUnits.length) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Akses bulk submission hanya untuk pimpinan satuan',
+      );
+    }
+
+    const hasAssignableMember = await this.prisma.taskAssignment.findFirst({
+      where: {
+        orderId,
+        user: {
+          unitMemberships: {
+            some: {
+              removedAt: null,
+              unit: {
+                commanderId: actorUserId,
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!hasAssignableMember) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Tidak ada anggota satuan Anda yang ditugaskan pada perintah ini',
+      );
+    }
+
+    return order;
+  }
+
+  private async getActor(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+        deletedAt: true,
+      },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiException(
+        HttpStatus.UNAUTHORIZED,
+        'UNAUTHORIZED',
+        'User tidak valid',
+      );
+    }
+
+    return user;
   }
 
   private async submitAssignmentProof({
@@ -256,7 +646,7 @@ export class AssignmentsService {
     assignmentId: string;
     orderId?: string;
     body: unknown;
-    submissionSource: 'self' | 'represented';
+    submissionSource: 'self' | 'pimpinan';
   }) {
     const parsed = submitProofSchema.parse(body);
     const assignment = await this.prisma.taskAssignment.findFirst({
@@ -296,8 +686,22 @@ export class AssignmentsService {
     )
       ? (assignment.order.postingTargetPlatforms as string[])
       : [];
-    const metrics = parsed.metrics ?? emptySubmissionMetrics;
-    const hasAnyMetric = Object.values(metrics).some((value) => value > 0);
+    const socialTargets = isBlasting
+      ? await this.prisma.orderSocialTarget.findMany({
+          where: { orderId: assignment.orderId },
+          orderBy: { sortOrder: 'asc' },
+        })
+      : [];
+
+    let targetMetricsPayload:
+      | Array<{
+          targetId: string;
+          platform: string;
+          url: string;
+          metrics: typeof emptySubmissionMetrics;
+        }>
+      | undefined;
+    let metrics = parsed.metrics ?? emptySubmissionMetrics;
 
     if (isPosting) {
       const platformLinks = parsed.platformLinks ?? [];
@@ -320,7 +724,57 @@ export class AssignmentsService {
           'Platform bukti tidak sesuai target posting',
         );
       }
-    } else if (!parsed.driveLink && !(isBlasting && hasAnyMetric)) {
+    } else if (isBlasting && socialTargets.length) {
+      const submittedTargetMetrics = parsed.targetMetrics ?? [];
+
+      if (submittedTargetMetrics.length !== socialTargets.length) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Metrik blasting wajib diisi untuk setiap link target perintah',
+        );
+      }
+
+      const targetMap = new Map(
+        socialTargets.map((target) => [target.id, target]),
+      );
+
+      for (const entry of submittedTargetMetrics) {
+        const target = targetMap.get(entry.targetId);
+        if (!target) {
+          throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            'VALIDATION_ERROR',
+            'Target metrik blasting tidak valid untuk perintah ini',
+          );
+        }
+
+        if (entry.url !== target.url || entry.platform !== target.platform) {
+          throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            'VALIDATION_ERROR',
+            'Data target metrik blasting tidak sesuai link perintah',
+          );
+        }
+      }
+
+      targetMetricsPayload = submittedTargetMetrics.map((entry) => ({
+        targetId: entry.targetId,
+        platform: entry.platform,
+        url: entry.url,
+        metrics: normalizeMetrics(entry.metrics),
+      }));
+
+      metrics = sumTargetMetricEntries(targetMetricsPayload);
+
+      if (!parsed.driveLink && !hasAnyMetric(metrics)) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Isi minimal satu metrik blasting pada salah satu link target',
+        );
+      }
+    } else if (!parsed.driveLink && !(isBlasting && hasAnyMetric(metrics))) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
         'VALIDATION_ERROR',
@@ -349,6 +803,10 @@ export class AssignmentsService {
           submissionSource,
           driveLink: parsed.driveLink ?? null,
           platformLinks: isPosting ? (parsed.platformLinks ?? []) : undefined,
+          targetMetrics:
+            isBlasting && targetMetricsPayload?.length
+              ? targetMetricsPayload
+              : undefined,
           views: metrics.views,
           likes: metrics.likes,
           comments: metrics.comments,

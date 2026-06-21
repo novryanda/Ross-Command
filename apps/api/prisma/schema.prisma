@@ -306,6 +306,7 @@ model Submission {
   submissionSource  String         @default("self") @map("submission_source") @db.VarChar(30)
   driveLink         String?        @map("drive_link") @db.Text
   platformLinks     Json?          @map("platform_links")
+  targetMetrics     Json?          @map("target_metrics")
   views             Int            @default(0)
   likes             Int            @default(0)
   comments          Int            @default(0)

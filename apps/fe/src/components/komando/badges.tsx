@@ -37,6 +37,17 @@ const orderTypeLabel: Record<OrderType, string> = {
   report_akun: "Report Akun",
 };
 
+const orderTypeFilterOptions = [
+  { value: "posting", label: "Posting" },
+  { value: "blasting", label: "Blasting" },
+  { value: "komentar", label: "Komentar" },
+  { value: "report_akun", label: "Report Akun" },
+] as const;
+
+const orderTypeFilterAliases = {
+  engagement: "blasting",
+} as const;
+
 const orderTypeClass: Record<OrderType, string> = {
   posting: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   engagement: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
@@ -88,6 +99,22 @@ export function PlatformBadge({ platform }: { platform: SocialPlatform }) {
   return <Badge variant="secondary" className="h-5 rounded-sm px-1.5 text-xs">{platformLabel[platform]}</Badge>;
 }
 
+export function submissionInputLabel(submission?: {
+  submissionSource?: string;
+  isRepresented?: boolean;
+} | null) {
+  if (!submission) {
+    return null;
+  }
+
+  const byCommander =
+    submission.isRepresented ||
+    submission.submissionSource === "pimpinan" ||
+    submission.submissionSource === "represented";
+
+  return byCommander ? "Pimpinan satuan" : "Mandiri";
+}
+
 export function DeadlineBadge({ deadline }: { deadline: string }) {
   const date = new Date(deadline);
   const diff = date.getTime() - Date.now();
@@ -108,4 +135,12 @@ export function DeadlineBadge({ deadline }: { deadline: string }) {
   );
 }
 
-export { assignmentStatusLabel, orderStatusLabel, orderTypeLabel, platformLabel, sentimentLabel };
+export {
+  assignmentStatusLabel,
+  orderStatusLabel,
+  orderTypeFilterAliases,
+  orderTypeFilterOptions,
+  orderTypeLabel,
+  platformLabel,
+  sentimentLabel,
+};

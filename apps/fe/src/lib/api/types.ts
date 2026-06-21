@@ -92,6 +92,23 @@ export type Me = {
   createdAt: string;
 };
 
+export type SubmissionMetrics = {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  reposts: number;
+};
+
+export type TargetMetricEntry = {
+  targetId: string;
+  platform: SocialPlatform;
+  url: string;
+  metrics: SubmissionMetrics;
+};
+
+export type TargetMetricTotal = TargetMetricEntry;
+
 export type ProgressSummary = {
   totalAssigned: number;
   totalSubmitted: number;
@@ -100,6 +117,7 @@ export type ProgressSummary = {
   totalPending: number;
   percentageComplete: number;
   metricTotals: SubmissionMetrics;
+  targetMetricTotals?: TargetMetricTotal[];
 };
 
 export type Order = {
@@ -149,6 +167,18 @@ export type OrderDetail = Order & {
   }>;
 };
 
+export type OrderProgressByUnit = {
+  summary: ProgressSummary;
+  units: Array<{
+    unit: UnitSummary & {
+      depthLevel: number;
+      commander: Pick<UserListItem, "id" | "fullName" | "username"> | null;
+    };
+    progress: ProgressSummary;
+    members: Assignment[];
+  }>;
+};
+
 export type PlatformProofLink = {
   platform: SocialPlatform;
   url: string;
@@ -156,20 +186,13 @@ export type PlatformProofLink = {
 
 export type PostingCompleteness = "lengkap" | "sebagian";
 
-export type SubmissionMetrics = {
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  reposts: number;
-};
-
 export type Submission = {
   id?: string;
   driveLink?: string | null;
   platformLinks?: PlatformProofLink[] | null;
+  targetMetrics?: TargetMetricEntry[] | null;
   metrics: SubmissionMetrics;
-  submissionSource?: "self" | "represented" | string;
+  submissionSource?: "self" | "pimpinan" | "represented" | string;
   submittedBy?: Pick<UserListItem, "id" | "fullName" | "username"> | null;
   isRepresented?: boolean;
   postingCompleteness?: PostingCompleteness | null;
@@ -204,6 +227,51 @@ export type Assignment = {
   };
   latestSubmission: Submission | null;
   canSubmitForMember?: boolean;
+};
+
+export type BulkSubmissionAssignment = {
+  id: string;
+  userId: string;
+  status: AssignmentStatus;
+  user: Pick<UserListItem, "id" | "fullName" | "username">;
+  canSubmitForMember: boolean;
+  latestSubmission: Submission | null;
+};
+
+export type BulkSubmissionList = {
+  order: {
+    id: string;
+    title: string;
+    status: OrderStatus;
+    deadline: string;
+    postingTargetPlatforms: SocialPlatform[] | null;
+  };
+  isLocked: boolean;
+  assignments: BulkSubmissionAssignment[];
+};
+
+export type BulkSubmissionRequest = {
+  submissions: Array<{
+    assignmentId: string;
+    userId: string;
+    rawLinks: string;
+    notes?: string;
+  }>;
+};
+
+export type BulkSubmissionResultItem = {
+  assignmentId: string;
+  userId: string;
+  status: "submitted" | "skipped" | "error";
+  reason?: string;
+  parsedLinks?: PlatformProofLink[];
+};
+
+export type BulkSubmissionResponse = {
+  success: boolean;
+  totalSubmitted: number;
+  totalSkipped: number;
+  results: BulkSubmissionResultItem[];
 };
 
 export type SocialAccount = {

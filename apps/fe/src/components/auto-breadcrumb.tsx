@@ -45,6 +45,18 @@ function humanize(segment: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function formatCrumbTitle(segment: string, title: string) {
+  const looksLikeLongId =
+    segment.length > 16 &&
+    /^[a-f0-9-]+$/i.test(segment)
+
+  if (!looksLikeLongId) {
+    return title
+  }
+
+  return `${segment.slice(0, 8)}...${segment.slice(-4)}`
+}
+
 function buildCrumbs(pathname: string, config: NavConfig): Crumb[] {
   const segments = pathname.split('/').filter(Boolean)
   if (segments.length === 0) return []
@@ -60,7 +72,10 @@ function buildCrumbs(pathname: string, config: NavConfig): Crumb[] {
   let currentPath = ''
   segments.forEach((segment) => {
     currentPath += `/${segment}`
-    const title = findTitle(config, currentPath) ?? humanize(segment)
+    const title = formatCrumbTitle(
+      segment,
+      findTitle(config, currentPath) ?? humanize(segment),
+    )
     crumbs.push({ title, url: currentPath })
   })
 
@@ -74,20 +89,22 @@ export function AutoBreadcrumb({ config }: { config: NavConfig }) {
   if (crumbs.length === 0) return null
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList>
+    <Breadcrumb className='min-w-0 overflow-hidden'>
+      <BreadcrumbList className='min-w-0 flex-nowrap overflow-hidden'>
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1
           return (
             <Fragment key={`${crumb.url}-${index}`}>
-              <BreadcrumbItem>
+              <BreadcrumbItem className='min-w-0 shrink overflow-hidden'>
                 {isLast || crumb.url === '#' ? (
-                  <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                  <BreadcrumbPage className='block truncate'>{crumb.title}</BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink href={crumb.url}>{crumb.title}</BreadcrumbLink>
+                  <BreadcrumbLink href={crumb.url} className='block truncate'>
+                    {crumb.title}
+                  </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
-              {!isLast ? <BreadcrumbSeparator /> : null}
+              {!isLast ? <BreadcrumbSeparator className='shrink-0' /> : null}
             </Fragment>
           )
         })}

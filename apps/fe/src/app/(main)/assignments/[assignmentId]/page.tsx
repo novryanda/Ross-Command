@@ -4,10 +4,11 @@ import { PostingCompletenessBadge } from "@/components/features/assignments/post
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
+import { TargetMetricTotalsSection } from "@/components/features/orders/target-metric-section";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { BackButton } from "@/components/komando/back-button";
-import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
+import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { PageHero } from "@/components/komando/page-hero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,6 +114,7 @@ export default async function AssignmentDetailPage({
           <CardContent>
             <BlastingMetricsInlineForm
               assignment={assignment}
+              targetUrls={assignment.order.targetUrls ?? []}
               submitUrl={`/api/v1/assignments/me/${assignment.id}/submit`}
             />
           </CardContent>
@@ -144,6 +146,11 @@ export default async function AssignmentDetailPage({
                     }
                   />
                 </div>
+              ) : isBlasting && assignment.latestSubmission.targetMetrics?.length ? (
+                <TargetMetricTotalsSection
+                  targets={assignment.latestSubmission.targetMetrics}
+                  title="Metrik per Link Target"
+                />
               ) : assignment.latestSubmission.driveLink ? (
                 <p>
                   <span className="text-muted-foreground">Link: </span>
@@ -158,17 +165,20 @@ export default async function AssignmentDetailPage({
                   {assignment.latestSubmission.notes}
                 </p>
               ) : null}
-              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-                <Metric label="Views" value={assignment.latestSubmission.metrics.views} />
-                <Metric label="Like" value={assignment.latestSubmission.metrics.likes} />
-                <Metric label="Comment" value={assignment.latestSubmission.metrics.comments} />
-                <Metric label="Share" value={assignment.latestSubmission.metrics.shares} />
-                <Metric label="Repost" value={assignment.latestSubmission.metrics.reposts} />
-              </div>
+              {isBlasting ? (
+                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                  <Metric label="Views" value={assignment.latestSubmission.metrics.views} />
+                  <Metric label="Like" value={assignment.latestSubmission.metrics.likes} />
+                  <Metric label="Comment" value={assignment.latestSubmission.metrics.comments} />
+                  <Metric label="Share" value={assignment.latestSubmission.metrics.shares} />
+                  <Metric label="Repost" value={assignment.latestSubmission.metrics.reposts} />
+                </div>
+              ) : null}
               <p className="text-muted-foreground text-xs">
-                Diinput: {assignment.latestSubmission.isRepresented ? "Diwakili Pimpinan" : "Mandiri"}
-                {assignment.latestSubmission.submittedBy?.fullName
-                  ? ` oleh ${assignment.latestSubmission.submittedBy.fullName}`
+                Diinput: {submissionInputLabel(assignment.latestSubmission) ?? "-"}
+                {assignment.latestSubmission.submittedBy?.fullName &&
+                assignment.latestSubmission.submissionSource !== "self"
+                  ? ` — ${assignment.latestSubmission.submittedBy.fullName}`
                   : ""}
               </p>
               <p className="text-muted-foreground text-xs">

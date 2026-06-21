@@ -6,9 +6,12 @@ import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
 import {
+  aggregateTargetMetricTotals,
   emptySubmissionMetrics,
+  resolveSubmissionMetrics,
   serializeLatestSubmission,
   type SubmissionMetrics,
+  type TargetMetricTotal,
 } from '../common/utils/submission.util';
 import {
   OrderStatus,
@@ -34,6 +37,26 @@ type AssignmentProgress = {
   totalPending: number;
   percentageComplete: number;
   metricTotals: SubmissionMetrics;
+  targetMetricTotals?: TargetMetricTotal[];
+};
+
+type SerializedAssignmentItem = {
+  id: string;
+  status: 'belum_dikerjakan' | 'selesai' | 'terlambat';
+  assignedAt: Date;
+  completedAt: Date | null;
+  user: {
+    id: string;
+    fullName: string;
+    username: string;
+  };
+  unit: {
+    id: string;
+    name: string;
+    path: string;
+  } | null;
+  canSubmitForMember: boolean;
+  latestSubmission: ReturnType<typeof serializeLatestSubmission>;
 };
 
 @Injectable()
@@ -593,31 +616,14 @@ export class OrdersService {
     ]);
 
     return {
-      items: assignments.map((assignment) => ({
-        id: assignment.id,
-        status: assignment.status,
-        assignedAt: assignment.assignedAt,
-        completedAt: assignment.completedAt,
-        user: {
-          id: assignment.user.id,
-          fullName: assignment.user.fullName,
-          username: assignment.user.username,
-        },
-        unit: assignment.user.unitMemberships[0]
-          ? {
-              id: assignment.user.unitMemberships[0].unit.id,
-              name: assignment.user.unitMemberships[0].unit.name,
-              path: assignment.user.unitMemberships[0].unit.path,
-            }
-          : null,
-        canSubmitForMember:
-          assignment.user.unitMemberships[0]?.unit.commanderId === commanderId,
-        latestSubmission: serializeLatestSubmission(
-          assignment.submissions[0],
+      items: assignments.map((assignment) =>
+        this.serializeAssignmentItem(
+          assignment,
+          commanderId,
           order.orderType,
           postingTargetPlatforms,
         ),
-      })),
+      ),
       meta: {
         pagination: buildPaginationMeta(parsed.page, parsed.limit, total),
       },
@@ -625,7 +631,10 @@ export class OrdersService {
   }
 
   async listOrderAssignmentsByUnit(commanderId: string, orderId: string) {
-    await this.ensureCommanderOrder(commanderId, orderId);
+    const order = await this.ensureCommanderOrder(commanderId, orderId);
+    const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
+      ? (order.postingTargetPlatforms as string[])
+      : null;
     const assignments = await this.prisma.taskAssignment.findMany({
       where: {
         orderId,
@@ -642,75 +651,123 @@ export class OrdersService {
             },
           },
         },
+        submissions: {
+          where: { isLatest: true },
+          include: {
+            submittedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                username: true,
+              },
+            },
+          },
+          take: 1,
+        },
       },
+      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
     });
 
-    const units =
-      await this.hierarchyService.getSubtreeUnitsForCommander(commanderId);
-    const nodeMap = new Map<string, Record<string, unknown>>();
-
-    for (const unit of units) {
-      nodeMap.set(unit.id, {
-        id: unit.id,
-        name: unit.name,
-        path: unit.path,
-        depthLevel: unit.depthLevel,
-        progress: {
-          totalAssigned: 0,
-          totalSubmitted: 0,
-          totalOnTime: 0,
-          totalLate: 0,
-          totalPending: 0,
-          percentageComplete: 0,
-          metricTotals: { ...emptySubmissionMetrics },
+    const unitIds = Array.from(
+      new Set(
+        assignments
+          .map((assignment) => assignment.user.unitMemberships[0]?.unit.id)
+          .filter((unitId): unitId is string => Boolean(unitId)),
+      ),
+    );
+    const unitRows = await this.prisma.unit.findMany({
+      where: {
+        id: {
+          in: unitIds,
         },
-        children: [],
-      });
-    }
+      },
+      include: {
+        commander: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+      },
+    });
+    const unitDetailMap = new Map(unitRows.map((unit) => [unit.id, unit]));
+    const units = new Map<
+      string,
+      {
+        unit: {
+          id: string;
+          name: string;
+          path: string;
+          depthLevel: number;
+          commander: {
+            id: string;
+            fullName: string;
+            username: string;
+          } | null;
+        };
+        progress: AssignmentProgress;
+        members: SerializedAssignmentItem[];
+      }
+    >();
 
     for (const assignment of assignments) {
-      const unit = assignment.user.unitMemberships[0]?.unit;
-      if (!unit) continue;
-      const node = nodeMap.get(unit.id);
-      if (!node) continue;
+      const memberUnit = assignment.user.unitMemberships[0]?.unit;
+      if (!memberUnit) {
+        continue;
+      }
 
-      const progress = node.progress as AssignmentProgress;
-      progress.totalAssigned += 1;
-      if (assignment.status !== 'belum_dikerjakan') {
-        progress.totalSubmitted += 1;
-      }
-      if (assignment.status === 'selesai') {
-        progress.totalOnTime += 1;
-      }
-      if (assignment.status === 'terlambat') {
-        progress.totalLate += 1;
-      }
-      if (assignment.status === 'belum_dikerjakan') {
-        progress.totalPending += 1;
-      }
-      progress.percentageComplete =
-        progress.totalAssigned === 0
-          ? 0
-          : Math.round(
-              (progress.totalSubmitted / progress.totalAssigned) * 10000,
-            ) / 100;
+      const assignmentItem = this.serializeAssignmentItem(
+        assignment,
+        commanderId,
+        order.orderType,
+        postingTargetPlatforms,
+      );
+
+      const current =
+        units.get(memberUnit.id) ??
+        (() => {
+          const unitDetail = unitDetailMap.get(memberUnit.id);
+          const next = {
+            unit: {
+              id: memberUnit.id,
+              name: memberUnit.name,
+              path: memberUnit.path,
+              depthLevel: memberUnit.depthLevel,
+              commander: unitDetail?.commander
+                ? {
+                    id: unitDetail.commander.id,
+                    fullName: unitDetail.commander.fullName,
+                    username: unitDetail.commander.username,
+                  }
+                : null,
+            },
+            progress: this.createEmptyProgress(),
+            members: [] as SerializedAssignmentItem[],
+          };
+          units.set(memberUnit.id, next);
+          return next;
+        })();
+
+      current.members.push(assignmentItem);
+      this.accumulateAssignmentProgress(
+        current.progress,
+        assignment.status,
+        assignmentItem.latestSubmission?.metrics,
+      );
     }
 
-    const roots: Record<string, unknown>[] = [];
-    for (const unit of units) {
-      const node = nodeMap.get(unit.id);
-      if (!node) continue;
-      if (unit.parentId && nodeMap.has(unit.parentId)) {
-        const parent = nodeMap.get(unit.parentId);
-        if (parent) {
-          (parent.children as Record<string, unknown>[]).push(node);
-          continue;
-        }
-      }
-      roots.push(node);
-    }
+    const summary = await this.getProgress(orderId);
 
-    return roots;
+    return {
+      summary,
+      units: Array.from(units.values())
+        .map((item) => ({
+          ...item,
+          progress: this.finalizeProgress(item.progress),
+        }))
+        .sort((left, right) => left.unit.path.localeCompare(right.unit.path)),
+    };
   }
 
   async exportAssignments(commanderId: string, orderId: string) {
@@ -789,6 +846,14 @@ export class OrdersService {
         ._all ?? 0;
     const totalSubmitted = totalOnTime + totalLate;
     const metricTotals = await this.getMetricTotals(orderId);
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { orderType: true },
+    });
+    const targetMetricTotals =
+      order?.orderType === 'engagement'
+        ? await this.getTargetMetricTotals(orderId)
+        : undefined;
 
     return {
       totalAssigned,
@@ -801,6 +866,7 @@ export class OrdersService {
           ? 0
           : Math.round((totalSubmitted / totalAssigned) * 10000) / 100,
       metricTotals,
+      ...(targetMetricTotals?.length ? { targetMetricTotals } : {}),
     };
   }
 
@@ -984,16 +1050,7 @@ export class OrdersService {
       hoursUntilDeadline,
       isNearDeadline: hoursUntilDeadline !== null && hoursUntilDeadline < 24,
       progress:
-        progress ??
-        ({
-          totalAssigned: 0,
-          totalSubmitted: 0,
-          totalOnTime: 0,
-          totalLate: 0,
-          totalPending: 0,
-          percentageComplete: 0,
-          metricTotals: { ...emptySubmissionMetrics },
-        } satisfies AssignmentProgress),
+        progress ?? this.createEmptyProgress(),
     };
   }
 
@@ -1056,6 +1113,31 @@ export class OrdersService {
     return map.get(orderId) ?? { ...emptySubmissionMetrics };
   }
 
+  private async getTargetMetricTotals(
+    orderId: string,
+  ): Promise<TargetMetricTotal[]> {
+    const socialTargets = await this.prisma.orderSocialTarget.findMany({
+      where: { orderId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    if (!socialTargets.length) {
+      return [];
+    }
+
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        isLatest: true,
+        assignment: { orderId },
+      },
+      select: {
+        targetMetrics: true,
+      },
+    });
+
+    return aggregateTargetMetricTotals(socialTargets, submissions);
+  }
+
   private async getMetricTotalsMap(orderIds: string[]) {
     const map = new Map<string, SubmissionMetrics>();
     if (!orderIds.length) {
@@ -1081,6 +1163,7 @@ export class OrdersService {
         comments: true,
         shares: true,
         reposts: true,
+        targetMetrics: true,
         assignment: {
           select: {
             orderId: true,
@@ -1092,11 +1175,12 @@ export class OrdersService {
     for (const submission of submissions) {
       const current =
         map.get(submission.assignment.orderId) ?? { ...emptySubmissionMetrics };
-      current.views += submission.views;
-      current.likes += submission.likes;
-      current.comments += submission.comments;
-      current.shares += submission.shares;
-      current.reposts += submission.reposts;
+      const resolved = resolveSubmissionMetrics(submission);
+      current.views += resolved.views;
+      current.likes += resolved.likes;
+      current.comments += resolved.comments;
+      current.shares += resolved.shares;
+      current.reposts += resolved.reposts;
       map.set(submission.assignment.orderId, current);
     }
 
@@ -1319,5 +1403,127 @@ export class OrdersService {
     }
 
     return undefined;
+  }
+
+  private serializeAssignmentItem(
+    assignment: {
+      id: string;
+      status: 'belum_dikerjakan' | 'selesai' | 'terlambat';
+      assignedAt: Date;
+      completedAt: Date | null;
+      user: {
+        id: string;
+        fullName: string;
+        username: string;
+        unitMemberships: Array<{
+          unit: {
+            id: string;
+            name: string;
+            path: string;
+            commanderId: string | null;
+          };
+        }>;
+      };
+      submissions: Array<{
+        id: string;
+        userId: string;
+        submittedByUserId: string | null;
+        submissionSource: string | null;
+        driveLink: string | null;
+        platformLinks: Prisma.JsonValue;
+        views: number;
+        likes: number;
+        comments: number;
+        shares: number;
+        reposts: number;
+        notes: string | null;
+        submittedAt: Date;
+        submittedBy: {
+          id: string;
+          fullName: string;
+          username: string;
+        } | null;
+      }>;
+    },
+    commanderId: string,
+    orderType: OrderType,
+    postingTargetPlatforms: string[] | null,
+  ): SerializedAssignmentItem {
+    return {
+      id: assignment.id,
+      status: assignment.status,
+      assignedAt: assignment.assignedAt,
+      completedAt: assignment.completedAt,
+      user: {
+        id: assignment.user.id,
+        fullName: assignment.user.fullName,
+        username: assignment.user.username,
+      },
+      unit: assignment.user.unitMemberships[0]
+        ? {
+            id: assignment.user.unitMemberships[0].unit.id,
+            name: assignment.user.unitMemberships[0].unit.name,
+            path: assignment.user.unitMemberships[0].unit.path,
+          }
+        : null,
+      canSubmitForMember:
+        assignment.user.unitMemberships[0]?.unit.commanderId === commanderId,
+      latestSubmission: serializeLatestSubmission(
+        assignment.submissions[0],
+        orderType,
+        postingTargetPlatforms,
+      ),
+    };
+  }
+
+  private createEmptyProgress(): AssignmentProgress {
+    return {
+      totalAssigned: 0,
+      totalSubmitted: 0,
+      totalOnTime: 0,
+      totalLate: 0,
+      totalPending: 0,
+      percentageComplete: 0,
+      metricTotals: { ...emptySubmissionMetrics },
+    };
+  }
+
+  private accumulateAssignmentProgress(
+    progress: AssignmentProgress,
+    status: 'belum_dikerjakan' | 'selesai' | 'terlambat',
+    metrics?: SubmissionMetrics,
+  ) {
+    progress.totalAssigned += 1;
+    if (status !== 'belum_dikerjakan') {
+      progress.totalSubmitted += 1;
+    }
+    if (status === 'selesai') {
+      progress.totalOnTime += 1;
+    }
+    if (status === 'terlambat') {
+      progress.totalLate += 1;
+    }
+    if (status === 'belum_dikerjakan') {
+      progress.totalPending += 1;
+    }
+
+    if (metrics) {
+      progress.metricTotals.views += metrics.views;
+      progress.metricTotals.likes += metrics.likes;
+      progress.metricTotals.comments += metrics.comments;
+      progress.metricTotals.shares += metrics.shares;
+      progress.metricTotals.reposts += metrics.reposts;
+    }
+  }
+
+  private finalizeProgress(progress: AssignmentProgress): AssignmentProgress {
+    return {
+      ...progress,
+      percentageComplete:
+        progress.totalAssigned === 0
+          ? 0
+          : Math.round((progress.totalSubmitted / progress.totalAssigned) * 10000) /
+            100,
+    };
   }
 }

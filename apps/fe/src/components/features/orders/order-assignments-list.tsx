@@ -8,20 +8,29 @@ import { PostingProofDialog } from "@/components/features/assignments/posting-pr
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
 import { OrderAssignmentsTable } from "@/components/features/orders/order-assignments-table";
-import { StatusBadge } from "@/components/komando/badges";
+import { StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Assignment, OrderType, SocialPlatform } from "@/lib/api/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import type { Assignment, OrderSocialTarget, OrderType, SocialPlatform } from "@/lib/api/types";
 
 export function OrderAssignmentsList({
   assignments,
   orderType,
   postingTargetPlatforms = [],
+  targetUrls = [],
   orderId,
 }: {
   assignments: Assignment[];
   orderType?: OrderType;
   postingTargetPlatforms?: SocialPlatform[];
+  targetUrls?: OrderSocialTarget[];
   orderId: string;
 }) {
   const searchParams = useSearchParams();
@@ -36,6 +45,7 @@ export function OrderAssignmentsList({
         assignments={assignments}
         orderType={orderType}
         postingTargetPlatforms={postingTargetPlatforms}
+        targetUrls={targetUrls}
         orderId={orderId}
       />
     );
@@ -53,9 +63,9 @@ export function OrderAssignmentsList({
               </p>
               {assignment.latestSubmission ? (
                 <p className="text-muted-foreground mt-1 text-xs">
-                  {assignment.latestSubmission.isRepresented ? "Diwakili Pimpinan" : "Mandiri"}
+                  {submissionInputLabel(assignment.latestSubmission)}
                   {assignment.latestSubmission.submittedBy?.fullName
-                    ? ` oleh ${assignment.latestSubmission.submittedBy.fullName}`
+                    ? ` — ${assignment.latestSubmission.submittedBy.fullName}`
                     : ""}
                 </p>
               ) : null}
@@ -69,10 +79,25 @@ export function OrderAssignmentsList({
                 />
               ) : null}
               {isBlasting && assignment.canSubmitForMember ? (
-                <BlastingMetricsInlineForm
-                  assignment={assignment}
-                  submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
-                />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      {assignment.latestSubmission ? "Ubah Metrik" : "Input Metrik"}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {assignment.latestSubmission ? "Ubah Metrik Blasting" : "Input Metrik Blasting"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <BlastingMetricsInlineForm
+                      assignment={assignment}
+                      targetUrls={targetUrls}
+                      submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
+                    />
+                  </DialogContent>
+                </Dialog>
               ) : assignment.latestSubmission ? (
                 isPosting && assignment.latestSubmission.platformLinks?.length ? (
                   <PostingProofDialog
@@ -97,7 +122,7 @@ export function OrderAssignmentsList({
                   title={assignment.latestSubmission ? "Edit Bukti Anggota" : "Input Bukti Anggota"}
                   trigger={
                     <Button size="sm" variant="outline">
-                      {assignment.latestSubmission ? "Edit Bukti" : "Input Bukti"}
+                      {assignment.latestSubmission ? "Ubah Bukti" : "Input Bukti"}
                     </Button>
                   }
                 />

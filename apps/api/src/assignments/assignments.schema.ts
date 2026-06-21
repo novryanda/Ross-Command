@@ -22,17 +22,40 @@ const platformProofLinkSchema = z.object({
   url: z.string().trim().url(),
 });
 
+const submissionMetricsSchema = z.object({
+  views: z.coerce.number().int().min(0).default(0),
+  likes: z.coerce.number().int().min(0).default(0),
+  comments: z.coerce.number().int().min(0).default(0),
+  shares: z.coerce.number().int().min(0).default(0),
+  reposts: z.coerce.number().int().min(0).default(0),
+});
+
+const targetMetricEntrySchema = z.object({
+  targetId: z.string().uuid(),
+  platform: socialPlatformSchema,
+  url: z.string().trim().url(),
+  metrics: submissionMetricsSchema,
+});
+
 export const submitProofSchema = z.object({
   driveLink: z.string().trim().url().optional(),
   platformLinks: z.array(platformProofLinkSchema).optional(),
-  metrics: z
-    .object({
-      views: z.coerce.number().int().min(0).default(0),
-      likes: z.coerce.number().int().min(0).default(0),
-      comments: z.coerce.number().int().min(0).default(0),
-      shares: z.coerce.number().int().min(0).default(0),
-      reposts: z.coerce.number().int().min(0).default(0),
-    })
-    .optional(),
+  targetMetrics: z.array(targetMetricEntrySchema).optional(),
+  metrics: submissionMetricsSchema.optional(),
   notes: z.string().trim().max(5000).optional(),
+});
+
+export const bulkSubmissionItemSchema = z.object({
+  assignmentId: z.string().uuid(),
+  userId: z.string().uuid(),
+  rawLinks: z.string().trim().min(1),
+  notes: z.string().trim().max(5000).optional(),
+});
+
+export const bulkSubmissionRequestSchema = z.object({
+  submissions: z.array(bulkSubmissionItemSchema).min(1),
+});
+
+export const bulkSubmissionQuerySchema = z.object({
+  unitId: z.string().uuid().optional(),
 });

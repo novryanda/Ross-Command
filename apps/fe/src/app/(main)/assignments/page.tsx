@@ -1,7 +1,11 @@
 import { Suspense } from "react";
 
 import { AssignmentsList } from "@/components/features/assignments/assignments-list";
-import { assignmentStatusLabel, orderTypeLabel } from "@/components/komando/badges";
+import {
+  assignmentStatusLabel,
+  orderTypeFilterAliases,
+  orderTypeFilterOptions,
+} from "@/components/komando/badges";
 import { FilterBar } from "@/components/komando/filter-bar";
 import { ListViewToggle } from "@/components/komando/list-view-toggle";
 import { PageHero } from "@/components/komando/page-hero";
@@ -50,7 +54,8 @@ export default async function AssignmentsPage({
           {
             key: "orderType",
             label: "Jenis",
-            options: Object.entries(orderTypeLabel).map(([value, label]) => ({ value, label })),
+            options: [...orderTypeFilterOptions],
+            aliases: orderTypeFilterAliases,
           },
         ]}
         dateFilters={[

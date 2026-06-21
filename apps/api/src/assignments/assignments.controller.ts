@@ -78,4 +78,32 @@ export class AssignmentRepresentedController {
     );
     return successResponse(result, 'Bukti anggota berhasil dikirim');
   }
+
+  @Get(':orderId/bulk-submission')
+  async listBulkSubmissionAssignments(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const result = await this.assignmentsService.listBulkSubmissionAssignments(
+      currentUser.user.id,
+      orderId,
+      query,
+    );
+    return successResponse(result);
+  }
+
+  @Post(':orderId/bulk-submission')
+  async bulkSubmitProof(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Body() body: unknown,
+  ) {
+    const result = await this.assignmentsService.bulkSubmitProof(
+      currentUser.user.id,
+      orderId,
+      body,
+    );
+    return successResponse(result, 'Bulk submission berhasil diproses');
+  }
 }

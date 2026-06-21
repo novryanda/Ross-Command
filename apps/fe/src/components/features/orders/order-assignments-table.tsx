@@ -8,7 +8,7 @@ import { PostingCompletenessBadge } from "@/components/features/assignments/post
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
-import { StatusBadge } from "@/components/komando/badges";
+import { StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Assignment, OrderType, SocialPlatform } from "@/lib/api/types";
+import type { Assignment, OrderSocialTarget, OrderType, SocialPlatform } from "@/lib/api/types";
 
 type AssignmentTableColumn =
   | "unit"
@@ -125,7 +125,7 @@ function SubmitterLabel({ assignment }: { assignment: Assignment }) {
 
   return (
     <div className="min-w-28">
-      <p className="text-sm leading-tight">{submission.isRepresented ? "Diwakili Pimpinan" : "Mandiri"}</p>
+      <p className="text-sm leading-tight">{submissionInputLabel(submission) ?? "-"}</p>
       <p className="text-muted-foreground text-xs">{submission.submittedBy?.fullName ?? "-"}</p>
     </div>
   );
@@ -135,11 +135,13 @@ export function OrderAssignmentsTable({
   assignments,
   orderType,
   postingTargetPlatforms = [],
+  targetUrls = [],
   orderId,
 }: {
   assignments: Assignment[];
   orderType?: OrderType;
   postingTargetPlatforms?: SocialPlatform[];
+  targetUrls?: OrderSocialTarget[];
   orderId: string;
 }) {
   const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
@@ -154,7 +156,7 @@ export function OrderAssignmentsTable({
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
               <Settings2Icon className="size-3.5" />
-              Columns
+              Kolom
               <ChevronDownIcon className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -274,6 +276,7 @@ export function OrderAssignmentsTable({
                       {isBlasting && assignment.canSubmitForMember ? (
                         <BlastingMetricsDialog
                           assignment={assignment}
+                          targetUrls={targetUrls}
                           submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
                         />
                       ) : (
@@ -293,7 +296,7 @@ export function OrderAssignmentsTable({
                           title={assignment.latestSubmission ? "Edit Bukti Anggota" : "Input Bukti Anggota"}
                           trigger={
                             <Button size="sm" variant="outline" className="h-8">
-                              {assignment.latestSubmission ? "Edit" : "Input"}
+                              {assignment.latestSubmission ? "Ubah" : "Input"}
                             </Button>
                           }
                         />
@@ -361,23 +364,31 @@ function MetricSummary({ assignment }: { assignment: Assignment }) {
 
 function BlastingMetricsDialog({
   assignment,
+  targetUrls,
   submitUrl,
 }: {
   assignment: Assignment;
+  targetUrls: OrderSocialTarget[];
   submitUrl: string;
 }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="h-8">
-          {assignment.latestSubmission ? "Edit" : "Input"}
+          {assignment.latestSubmission ? "Ubah" : "Input"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Input Metrik Blasting</DialogTitle>
+          <DialogTitle>
+            {assignment.latestSubmission ? "Ubah Metrik Blasting" : "Input Metrik Blasting"}
+          </DialogTitle>
         </DialogHeader>
-        <BlastingMetricsInlineForm assignment={assignment} submitUrl={submitUrl} />
+        <BlastingMetricsInlineForm
+          assignment={assignment}
+          targetUrls={targetUrls}
+          submitUrl={submitUrl}
+        />
       </DialogContent>
     </Dialog>
   );

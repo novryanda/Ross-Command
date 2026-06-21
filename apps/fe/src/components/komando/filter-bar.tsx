@@ -12,6 +12,7 @@ export type SelectFilter = {
   label: string;
   options: Array<{ value: string; label: string }>;
   visibleWhen?: { key: string; equals: string };
+  aliases?: Record<string, string>;
 };
 
 export type DateFilter = {
@@ -53,6 +54,18 @@ export function FilterBar({
     router.push(pathname);
   }
 
+  function getSelectedValue(filter: SelectFilter) {
+    const rawValue = searchParams.get(filter.key) ?? "all";
+    if (rawValue === "all") {
+      return rawValue;
+    }
+
+    const aliasedValue = filter.aliases?.[rawValue] ?? rawValue;
+    const hasOption = filter.options.some((option) => option.value === aliasedValue);
+
+    return hasOption ? aliasedValue : "all";
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
       {searchKey ? (
@@ -79,7 +92,7 @@ export function FilterBar({
         .map((filter) => (
         <Select
           key={filter.key}
-          value={searchParams.get(filter.key) ?? "all"}
+          value={getSelectedValue(filter)}
           onValueChange={(value) => setParam(filter.key, value)}
         >
           <SelectTrigger size="sm" className="w-44">

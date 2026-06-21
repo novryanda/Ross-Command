@@ -3,7 +3,12 @@ import { PlusIcon } from "lucide-react";
 import { Suspense } from "react";
 
 import { OrdersList } from "@/components/features/orders/orders-list";
-import { orderStatusLabel, orderTypeLabel, sentimentLabel } from "@/components/komando/badges";
+import {
+  orderStatusLabel,
+  orderTypeFilterAliases,
+  orderTypeFilterOptions,
+  sentimentLabel,
+} from "@/components/komando/badges";
 import { FilterBar } from "@/components/komando/filter-bar";
 import { ListViewToggle } from "@/components/komando/list-view-toggle";
 import { PageHero } from "@/components/komando/page-hero";
@@ -62,7 +67,8 @@ export default async function OrdersPage({
           {
             key: "orderType",
             label: "Jenis",
-            options: Object.entries(orderTypeLabel).map(([value, label]) => ({ value, label })),
+            options: [...orderTypeFilterOptions],
+            aliases: orderTypeFilterAliases,
           },
           {
             key: "sentiment",

@@ -31,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
+import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import type { Order, OrderType, PaginationMeta } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
@@ -187,17 +187,7 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
               </span>
               <span>{row.original.progress.percentageComplete}%</span>
             </div>
-            <Progress
-              value={row.original.progress.percentageComplete}
-              className={cn(
-                "h-1.5",
-                row.original.status === "selesai" && "[&_[data-slot=progress-indicator]]:bg-emerald-500",
-                (row.original.status === "expired" || row.original.status === "dibatalkan") &&
-                  "[&_[data-slot=progress-indicator]]:bg-red-500",
-                row.original.status === "aktif" && "[&_[data-slot=progress-indicator]]:bg-foreground",
-                row.original.status === "draft" && "[&_[data-slot=progress-indicator]]:bg-muted-foreground",
-              )}
-            />
+            <ToneProgressBar value={row.original.progress.percentageComplete} />
           </div>
         ),
       },
