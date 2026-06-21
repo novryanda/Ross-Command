@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/auth.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SessionAuthGuard } from '../common/guards/session-auth.guard';
@@ -12,9 +12,13 @@ export class DashboardController {
 
   @Get('commander')
   @UseGuards(SessionAuthGuard)
-  async getCommanderDashboard(@CurrentUser() currentUser: AuthenticatedUser) {
+  async getCommanderDashboard(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: Record<string, unknown>,
+  ) {
     const result = await this.dashboardService.getCommanderDashboard(
       currentUser.user.id,
+      query,
     );
     return successResponse(result);
   }

@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { brandAssets } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 
 type AppLogoProps = {
@@ -10,10 +11,10 @@ type AppLogoProps = {
 export function AppLogo({ variant = "sidebar", className }: AppLogoProps) {
   return (
     <Image
-      src="/images/ROSS_full_logo_besar_1024.png"
-      alt="ROSS - Ruang Operasi Siber Strategis"
-      width={209}
-      height={260}
+      src={brandAssets.logo}
+      alt="Pusat Siber TNI AD"
+      width={160}
+      height={160}
       className={cn(
         "w-auto shrink-0 object-contain",
         variant === "hero" ? "h-28" : "h-14 min-h-[56px]",

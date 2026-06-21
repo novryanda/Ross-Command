@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { brandAssets } from "@/lib/assets";
 import { QueryProvider } from "@/providers/query-provider";
 
 const geistSans = Geist({
@@ -24,9 +25,9 @@ export const metadata: Metadata = {
   description: "Sistem manajemen perintah dan pelaporan operasi siber.",
   manifest: "/site.webmanifest",
   icons: {
-    icon: [{ url: "/ROSS_favicon.ico", sizes: "any" }],
-    shortcut: "/ROSS_favicon.ico",
-    apple: { url: "/ROSS_favicon.ico", sizes: "180x180" },
+    icon: [{ url: brandAssets.favicon, sizes: "any" }],
+    shortcut: brandAssets.favicon,
+    apple: { url: brandAssets.logo, sizes: "180x180" },
   },
   appleWebApp: {
     title: "Command Center",

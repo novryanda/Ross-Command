@@ -97,7 +97,7 @@ export default async function OrdersPage({
         <PageState title="Belum ada perintah" description="Perintah yang cocok dengan filter akan muncul di sini." />
       )}
 
-      {params.view === "table" ? null : <ServerPagination meta={response.meta?.pagination} searchParams={params} />}
+      {params.view === "card" ? <ServerPagination meta={response.meta?.pagination} searchParams={params} /> : null}
     </div>
   );
 }

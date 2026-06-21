@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
 import { LoginForm } from "@/components/features/auth/login-form";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LoginPage() {
@@ -14,13 +13,16 @@ export default function LoginPage() {
 
 function LoginFallback() {
   return (
-    <Card>
-      <CardContent className="space-y-4 p-6">
-        <Skeleton className="mx-auto size-10 rounded-md" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </CardContent>
-    </Card>
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-4 w-full max-w-sm" />
+      </div>
+      <div className="space-y-5">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
   );
 }

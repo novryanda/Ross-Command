@@ -366,13 +366,64 @@ export type DashboardAdmin = {
   };
 };
 
+export type DashboardCommanderFilters = {
+  period: "7d" | "30d" | "90d" | "all" | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  status: OrderStatus | null;
+  orderType: OrderType | null;
+  deadlineFrom: string | null;
+  deadlineTo: string | null;
+};
+
+export type DashboardCommanderCharts = {
+  overallProgress: {
+    totalAssigned: number;
+    totalSubmitted: number;
+    totalPending: number;
+    totalLate: number;
+    percentageComplete: number;
+  };
+  assignmentStatus: {
+    submitted: number;
+    pending: number;
+    late: number;
+  };
+  orderStatus: {
+    draft: number;
+    aktif: number;
+    selesai: number;
+    expired: number;
+    dibatalkan: number;
+  };
+  orderType: {
+    posting: number;
+    blasting: number;
+    komentar: number;
+    report_akun: number;
+  };
+  progressDistribution: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  weeklyOrders: Array<{
+    label: string;
+    count: number;
+  }>;
+};
+
 export type DashboardCommander = {
+  filters: DashboardCommanderFilters;
   stats: {
     totalActiveOrders: number;
     totalSubordinateMembers: number;
     totalPendingAssignments: number;
     totalCompletedAssignments: number;
+    needsAttentionCount: number;
+    totalFilteredOrders: number;
   };
+  charts: DashboardCommanderCharts;
   activeOrders: Order[];
 };
 

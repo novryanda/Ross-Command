@@ -8,13 +8,13 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { LoginBrandLogos } from "@/components/features/auth/login-brand-logos";
+import { QuickLoginButtons } from "@/components/features/auth/quick-login-buttons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { QuickLoginButtons } from "@/components/features/auth/quick-login-buttons";
-import { AppLogo } from "@/components/komando/app-logo";
+import { Separator } from "@/components/ui/separator";
 import type { SeedUser } from "@/config/seed-users";
 import { authClient } from "@/lib/auth-client";
 
@@ -91,78 +91,96 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="space-y-3 text-center">
-        <AppLogo variant="hero" className="mx-auto" />
-        <div className="space-y-1">
-          <CardTitle className="text-xl">Command Center</CardTitle>
-          <CardDescription>Sistem Manajemen Operasi Siber</CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
+    <div className="space-y-8">
+      <LoginBrandLogos />
 
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
+      <Form {...form}>
+        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Input placeholder="superadmin" autoComplete="username" className="h-10" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <div className="relative">
                   <FormControl>
-                    <Input placeholder="superadmin" autoComplete="username" {...field} />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Masukkan password"
+                      autoComplete="current-password"
+                      className="h-10 pr-10"
+                      {...field}
+                    />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+                  </Button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Masukkan password"
-                        autoComplete="current-password"
-                        className="pr-10"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
-                      onClick={() => setShowPassword((value) => !value)}
-                      aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                    >
-                      {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Button type="submit" className="h-10 w-full" disabled={submitting}>
+            {submitting ? <Loader2Icon className="animate-spin" /> : null}
+            Masuk
+          </Button>
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? <Loader2Icon className="animate-spin" /> : null}
-              Masuk
-            </Button>
-            <p className="text-muted-foreground text-center text-xs">Lupa password? Hubungi Admin.</p>
-            <QuickLoginButtons disabled={submitting} onSelect={handleQuickLogin} />
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          <p className="text-muted-foreground text-center text-xs">Lupa password? Hubungi Admin.</p>
+
+          <QuickLoginSection disabled={submitting} onSelect={handleQuickLogin} />
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+function QuickLoginSection({
+  disabled,
+  onSelect,
+}: {
+  disabled?: boolean;
+  onSelect: (user: SeedUser) => void;
+}) {
+  const enabled = process.env.NEXT_PUBLIC_ENABLE_QUICK_LOGIN !== "false";
+  if (!enabled) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Separator />
+        <span className="bg-background text-muted-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs">
+          Atau gunakan akses cepat
+        </span>
+      </div>
+      <QuickLoginButtons disabled={disabled} onSelect={onSelect} />
+    </div>
   );
 }
