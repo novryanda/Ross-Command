@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 
 import { AssignmentsTable } from "@/components/features/assignments/assignments-table";
 import {
-  CommentSentimentBadge,
   DeadlineBadge,
   OrderTypeBadge,
   StatusBadge,
@@ -39,9 +38,6 @@ export function AssignmentsList({
               </Link>
               <div className="flex flex-wrap gap-1.5">
                 <OrderTypeBadge type={assignment.order.orderType} />
-                {assignment.order.orderType === "komentar" && assignment.order.sentiment ? (
-                  <CommentSentimentBadge sentiment={assignment.order.sentiment} />
-                ) : null}
                 <StatusBadge status={assignment.status} />
                 <DeadlineBadge deadline={assignment.order.deadline} />
               </div>

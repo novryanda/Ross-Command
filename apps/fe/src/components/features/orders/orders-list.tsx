@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 
 import { OrdersTable } from "@/components/features/orders/orders-table";
 import {
-  CommentSentimentBadge,
   DeadlineBadge,
   OrderTypeBadge,
   StatusBadge,
@@ -35,9 +34,6 @@ export function OrdersList({ orders, pagination }: { orders: Order[]; pagination
                 </Link>
                 <div className="flex flex-wrap gap-1.5">
                   <OrderTypeBadge type={order.orderType} />
-                  {order.orderType === "komentar" && order.sentiment ? (
-                    <CommentSentimentBadge sentiment={order.sentiment} />
-                  ) : null}
                   <StatusBadge status={order.status} />
                   <DeadlineBadge deadline={order.deadline} />
                 </div>

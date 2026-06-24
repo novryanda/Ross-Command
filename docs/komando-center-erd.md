@@ -393,10 +393,9 @@ Entitas utama perintah yang dibuat komandan.
 | `id` | UUID | primary key |
 | `created_by` | UUID | FK ke `users.id` |
 | `title` | varchar(255) | judul perintah |
-| `order_type` | enum `OrderType` | `posting`, `engagement`, `komentar`, `report_akun` |
+| `order_type` | enum `OrderType` | `posting`, `engagement`, `counter`, `report_akun` |
 | `description` | text | instruksi utama |
-| `narration` | text, nullable | narasi/caption/komentar |
-| `sentiment` | enum `OrderSentiment`, nullable | untuk komentar |
+| `narration` | text, nullable | narasi/caption/counter |
 | `engagement_actions` | json, nullable | aksi engagement |
 | `report_reason` | text, nullable | alasan report |
 | `posting_source_url` | text, nullable | sumber materi posting |
@@ -523,10 +522,8 @@ Log domain-level untuk order dan submission.
 
 - `posting`
 - `engagement`
-- `komentar`
+- `counter`
 - `report_akun`
-
-### 4.3 `OrderSentiment`
 
 - `positive`
 - `negative`

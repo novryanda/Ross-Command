@@ -150,15 +150,49 @@ export class HierarchyService {
       );
     }
 
-    const memberships = await this.prisma.unitMember.findMany({
+    const units = await this.prisma.unit.findMany({
       where: {
-        removedAt: null,
-        unit: {
-          deletedAt: null,
-          path: {
-            startsWith: targetUnit.path,
+        deletedAt: null,
+        path: {
+          startsWith: targetUnit.path,
+        },
+      },
+      select: {
+        id: true,
+        commanderId: true,
+        leaderOnlyAssignments: true,
+        commander: {
+          select: {
+            id: true,
+            deletedAt: true,
           },
         },
+      },
+      orderBy: {
+        path: 'asc',
+      },
+    });
+    const memberUnitIds = units
+      .filter((unit) => !unit.leaderOnlyAssignments)
+      .map((unit) => unit.id);
+    const memberIds = new Set<string>();
+
+    for (const unit of units) {
+      if (
+        unit.leaderOnlyAssignments &&
+        unit.commander?.id &&
+        !unit.commander.deletedAt
+      ) {
+        memberIds.add(unit.commander.id);
+      }
+    }
+
+    const memberships = await this.prisma.unitMember.findMany({
+      where: {
+        unitId: {
+          in: memberUnitIds,
+        },
+        removedAt: null,
         user: {
           deletedAt: null,
         },
@@ -169,7 +203,11 @@ export class HierarchyService {
       },
     });
 
-    return memberships.map((membership) => membership.userId);
+    for (const membership of memberships) {
+      memberIds.add(membership.userId);
+    }
+
+    return Array.from(memberIds);
   }
 
   async resolveUnitLeaderIds(unitId: string): Promise<string[]> {

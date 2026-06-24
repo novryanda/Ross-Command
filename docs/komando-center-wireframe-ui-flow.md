@@ -222,7 +222,7 @@ Halaman utama Komandan setelah login. Menyajikan ringkasan status seluruh perint
 | Filter | Tipe Komponen | Opsi / Nilai |
 |--------|---------------|--------------|
 | **Satuan** | Dropdown tree (searchable) | Semua Satuan / [daftar satuan di bawah komandan secara hierarki] |
-| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Engagement / Komentar / Report Akun |
+| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Blasting / Counter / Report |
 | **Status Perintah** | Dropdown single-select | Semua / Aktif / Selesai / Expired / Draft / Dibatalkan |
 | **Periode Preset** | Dropdown single-select | Hari ini / Minggu ini / Bulan ini / Bulan lalu / Custom |
 | **Rentang Tanggal** | Date range picker | Dari [tanggal] s/d [tanggal] — aktif jika periode = Custom |
@@ -259,8 +259,8 @@ Multi-step wizard dengan progress indicator.
 │                                                                     │
 │  Jenis Perintah *                                                   │
 │  ┌──────────────────────────────────────┐                          │
-│  │  ○ 📝 POSTING      ○ 👍 ENGAGEMENT  │                          │
-│  │  ○ 💬 KOMENTAR     ○ 🚩 REPORT AKUN │                          │
+│  │  ○ 📝 POSTING      ○ 👍 BLASTING    │                          │
+│  │  ○ 💬 COUNTER      ○ 🚩 REPORT      │                          │
 │  └──────────────────────────────────────┘                          │
 │                                                                     │
 │  ── [Muncul kondisional berdasarkan Jenis Perintah] ─────────────  │
@@ -282,14 +282,11 @@ Multi-step wizard dengan progress indicator.
 │  │  ☑ 👍 Like   ☑ 🔁 Share   ☑ 🔄 Repost  │                      │
 │  └──────────────────────────────────────────┘                      │
 │                                                                     │
-│  [Jika KOMENTAR]                                                    │
-│  Narasi Komentar * (teks yang harus digunakan)                      │
+│  [Jika COUNTER]                                                     │
+│  Narasi Counter * (teks yang harus digunakan)                       │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │                                                             │   │
 │  └─────────────────────────────────────────────────────────────┘   │
-│  Sentimen Komentar *                                                │
-│  ○ 👍 Positif    ○ 👎 Negatif                                       │
-│                                                                     │
 │  [Jika REPORT AKUN]                                                 │
 │  Alasan Report *                                                    │
 │  ┌──────────────────────────────────┐                              │
@@ -389,9 +386,9 @@ Multi-step wizard dengan progress indicator.
 │  📋 RINGKASAN PERINTAH                                              │
 │                                                                     │
 │  Judul          : Serbu Postingan @target123                        │
-│  Jenis          : 💬 KOMENTAR (Sentimen: Negatif)                   │
+│  Jenis          : 💬 COUNTER                                        │
 │  Link Target    : https://instagram.com/p/abc123                   │
-│  Narasi Komentar: "Akun ini menyebarkan informasi tidak akurat..."  │
+│  Narasi Counter : "Akun ini menyebarkan informasi tidak akurat..."  │
 │  Deadline       : 16 Juni 2026, 17.00 WIB                          │
 │                                                                     │
 │  👥 TARGET DISTRIBUSI                                               │
@@ -441,11 +438,11 @@ Multi-step wizard dengan progress indicator.
 │                                                                     │
 │  Judul Perintah      │ Jenis    │ Deadline      │ Progress │ Aksi  │
 │  ─────────────────────────────────────────────────────────────────  │
-│  Serbu @target123    │ KOMENTAR │ Hari ini 17:00│ 62/97 ⚠️ │ [→]   │
+│  Serbu @target123    │ COUNTER  │ Hari ini 17:00│ 62/97 ⚠️ │ [→]   │
 │  Like & Share Resmi  │ ENGAGE.  │ Besok 12:00   │ 90/145   │ [→]   │
 │  Upload Konten Juni  │ POSTING  │ 20 Jun 08:00  │ 145/145✅│ [→]   │
-│  Report Akun Hoaks   │ REPORT   │ 18 Jun 20:00  │ 0/97  🚨 │ [→]   │
-│  Komentar Positif X  │ KOMENTAR │ [EXPIRED]     │ 70/97 ⏰  │ [→]   │
+│  Report Hoaks        │ REPORT   │ 18 Jun 20:00  │ 0/97  🚨 │ [→]   │
+│  Counter Narasi X    │ COUNTER  │ [EXPIRED]     │ 70/97 ⏰  │ [→]   │
 │  ─────────────────────────────────────────────────────────────────  │
 │                                                                     │
 │                          [← Prev]  1  2  3  [Next →]               │
@@ -458,7 +455,7 @@ Multi-step wizard dengan progress indicator.
 | Filter | Tipe Komponen | Opsi / Nilai |
 |--------|---------------|--------------|
 | **Cari Judul** | Search input | Free text, real-time |
-| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Engagement / Komentar / Report Akun |
+| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Blasting / Counter / Report |
 | **Status Perintah** | Dropdown single-select | Semua / Draft / Aktif / Selesai / Expired / Dibatalkan |
 | **Target Satuan** | Dropdown tree searchable | Semua / [daftar satuan di bawah komandan] |
 | **Periode Preset** | Dropdown | Hari ini / Minggu ini / Bulan ini / Bulan lalu / Semua / Custom |
@@ -603,7 +600,7 @@ Multi-step wizard dengan progress indicator.
 | Filter | Tipe Komponen | Opsi / Nilai |
 |--------|---------------|--------------|
 | **Cari Judul** | Search input | Free text, real-time |
-| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Engagement / Komentar / Report Akun |
+| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Blasting / Counter / Report |
 | **Status Saya** | Dropdown single-select | Semua / Belum Dikerjakan / Selesai / Terlambat |
 | **Dari Siapa** | Dropdown | Semua / [daftar nama Komandan yang pernah beri perintah] |
 | **Periode** | Dropdown | Hari ini / Minggu ini / Bulan ini / Bulan lalu / Semua / Custom |
@@ -787,7 +784,7 @@ Multi-step wizard dengan progress indicator.
 | Filter | Tipe Komponen | Opsi / Nilai |
 |--------|---------------|--------------|
 | **Status Assignment** | Dropdown single-select | Semua / Selesai / Terlambat / Belum Dikerjakan |
-| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Engagement / Komentar / Report Akun |
+| **Jenis Perintah** | Dropdown multi-select | Semua / Posting / Blasting / Counter / Report |
 | **Periode** | Dropdown | Minggu ini / Bulan ini / Bulan lalu / Semua / Custom |
 | **Rentang Tanggal** | Date range picker | Dari – Sampai |
 | **Urutan** | Dropdown sort | Deadline Terbaru / Deadline Terlama / Status |

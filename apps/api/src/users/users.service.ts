@@ -38,7 +38,10 @@ export class UsersService {
                 },
               },
               {
-                nip: { contains: parsed.search, mode: 'insensitive' as const },
+                identityNumber: {
+                  contains: parsed.search,
+                  mode: 'insensitive' as const,
+                },
               },
             ],
           }
@@ -112,7 +115,13 @@ export class UsersService {
         id: user.id,
         fullName: user.fullName,
         username: user.username,
-        nip: user.nip,
+        identityNumber: user.identityNumber,
+        gender: user.gender,
+        employmentType: user.employmentType,
+        rank: user.rank,
+        grade: user.grade,
+        religion: user.religion,
+        phoneNumber: user.phoneNumber,
         role: user.role,
         isCommander: commanderIds.has(user.id),
         isLocked: Boolean(user.lockedUntil && user.lockedUntil > new Date()),
@@ -161,7 +170,13 @@ export class UsersService {
         role: parsed.role,
         data: {
           username: normalizedUsername,
-          nip: parsed.nip ?? null,
+          identityNumber: parsed.identityNumber,
+          gender: parsed.gender,
+          employmentType: parsed.employmentType,
+          rank: parsed.employmentType === 'tni' ? parsed.rank : null,
+          grade: parsed.employmentType === 'tni' ? null : parsed.grade,
+          religion: parsed.religion ?? null,
+          phoneNumber: parsed.phoneNumber ?? null,
         },
       },
     });
@@ -178,14 +193,19 @@ export class UsersService {
       );
     }
 
-    if (user.role !== parsed.role) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          role: parsed.role,
-        },
-      });
-    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        role: parsed.role,
+        identityNumber: parsed.identityNumber,
+        gender: parsed.gender,
+        employmentType: parsed.employmentType,
+        rank: parsed.employmentType === 'tni' ? parsed.rank : null,
+        grade: parsed.employmentType === 'tni' ? null : parsed.grade,
+        religion: parsed.religion ?? null,
+        phoneNumber: parsed.phoneNumber ?? null,
+      },
+    });
 
     if (parsed.unitId) {
       await this.prisma.unitMember.create({
@@ -233,7 +253,13 @@ export class UsersService {
       id: user.id,
       fullName: user.fullName,
       username: user.username,
-      nip: user.nip,
+      identityNumber: user.identityNumber,
+      gender: user.gender,
+      employmentType: user.employmentType,
+      rank: user.rank,
+      grade: user.grade,
+      religion: user.religion,
+      phoneNumber: user.phoneNumber,
       role: user.role,
       isCommander,
       isLocked: Boolean(user.lockedUntil && user.lockedUntil > new Date()),
@@ -272,7 +298,23 @@ export class UsersService {
       data: {
         ...(parsed.fullName ? { fullName: parsed.fullName } : {}),
         ...(parsed.username ? { username: parsed.username.toLowerCase() } : {}),
-        ...(parsed.nip !== undefined ? { nip: parsed.nip } : {}),
+        ...(parsed.identityNumber !== undefined
+          ? { identityNumber: parsed.identityNumber }
+          : {}),
+        ...(parsed.gender !== undefined ? { gender: parsed.gender } : {}),
+        ...(parsed.employmentType !== undefined
+          ? { employmentType: parsed.employmentType }
+          : {}),
+        ...(parsed.rank !== undefined ? { rank: parsed.rank } : {}),
+        ...(parsed.grade !== undefined ? { grade: parsed.grade } : {}),
+        ...(parsed.religion !== undefined ? { religion: parsed.religion } : {}),
+        ...(parsed.phoneNumber !== undefined
+          ? { phoneNumber: parsed.phoneNumber }
+          : {}),
+        ...(parsed.employmentType === 'tni' ? { grade: null } : {}),
+        ...(parsed.employmentType === 'pns' || parsed.employmentType === 'p3k'
+          ? { rank: null }
+          : {}),
         ...(parsed.role ? { role: parsed.role } : {}),
       },
     });

@@ -43,7 +43,7 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatsCard title="Perintah Aktif" value={data.stats.totalActiveOrders} icon={SendIcon} />
-        <StatsCard title="Anggota di Bawah" value={data.stats.totalSubordinateMembers} icon={UsersIcon} />
+        <StatsCard title="Personil Satuan" value={data.stats.totalSubordinateMembers} icon={UsersIcon} />
         <StatsCard title="Belum Submit" value={data.stats.totalPendingAssignments} icon={ClipboardListIcon} />
         <StatsCard title="Sudah Submit" value={data.stats.totalCompletedAssignments} icon={ClipboardCheckIcon} />
         <StatsCard

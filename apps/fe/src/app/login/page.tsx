@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 
+import { AuthRouteShell } from "@/components/features/auth/auth-route-shell";
 import { LoginForm } from "@/components/features/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
-    </Suspense>
+    <AuthRouteShell>
+      <Suspense fallback={<LoginFallback />}>
+        <LoginForm />
+      </Suspense>
+    </AuthRouteShell>
   );
 }
 

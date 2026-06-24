@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  normalizeOrderTypeInput,
+  orderTypeInputValues,
+} from '../orders/order-type.util';
 
 export const listMembersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -12,7 +16,7 @@ export const detailMemberQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.enum(['belum_dikerjakan', 'selesai', 'terlambat']).optional(),
   orderType: z
-    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
-    .transform((value) => (value === 'blasting' ? 'engagement' : value))
+    .enum(orderTypeInputValues)
+    .transform(normalizeOrderTypeInput)
     .optional(),
 });

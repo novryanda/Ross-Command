@@ -4,6 +4,7 @@ import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
 import { HttpStatus } from '@nestjs/common';
+import { serializeOrderType } from '../orders/order-type.util';
 import {
   detailMemberQuerySchema,
   listMembersQuerySchema,
@@ -161,6 +162,7 @@ export class CommanderService {
         name: unit.name,
         path: unit.path,
         depthLevel: unit.depthLevel,
+        leaderOnlyAssignments: unit.leaderOnlyAssignments,
         commander: unit.commander,
         directMembers:
           membershipMap.get(unit.id)?.map((membership) => ({
@@ -261,7 +263,13 @@ export class CommanderService {
         id: user.id,
         fullName: user.fullName,
         username: user.username,
-        nip: user.nip,
+        identityNumber: user.identityNumber,
+        gender: user.gender,
+        employmentType: user.employmentType,
+        rank: user.rank,
+        grade: user.grade,
+        religion: user.religion,
+        phoneNumber: user.phoneNumber,
         unit: user.unitMemberships[0]
           ? {
               id: user.unitMemberships[0].unit.id,
@@ -285,7 +293,7 @@ export class CommanderService {
         order: {
           id: assignment.order.id,
           title: assignment.order.title,
-          orderType: assignment.order.orderType,
+          orderType: serializeOrderType(assignment.order.orderType),
           deadline: assignment.order.deadline,
         },
         latestSubmission: assignment.submissions[0]

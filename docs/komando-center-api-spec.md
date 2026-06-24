@@ -1413,7 +1413,7 @@ await auth.api.createUser({
 | Param          | Type    | Default    | Keterangan                                                     |
 |----------------|---------|------------|----------------------------------------------------------------|
 | `search`       | string  | -          | Cari berdasarkan judul perintah                                |
-| `orderType`    | string  | -          | Multi-value: `posting,komentar`. Nilai: `posting`, `engagement`, `komentar`, `report_akun` |
+| `orderType`    | string  | -          | Nilai: `posting`, `engagement`, `blasting`, `counter`, `report_akun` |
 | `status`       | string  | -          | Multi-value: `aktif,expired`. Nilai: `draft`, `aktif`, `selesai`, `expired`, `dibatalkan` |
 | `targetUnitId` | uuid    | -          | Filter perintah yang menarget satuan tertentu                  |
 | `startDate`    | date    | -          | `YYYY-MM-DD`. Filter rentang tanggal dibuat/dikirim            |
@@ -1439,8 +1439,8 @@ await auth.api.createUser({
     {
       "id": "uuid-order-001",
       "title": "Serbu Postingan @target123",
-      "orderType": "komentar",
-      "orderTypeLabel": "Komentar",
+      "orderType": "counter",
+      "orderTypeLabel": "Counter",
       "status": "aktif",
       "deadline": "2026-06-16T10:00:00Z",
       "sentAt": "2026-06-15T09:00:00Z",
@@ -1469,6 +1469,60 @@ await auth.api.createUser({
 
 ---
 
+### GET /api/v1/orders/summary
+
+**Summary:** Ringkasan analytics daftar perintah untuk overview atau halaman jenis tertentu
+**Auth:** ✅ Cookie session | **Role:** Komandan
+
+#### Query Params
+
+| Param          | Type   | Default | Keterangan                                                            |
+|----------------|--------|---------|-----------------------------------------------------------------------|
+| `search`       | string | -       | Cari berdasarkan judul, deskripsi, narasi, atau alasan report         |
+| `orderType`    | string | -       | Nilai: `posting`, `engagement`, `blasting`, `counter`, `report_akun` |
+| `status`       | string | -       | Nilai: `draft`, `aktif`, `selesai`, `expired`, `dibatalkan`           |
+| `submitDate`   | date   | -       | `YYYY-MM-DD`                                                          |
+| `deadlineDate` | date   | -       | `YYYY-MM-DD`                                                          |
+
+#### Response 200 OK
+
+```json
+{
+  "success": true,
+  "data": {
+    "stats": {
+      "total": 12,
+      "aktif": 6,
+      "draft": 2,
+      "selesai": 3,
+      "expired": 1
+    },
+    "charts": {
+      "orderStatus": {
+        "total": 12,
+        "aktif": 6,
+        "draft": 2,
+        "selesai": 3,
+        "expired": 1
+      },
+      "progressDistribution": {
+        "low": 3,
+        "medium": 4,
+        "high": 5
+      },
+      "weeklyOrders": [
+        { "label": "02 Jun", "count": 1 },
+        { "label": "09 Jun", "count": 4 },
+        { "label": "16 Jun", "count": 7 }
+      ]
+    }
+  },
+  "timestamp": "2026-06-16T10:00:00Z"
+}
+```
+
+---
+
 ### POST /api/v1/orders
 
 **Summary:** Buat perintah baru (simpan draft atau langsung kirim)
@@ -1481,11 +1535,10 @@ await auth.api.createUser({
 ```json
 {
   "title": "Serbu Postingan @target123",
-  "orderType": "komentar",
+  "orderType": "counter",
   "description": "Pastikan gunakan narasi yang sudah ditentukan",
   "targetUrl": "https://instagram.com/p/abc123",
   "narration": "Akun ini menyebarkan informasi tidak akurat",
-  "sentiment": "negative",
   "engagementActions": null,
   "reportReason": null,
   "deadline": "2026-06-16T17:00:00Z",
@@ -1500,11 +1553,10 @@ await auth.api.createUser({
 | Field                | Type    | Required                     | Validasi                                                           |
 |----------------------|---------|------------------------------|--------------------------------------------------------------------|
 | `title`              | string  | ✅                           | min 3, max 255 char                                                |
-| `orderType`          | string  | ✅                           | enum: `posting`, `engagement`, `komentar`, `report_akun`          |
+| `orderType`          | string  | ✅                           | enum: `posting`, `engagement`, `blasting`, `counter`, `report_akun` |
 | `description`        | string  | ✅                           | max 5000 char                                                      |
 | `targetUrl`          | string  | ✅                           | valid URL format                                                   |
-| `narration`          | string  | Jika `posting` / `komentar`  | wajib untuk kedua jenis tersebut                                   |
-| `sentiment`          | string  | Jika `komentar`              | enum: `positive`, `negative`                                       |
+| `narration`          | string  | Jika `posting` / `counter`   | wajib untuk `counter`, opsional untuk `posting`                    |
 | `engagementActions`  | array   | Jika `engagement`            | array min 1: `["like"]`, `["share"]`, `["repost"]`, kombinasi     |
 | `reportReason`       | string  | Jika `report_akun`           | wajib diisi                                                        |
 | `deadline`           | datetime| ✅                           | minimal `NOW() + 1 jam`                                            |
@@ -1521,7 +1573,7 @@ await auth.api.createUser({
   "data": {
     "id": "uuid-order-001",
     "title": "Serbu Postingan @target123",
-    "orderType": "komentar",
+    "orderType": "counter",
     "status": "aktif",
     "deadline": "2026-06-16T17:00:00Z",
     "sentAt": "2026-06-16T10:00:00Z",
@@ -1541,7 +1593,7 @@ await auth.api.createUser({
 
 | Status | Code                      | Message                                                |
 |--------|---------------------------|--------------------------------------------------------|
-| 400    | `VALIDATION_ERROR`        | Narasi wajib diisi untuk jenis perintah komentar       |
+| 400    | `VALIDATION_ERROR`        | Narasi wajib diisi untuk jenis perintah counter        |
 | 403    | `OUT_OF_HIERARCHY`        | Satuan/anggota target bukan dalam lingkup hierarki kamu|
 | 422    | `BUSINESS_RULE_VIOLATED`  | Deadline harus minimal 1 jam dari sekarang             |
 
@@ -1562,13 +1614,11 @@ await auth.api.createUser({
   "data": {
     "id": "uuid-order-001",
     "title": "Serbu Postingan @target123",
-    "orderType": "komentar",
-    "orderTypeLabel": "Komentar",
+    "orderType": "counter",
+    "orderTypeLabel": "Counter",
     "description": "Pastikan gunakan narasi yang sudah ditentukan",
     "targetUrl": "https://instagram.com/p/abc123",
     "narration": "Akun ini menyebarkan informasi tidak akurat",
-    "sentiment": "negative",
-    "sentimentLabel": "Negatif",
     "engagementActions": null,
     "reportReason": null,
     "status": "aktif",
@@ -1723,7 +1773,7 @@ await auth.api.createUser({
 | Param           | Type    | Default    | Keterangan                                                   |
 |-----------------|---------|------------|--------------------------------------------------------------|
 | `search`        | string  | -          | Cari berdasarkan judul perintah                              |
-| `orderType`     | string  | -          | Multi-value: `posting,komentar`                              |
+| `orderType`     | string  | -          | Nilai: `posting`, `engagement`, `blasting`, `counter`, `report_akun` |
 | `status`        | string  | -          | Multi-value: `belum_dikerjakan,terlambat`                    |
 | `fromUserId`    | uuid    | -          | Filter perintah dari Komandan tertentu                       |
 | `startDate`     | date    | -          | Rentang tanggal diterima                                     |
@@ -1751,13 +1801,11 @@ await auth.api.createUser({
       "order": {
         "id": "uuid-order-001",
         "title": "Serbu Postingan @target123",
-        "orderType": "komentar",
-        "orderTypeLabel": "Komentar",
+        "orderType": "counter",
+        "orderTypeLabel": "Counter",
         "description": "Pastikan gunakan narasi yang sudah ditentukan",
         "targetUrl": "https://instagram.com/p/abc123",
         "narration": "Akun ini menyebarkan informasi tidak akurat",
-        "sentiment": "negative",
-        "sentimentLabel": "Negatif",
         "engagementActions": null,
         "deadline": "2026-06-16T17:00:00Z",
         "hoursUntilDeadline": 3,
@@ -1805,11 +1853,10 @@ await auth.api.createUser({
     "order": {
       "id": "uuid-order-001",
       "title": "Serbu Postingan @target123",
-      "orderType": "komentar",
+      "orderType": "counter",
       "description": "Pastikan gunakan narasi yang sudah ditentukan. Jangan modifikasi teks.",
       "targetUrl": "https://instagram.com/p/abc123",
       "narration": "Akun ini menyebarkan informasi yang tidak akurat dan menyesatkan masyarakat. Harap waspada.",
-      "sentiment": "negative",
       "engagementActions": null,
       "reportReason": null,
       "deadline": "2026-06-16T17:00:00Z",
@@ -1929,7 +1976,7 @@ await auth.api.createUser({
     "order": {
       "id": "uuid-order-001",
       "title": "Serbu Postingan @target123",
-      "orderType": "komentar",
+      "orderType": "counter",
       "deadline": "2026-06-16T17:00:00Z",
       "status": "aktif"
     },
@@ -2112,7 +2159,7 @@ Content-Disposition: attachment; filename="perintah-serbu-target123-2026-06-16.x
       {
         "id": "uuid-order-001",
         "title": "Serbu Postingan @target123",
-        "orderType": "komentar",
+        "orderType": "counter",
         "deadline": "2026-06-16T17:00:00Z",
         "isNearDeadline": true,
         "hoursUntilDeadline": 3,
@@ -2156,7 +2203,7 @@ Content-Disposition: attachment; filename="perintah-serbu-target123-2026-06-16.x
         "order": {
           "id": "uuid-order-001",
           "title": "Serbu Postingan @target123",
-          "orderType": "komentar",
+          "orderType": "counter",
           "deadline": "2026-06-16T17:00:00Z",
           "hoursUntilDeadline": 3,
           "isNearDeadline": true
@@ -2495,7 +2542,7 @@ Endpoint ini no-op di backend v1 karena notifikasi belum persisted sebagai inbox
         "order": {
           "id": "uuid-order-001",
           "title": "Serbu Postingan @target123",
-          "orderType": "komentar",
+          "orderType": "counter",
           "deadline": "2026-06-16T17:00:00Z"
         },
         "latestSubmission": {
@@ -2552,13 +2599,11 @@ Endpoint ini no-op di backend v1 karena notifikasi belum persisted sebagai inbox
 |----------------------|-----------|-----------------------------------------------------------|
 | `id`                 | uuid      | Primary key                                               |
 | `title`              | string    | Judul perintah                                            |
-| `orderType`          | enum      | `posting` / `engagement` / `komentar` / `report_akun`    |
+| `orderType`          | enum      | `posting` / `engagement` / `blasting` / `counter` / `report_akun` |
 | `orderTypeLabel`     | string    | Label display                                             |
 | `description`        | string    | Instruksi lengkap                                         |
 | `targetUrl`          | string    | URL target                                                |
-| `narration`          | string?   | Narasi (posting & komentar)                               |
-| `sentiment`          | enum?     | `positive` / `negative`                                   |
-| `sentimentLabel`     | string?   | Label sentimen                                            |
+| `narration`          | string?   | Narasi (posting & counter)                                |
 | `engagementActions`  | array?    | `["like","share","repost"]`                               |
 | `reportReason`       | string?   | Alasan report                                             |
 | `status`             | enum      | `draft` / `aktif` / `selesai` / `expired` / `dibatalkan` |

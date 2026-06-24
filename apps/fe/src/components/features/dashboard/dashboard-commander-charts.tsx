@@ -3,12 +3,9 @@
 import { useMemo } from "react";
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
 
-import { MonitoringProgressBar } from "@/components/features/orders/order-monitoring-summary-charts";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import type { DashboardCommanderCharts } from "@/lib/api/types";
 import {
-  getMonitoringProgressLabel,
-  getMonitoringProgressTone,
   MONITORING_PROGRESS_THRESHOLDS,
   monitoringProgressLegendClass,
 } from "@/lib/monitoring-progress";
@@ -45,8 +42,8 @@ const weeklyOrdersConfig = {
 const orderTypeLabels: Record<keyof DashboardCommanderCharts["orderType"], string> = {
   posting: "Posting",
   blasting: "Blasting",
-  komentar: "Komentar",
-  report_akun: "Report Akun",
+  counter: "Counter",
+  report_akun: "Report",
 };
 
 const orderStatusLabels: Record<keyof DashboardCommanderCharts["orderStatus"], string> = {
@@ -58,9 +55,6 @@ const orderStatusLabels: Record<keyof DashboardCommanderCharts["orderStatus"], s
 };
 
 export function DashboardCommanderCharts({ charts }: { charts: DashboardCommanderCharts }) {
-  const overallTone = getMonitoringProgressTone(charts.overallProgress.percentageComplete);
-  const overallLabel = getMonitoringProgressLabel(charts.overallProgress.percentageComplete);
-
   const assignmentChartData = useMemo(
     () =>
       [
@@ -135,15 +129,6 @@ export function DashboardCommanderCharts({ charts }: { charts: DashboardCommande
 
   return (
     <section className="space-y-4">
-      <MonitoringProgressBar
-        submitted={charts.overallProgress.totalSubmitted}
-        assigned={charts.overallProgress.totalAssigned}
-        percentage={charts.overallProgress.percentageComplete}
-        tone={overallTone}
-        statusLabel={overallLabel}
-        compact
-      />
-
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <ChartPanel
           title="Status Penugasan"

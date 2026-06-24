@@ -6,7 +6,6 @@ import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { UnitNode } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
 
 type UnitAdminTreeProps = {
   nodes: UnitNode[];
@@ -68,6 +67,11 @@ function UnitAdminTreeNode({
             Level {node.depthLevel}
             {node.commander ? ` - Pimpinan: ${node.commander.fullName}` : ""}
           </p>
+          {node.leaderOnlyAssignments ? (
+            <Badge variant="secondary" className="mt-1 h-5 rounded-sm px-1.5 text-[10px]">
+              Pimpinan saja
+            </Badge>
+          ) : null}
         </div>
         <Badge variant="secondary" className="gap-1 rounded-sm">
           <UsersIcon className="size-3" />

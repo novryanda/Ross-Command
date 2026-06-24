@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 
+import { serializeOrderType } from '../orders/order-type.util';
 import type { DashboardQuery } from './dashboard.schema';
 
 export type ResolvedDashboardDateRange = {
@@ -94,8 +95,7 @@ export function serializeDashboardFilters(query: DashboardQuery) {
     dateFrom: dateRange.dateFrom?.toISOString().slice(0, 10) ?? null,
     dateTo: dateRange.dateTo?.toISOString().slice(0, 10) ?? null,
     status: query.status ?? null,
-    orderType:
-      query.orderType === 'engagement' ? 'blasting' : (query.orderType ?? null),
+    orderType: query.orderType ? serializeOrderType(query.orderType) : null,
     deadlineFrom: query.deadlineFrom?.toISOString().slice(0, 10) ?? null,
     deadlineTo: query.deadlineTo?.toISOString().slice(0, 10) ?? null,
   };

@@ -239,7 +239,7 @@ Catatan implementasi:
 **Jenis order yang tersedia:**
 - `posting`
 - `engagement`
-- `komentar`
+- `counter`
 - `report_akun`
 
 **Data umum order:**
@@ -254,8 +254,7 @@ Catatan implementasi:
 - `targetUrls` untuk order non-posting, disimpan ke `order_social_targets`
 - `postingSourceUrl` untuk order `posting`
 - `postingTargetPlatforms` untuk order `posting`
-- `narration` untuk `posting` dan `komentar`
-- `sentiment` untuk `komentar`
+- `narration` untuk `posting` dan `counter`
 - `engagementActions` untuk `engagement`
 - `reportReason` untuk `report_akun`
 

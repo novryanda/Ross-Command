@@ -2,12 +2,10 @@
 
 import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
-import {
-  ArrowUpDownIcon,
-  EllipsisVerticalIcon,
-} from "lucide-react";
+import { ArrowUpDownIcon, EllipsisVerticalIcon } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { DataTable } from "@/components/data-table/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,8 +16,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DataTable } from "@/components/data-table/data-table";
 import type { PaginationMeta, UserListItem } from "@/lib/api/types";
+import { getEmploymentTypeLabel, getIdentityNumberLabel } from "@/lib/user-identity";
 import { cn } from "@/lib/utils";
 
 const roleLabel: Record<string, string> = {
@@ -98,10 +96,20 @@ export function UsersAdminTable({
         ),
       },
       {
-        accessorKey: "nip",
-        header: "NIP",
+        accessorKey: "identityNumber",
+        header: "Identitas",
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{row.original.nip ?? "—"}</span>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-xs">{getIdentityNumberLabel(row.original.employmentType)}</span>
+            <span className="text-muted-foreground text-sm">{row.original.identityNumber ?? "-"}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "employmentType",
+        header: "Jenis",
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">{getEmploymentTypeLabel(row.original.employmentType)}</span>
         ),
       },
       {
@@ -170,9 +178,7 @@ export function UsersAdminTable({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onEdit(user)}>Edit</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onResetPassword(user)}>Reset Password</DropdownMenuItem>
-                {user.isLocked ? (
-                  <DropdownMenuItem onClick={() => onUnlock(user)}>Unlock</DropdownMenuItem>
-                ) : null}
+                {user.isLocked ? <DropdownMenuItem onClick={() => onUnlock(user)}>Unlock</DropdownMenuItem> : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={() => onDeactivate(user)}>
                   Nonaktifkan

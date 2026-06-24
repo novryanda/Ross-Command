@@ -35,7 +35,7 @@ export default async function AdminUsersPage({
       />
       <FilterBar
         searchKey="search"
-        searchPlaceholder="Cari nama, username, atau NIP..."
+        searchPlaceholder="Cari nama, username, atau nomor identitas..."
         selects={[
           {
             key: "role",

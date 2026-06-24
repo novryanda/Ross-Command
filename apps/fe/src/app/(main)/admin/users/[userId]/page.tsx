@@ -4,6 +4,13 @@ import { PageHero } from "@/components/komando/page-hero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { serverApiFetch } from "@/lib/api/server";
 import type { UserDetail } from "@/lib/api/types";
+import {
+  getEmploymentTypeLabel,
+  getGenderLabel,
+  getIdentityNumberLabel,
+  getRankOrGradeLabel,
+  getReligionLabel,
+} from "@/lib/user-identity";
 
 export default async function AdminUserDetailPage({
   params,
@@ -24,7 +31,12 @@ export default async function AdminUserDetailPage({
         description={`@${user.username} - ${user.role ?? "member"} - ${user.unit?.name ?? "Tanpa satuan"}`}
       >
         <div className="grid gap-3 md:grid-cols-3">
-          <Info label="NIP" value={user.nip ?? "-"} />
+          <Info label={getIdentityNumberLabel(user.employmentType)} value={user.identityNumber ?? "-"} />
+          <Info label="Jenis" value={getEmploymentTypeLabel(user.employmentType)} />
+          <Info label={getRankOrGradeLabel(user.employmentType)} value={(user.employmentType === "tni" ? user.rank : user.grade) ?? "-"} />
+          <Info label="Jenis Kelamin" value={getGenderLabel(user.gender)} />
+          <Info label="Agama" value={getReligionLabel(user.religion)} />
+          <Info label="Nomor HP" value={user.phoneNumber ?? "-"} />
           <Info label="Pimpinan" value={user.isCommander ? "Ya" : "Tidak"} />
           <Info label="Status" value={user.isLocked ? "Dikunci" : "Aktif"} />
         </div>

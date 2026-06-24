@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
+import { serializeOrderType } from '../orders/order-type.util';
 import { OrdersService } from '../orders/orders.service';
 import {
   buildDashboardOrderWhere,
@@ -167,13 +168,12 @@ export class DashboardService {
     const orderType = {
       posting: 0,
       blasting: 0,
-      komentar: 0,
+      counter: 0,
       report_akun: 0,
     };
 
     for (const item of orderTypeStats) {
-      const key =
-        item.orderType === 'engagement' ? 'blasting' : item.orderType;
+      const key = serializeOrderType(item.orderType);
       if (key in orderType) {
         orderType[key as keyof typeof orderType] += item._count._all;
       }
@@ -254,7 +254,7 @@ export class DashboardService {
       activeOrders: filteredOrders.slice(0, 5).map((order) => ({
         id: order.id,
         title: order.title,
-        orderType: order.orderType,
+        orderType: serializeOrderType(order.orderType),
         deadline: order.deadline,
         status: order.status,
         progress: progressMap.get(order.id) ?? {
@@ -306,7 +306,7 @@ export class DashboardService {
         order: {
           id: assignment.order.id,
           title: assignment.order.title,
-          orderType: assignment.order.orderType,
+          orderType: serializeOrderType(assignment.order.orderType),
         },
       })),
     };

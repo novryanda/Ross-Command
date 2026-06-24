@@ -79,7 +79,37 @@ export async function createKomandoAuth(
         updatedAt: 'updatedAt',
       },
       additionalFields: {
-        nip: {
+        identityNumber: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        gender: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        employmentType: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        rank: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        grade: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        religion: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+        phoneNumber: {
           type: 'string',
           required: false,
           input: false,

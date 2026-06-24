@@ -4,6 +4,11 @@ import { PageHero } from "@/components/komando/page-hero";
 import { StatsCard } from "@/components/komando/stats-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { getMe } from "@/lib/api/server";
+import {
+  getEmploymentTypeLabel,
+  getIdentityNumberLabel,
+  getRankOrGradeLabel,
+} from "@/lib/user-identity";
 
 export default async function ProfilePage() {
   const me = await getMe();
@@ -24,7 +29,9 @@ export default async function ProfilePage() {
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <Info label="Role" value={me.role} />
-            <Info label="NIP" value={me.nip ?? "-"} />
+            <Info label="Jenis" value={getEmploymentTypeLabel(me.employmentType)} />
+            <Info label={getIdentityNumberLabel(me.employmentType)} value={me.identityNumber ?? "-"} />
+            <Info label={getRankOrGradeLabel(me.employmentType)} value={(me.employmentType === "tni" ? me.rank : me.grade) ?? "-"} />
             <Info label="Satuan" value={me.unit?.name ?? "Tanpa satuan"} />
           </div>
         </CardContent>

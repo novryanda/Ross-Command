@@ -13,6 +13,7 @@ import { parseLinks, type ParsedLink } from '../common/utils/url-parser';
 import { ApiException } from '../common/utils/api-exception.util';
 import { buildPaginationMeta } from '../common/utils/api-response.util';
 import { HierarchyService } from '../common/hierarchy.service';
+import { serializeOrderType } from '../orders/order-type.util';
 import { OrdersService } from '../orders/orders.service';
 import {
   bulkSubmissionQuerySchema,
@@ -185,7 +186,7 @@ export class AssignmentsService {
       order: {
         id: assignment.order.id,
         title: assignment.order.title,
-        orderType: assignment.order.orderType,
+        orderType: serializeOrderType(assignment.order.orderType),
         description: assignment.order.description,
         targetUrls: socialTargets.map((target) => ({
           id: target.id,
@@ -193,7 +194,6 @@ export class AssignmentsService {
           url: target.url,
         })),
         narration: assignment.order.narration,
-        sentiment: assignment.order.sentiment,
         engagementActions: assignment.order.engagementActions,
         reportReason: assignment.order.reportReason,
         postingSourceUrl: assignment.order.postingSourceUrl,

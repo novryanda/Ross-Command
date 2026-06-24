@@ -592,11 +592,11 @@ const { data, isLoading } = useQuery({
 
 Field yang perlu dirender:
 - `title` — Input text, wajib
-- `orderType` — Radio group (4 opsi: Posting / Engagement / Komentar / Report Akun)
+- `orderType` — Radio group (4 opsi: Posting / Blasting / Counter / Report)
 - Field kondisional berdasarkan `orderType`:
   - `orderType === "posting"` → textarea `narration` (caption), input `hashtag` (opsional)
   - `orderType === "engagement"` → checkbox group `engagementActions` (like / share / repost)
-  - `orderType === "komentar"` → textarea `narration`, radio `sentiment` (Positif / Negatif)
+  - `orderType === "counter"` → textarea `narration`
   - `orderType === "report_akun"` → select `reportReason`, textarea catatan
 - `targetUrl` — Input URL, wajib, validasi format URL
 - `description` — Textarea instruksi tambahan

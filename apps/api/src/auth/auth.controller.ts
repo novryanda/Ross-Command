@@ -48,7 +48,13 @@ export class AuthController {
       id: currentUser.user.id,
       username: currentUser.user.username,
       fullName: currentUser.user.fullName,
-      nip: currentUser.user.nip,
+      identityNumber: currentUser.user.identityNumber,
+      gender: currentUser.user.gender,
+      employmentType: currentUser.user.employmentType,
+      rank: currentUser.user.rank,
+      grade: currentUser.user.grade,
+      religion: currentUser.user.religion,
+      phoneNumber: currentUser.user.phoneNumber,
       role: currentUser.user.role,
       isCommander: commandingUnits.length > 0,
       unit: membership
@@ -103,7 +109,23 @@ export class AuthController {
           fullName: parsed.fullName,
           username: normalizedUsername,
           displayUsername: normalizedUsername,
-          nip: parsed.nip ?? null,
+          ...(parsed.identityNumber !== undefined
+            ? { identityNumber: parsed.identityNumber }
+            : {}),
+          ...(parsed.gender !== undefined ? { gender: parsed.gender } : {}),
+          ...(parsed.employmentType !== undefined
+            ? { employmentType: parsed.employmentType }
+            : {}),
+          ...(parsed.rank !== undefined ? { rank: parsed.rank } : {}),
+          ...(parsed.grade !== undefined ? { grade: parsed.grade } : {}),
+          ...(parsed.employmentType === 'tni' ? { grade: null } : {}),
+          ...(parsed.employmentType === 'pns' || parsed.employmentType === 'p3k'
+            ? { rank: null }
+            : {}),
+          ...(parsed.religion !== undefined ? { religion: parsed.religion } : {}),
+          ...(parsed.phoneNumber !== undefined
+            ? { phoneNumber: parsed.phoneNumber }
+            : {}),
           email: `${normalizedUsername}@internal.komando`,
         },
       });

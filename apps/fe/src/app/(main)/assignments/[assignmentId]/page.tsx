@@ -9,7 +9,7 @@ import { TargetMetricTotalsSection } from "@/components/features/orders/target-m
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { BackButton } from "@/components/komando/back-button";
-import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge, submissionInputLabel } from "@/components/komando/badges";
+import { DeadlineBadge, OrderTypeBadge, StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { PageHero } from "@/components/komando/page-hero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,9 +66,6 @@ export default async function AssignmentDetailPage({
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={assignment.order.orderType} />
-          {assignment.order.orderType === "komentar" && assignment.order.sentiment ? (
-            <CommentSentimentBadge sentiment={assignment.order.sentiment} />
-          ) : null}
           <StatusBadge status={assignment.status} />
           <DeadlineBadge deadline={assignment.order.deadline} />
         </div>
@@ -77,14 +74,7 @@ export default async function AssignmentDetailPage({
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <CardTitle className="text-base">Instruksi</CardTitle>
-          {assignment.order.orderType === "komentar" ? (
-            <>
-              <OrderTypeBadge type="komentar" />
-              {assignment.order.sentiment ? (
-                <CommentSentimentBadge sentiment={assignment.order.sentiment} />
-              ) : null}
-            </>
-          ) : null}
+          {assignment.order.orderType === "counter" ? <OrderTypeBadge type="counter" /> : null}
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {assignment.order.orderType === "posting" ? (

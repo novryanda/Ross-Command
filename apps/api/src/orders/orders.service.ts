@@ -26,8 +26,10 @@ import {
   type EngagementAction,
   listOrderAssignmentsQuerySchema,
   listOrdersQuerySchema,
+  listOrdersSummaryQuerySchema,
   updateOrderSchema,
 } from './orders.schema';
+import { serializeOrderType } from './order-type.util';
 
 type AssignmentProgress = {
   totalAssigned: number;
@@ -59,6 +61,87 @@ type SerializedAssignmentItem = {
   latestSubmission: ReturnType<typeof serializeLatestSubmission>;
 };
 
+type OrdersSummaryStats = {
+  total: number;
+  aktif: number;
+  draft: number;
+  selesai: number;
+  expired: number;
+};
+
+function getWeekStart(date: Date) {
+  const value = new Date(date);
+  const day = value.getDay();
+  const diff = value.getDate() - day + (day === 0 ? -6 : 1);
+  value.setDate(diff);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function formatWeekLabel(date: Date) {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
+function buildWeeklyOrderTrend(
+  orders: Array<{ sentAt: Date | null; createdAt: Date }>,
+  range?: { dateFrom?: Date; dateTo?: Date },
+) {
+  const endReference = range?.dateTo ?? new Date();
+  const defaultStart = new Date(endReference);
+  defaultStart.setDate(defaultStart.getDate() - 7 * 7);
+  const startReference = range?.dateFrom ?? defaultStart;
+
+  const weekEnd = getWeekStart(endReference);
+  const weekStart = getWeekStart(startReference);
+  const buckets = new Map<string, { label: string; count: number }>();
+  const cursor = new Date(weekStart);
+  let bucketCount = 0;
+
+  while (cursor <= weekEnd && bucketCount < 12) {
+    const key = cursor.toISOString();
+    buckets.set(key, {
+      label: formatWeekLabel(cursor),
+      count: 0,
+    });
+    cursor.setDate(cursor.getDate() + 7);
+    bucketCount += 1;
+  }
+
+  if (!buckets.size) {
+    const key = weekEnd.toISOString();
+    buckets.set(key, {
+      label: formatWeekLabel(weekEnd),
+      count: 0,
+    });
+  }
+
+  for (const order of orders) {
+    const referenceDate = order.sentAt ?? order.createdAt;
+    const weekKey = getWeekStart(referenceDate).toISOString();
+    const bucket = buckets.get(weekKey);
+    if (bucket) {
+      bucket.count += 1;
+    }
+  }
+
+  return Array.from(buckets.values());
+}
+
+function getProgressBucket(percentage: number) {
+  if (percentage >= 80) {
+    return 'high' as const;
+  }
+
+  if (percentage >= 50) {
+    return 'medium' as const;
+  }
+
+  return 'low' as const;
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -70,65 +153,11 @@ export class OrdersService {
   async listOrders(commanderId: string, query: unknown) {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = listOrdersQuerySchema.parse(query);
-    const submitDayEnd = parsed.submitDate
-      ? this.endOfDay(parsed.submitDate)
-      : undefined;
-    const deadlineDayEnd = parsed.deadlineDate
-      ? this.endOfDay(parsed.deadlineDate)
-      : undefined;
     const orderBy = this.buildListOrdersOrderBy(
       parsed.sortBy,
       parsed.sortOrder,
     );
-    const filterConditions: Prisma.OrderWhereInput[] = [];
-
-    if (parsed.search) {
-      filterConditions.push({
-        OR: [
-          { title: { contains: parsed.search, mode: 'insensitive' } },
-          { description: { contains: parsed.search, mode: 'insensitive' } },
-          { narration: { contains: parsed.search, mode: 'insensitive' } },
-          { reportReason: { contains: parsed.search, mode: 'insensitive' } },
-        ],
-      });
-    }
-
-    if (parsed.submitDate) {
-      filterConditions.push({
-        OR: [
-          {
-            sentAt: {
-              gte: parsed.submitDate,
-              lte: submitDayEnd,
-            },
-          },
-          {
-            sentAt: null,
-            createdAt: {
-              gte: parsed.submitDate,
-              lte: submitDayEnd,
-            },
-          },
-        ],
-      });
-    }
-
-    const where: Prisma.OrderWhereInput = {
-      createdById: commanderId,
-      deletedAt: null,
-      ...(parsed.status ? { status: parsed.status } : {}),
-      ...(parsed.orderType ? { orderType: parsed.orderType } : {}),
-      ...(parsed.sentiment ? { sentiment: parsed.sentiment } : {}),
-      ...(filterConditions.length ? { AND: filterConditions } : {}),
-      ...(parsed.deadlineDate
-        ? {
-            deadline: {
-              gte: parsed.deadlineDate,
-              lte: deadlineDayEnd,
-            },
-          }
-        : {}),
-    };
+    const where = this.buildOrdersWhere(commanderId, parsed);
 
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
@@ -173,6 +202,77 @@ export class OrdersService {
     };
   }
 
+  async getOrdersSummary(commanderId: string, query: unknown) {
+    await this.hierarchyService.ensureCommander(commanderId);
+    const parsed = listOrdersSummaryQuerySchema.parse(query);
+    const where = this.buildOrdersWhere(commanderId, parsed);
+    const [orders, orderStatusStats] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        select: {
+          id: true,
+          sentAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.order.groupBy({
+        by: ['status'],
+        where,
+        orderBy: {
+          status: 'asc',
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    const progressMap = await this.getProgressMap(orders.map((order) => order.id));
+    const orderStatus = {
+      total: orders.length,
+      aktif: 0,
+      draft: 0,
+      selesai: 0,
+      expired: 0,
+    } satisfies OrdersSummaryStats;
+
+    for (const item of orderStatusStats) {
+      if (item.status === 'dibatalkan') {
+        continue;
+      }
+
+      const count =
+        typeof item._count === 'object' && item._count
+          ? (item._count._all ?? 0)
+          : 0;
+      orderStatus[item.status] = count;
+    }
+
+    const progressDistribution = {
+      low: 0,
+      medium: 0,
+      high: 0,
+    };
+
+    for (const order of orders) {
+      const progress = progressMap.get(order.id);
+      progressDistribution[getProgressBucket(progress?.percentageComplete ?? 0)] += 1;
+    }
+
+    return {
+      stats: orderStatus,
+      charts: {
+        orderStatus,
+        progressDistribution,
+        weeklyOrders: buildWeeklyOrderTrend(orders, {
+          dateFrom: parsed.submitDate,
+          dateTo: parsed.submitDate ? this.endOfDay(parsed.submitDate) : undefined,
+        }),
+      },
+    };
+  }
+
   async createOrder(commanderId: string, body: unknown) {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = baseOrderSchema.parse(body);
@@ -187,7 +287,6 @@ export class OrdersService {
           orderType: parsed.orderType,
           description: parsed.description,
           narration: parsed.narration,
-          sentiment: parsed.sentiment,
           engagementActions: parsed.engagementActions,
           reportReason: parsed.reportReason,
           postingSourceUrl:
@@ -340,7 +439,6 @@ export class OrdersService {
           this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ??
           undefined,
         narration: parsed.narration ?? order.narration ?? undefined,
-        sentiment: parsed.sentiment ?? order.sentiment ?? undefined,
         engagementActions:
           parsed.engagementActions ??
           (order.engagementActions as EngagementAction[] | null) ??
@@ -376,9 +474,6 @@ export class OrdersService {
           ...(parsed.description ? { description: parsed.description } : {}),
           ...(parsed.narration !== undefined
             ? { narration: parsed.narration }
-            : {}),
-          ...(parsed.sentiment !== undefined
-            ? { sentiment: parsed.sentiment }
             : {}),
           ...(parsed.engagementActions !== undefined
             ? {
@@ -493,7 +588,6 @@ export class OrdersService {
           this.parsePostingTargetPlatforms(order.postingTargetPlatforms) ??
           undefined,
         narration: order.narration ?? undefined,
-        sentiment: order.sentiment ?? undefined,
         engagementActions:
           (order.engagementActions as EngagementAction[] | null) ?? undefined,
         reportReason: order.reportReason ?? undefined,
@@ -980,6 +1074,72 @@ export class OrdersService {
     return result;
   }
 
+  private buildOrdersWhere(
+    commanderId: string,
+    query: {
+      status?: OrderStatus;
+      orderType?: OrderType;
+      submitDate?: Date;
+      deadlineDate?: Date;
+      search?: string;
+    },
+  ): Prisma.OrderWhereInput {
+    const submitDayEnd = query.submitDate
+      ? this.endOfDay(query.submitDate)
+      : undefined;
+    const deadlineDayEnd = query.deadlineDate
+      ? this.endOfDay(query.deadlineDate)
+      : undefined;
+    const filterConditions: Prisma.OrderWhereInput[] = [];
+
+    if (query.search) {
+      filterConditions.push({
+        OR: [
+          { title: { contains: query.search, mode: 'insensitive' } },
+          { description: { contains: query.search, mode: 'insensitive' } },
+          { narration: { contains: query.search, mode: 'insensitive' } },
+          { reportReason: { contains: query.search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    if (query.submitDate) {
+      filterConditions.push({
+        OR: [
+          {
+            sentAt: {
+              gte: query.submitDate,
+              lte: submitDayEnd,
+            },
+          },
+          {
+            sentAt: null,
+            createdAt: {
+              gte: query.submitDate,
+              lte: submitDayEnd,
+            },
+          },
+        ],
+      });
+    }
+
+    return {
+      createdById: commanderId,
+      deletedAt: null,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.orderType ? { orderType: query.orderType } : {}),
+      ...(filterConditions.length ? { AND: filterConditions } : {}),
+      ...(query.deadlineDate
+        ? {
+            deadline: {
+              gte: query.deadlineDate,
+              lte: deadlineDayEnd,
+            },
+          }
+        : {}),
+    };
+  }
+
   private buildListOrdersOrderBy(
     sortBy: 'createdAt' | 'deadline' | 'title' | 'sentAt',
     sortOrder: 'asc' | 'desc',
@@ -998,7 +1158,6 @@ export class OrdersService {
       orderType: OrderType;
       description: string;
       narration: string | null;
-      sentiment: string | null;
       engagementActions: Prisma.JsonValue | null;
       reportReason: string | null;
       postingSourceUrl: string | null;
@@ -1027,7 +1186,7 @@ export class OrdersService {
     return {
       id: order.id,
       title: order.title,
-      orderType: order.orderType,
+      orderType: serializeOrderType(order.orderType),
       description: order.description,
       targetUrls: socialTargets.map((target) => ({
         id: target.id,
@@ -1035,7 +1194,6 @@ export class OrdersService {
         url: target.url,
       })),
       narration: order.narration,
-      sentiment: order.sentiment,
       engagementActions: order.engagementActions,
       reportReason: order.reportReason,
       postingSourceUrl: order.postingSourceUrl,
@@ -1272,11 +1430,11 @@ export class OrdersService {
       payload.engagementActions = ['like', 'share', 'repost'];
     }
 
-    if (payload.orderType === 'komentar' && !payload.narration) {
+    if (payload.orderType === 'counter' && !payload.narration) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
         'VALIDATION_ERROR',
-        'Perintah komentar wajib memiliki narasi',
+        'Perintah counter wajib memiliki narasi',
       );
     }
 

@@ -33,26 +33,27 @@ const orderTypeLabel: Record<OrderType, string> = {
   posting: "Posting",
   engagement: "Blasting",
   blasting: "Blasting",
-  komentar: "Komentar",
-  report_akun: "Report Akun",
+  counter: "Counter",
+  report_akun: "Report",
 };
 
 const orderTypeFilterOptions = [
   { value: "posting", label: "Posting" },
   { value: "blasting", label: "Blasting" },
-  { value: "komentar", label: "Komentar" },
-  { value: "report_akun", label: "Report Akun" },
+  { value: "counter", label: "Counter" },
+  { value: "report_akun", label: "Report" },
 ] as const;
 
 const orderTypeFilterAliases = {
   engagement: "blasting",
+  komentar: "counter",
 } as const;
 
 const orderTypeClass: Record<OrderType, string> = {
   posting: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   engagement: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   blasting: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  komentar: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  counter: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   report_akun: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
 
@@ -75,24 +76,6 @@ export function StatusBadge({ status }: { status: OrderStatus | AssignmentStatus
 
 export function OrderTypeBadge({ type }: { type: OrderType }) {
   return <Badge className={cn("h-5 rounded-sm px-1.5 text-xs", orderTypeClass[type])}>{orderTypeLabel[type]}</Badge>;
-}
-
-const sentimentLabel = {
-  positive: "Pro",
-  negative: "Kontra",
-} as const;
-
-const sentimentClass = {
-  positive: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  negative: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
-} as const;
-
-export function CommentSentimentBadge({ sentiment }: { sentiment: "positive" | "negative" }) {
-  return (
-    <Badge className={cn("h-5 rounded-sm px-1.5 text-xs", sentimentClass[sentiment])}>
-      {sentiment === "positive" ? "👍" : "👎"} {sentimentLabel[sentiment]}
-    </Badge>
-  );
 }
 
 export function PlatformBadge({ platform }: { platform: SocialPlatform }) {
@@ -142,5 +125,4 @@ export {
   orderTypeFilterOptions,
   orderTypeLabel,
   platformLabel,
-  sentimentLabel,
 };

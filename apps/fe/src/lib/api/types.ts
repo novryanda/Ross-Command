@@ -43,7 +43,10 @@ export class ApiRequestError extends Error {
 }
 
 export type Role = "super_admin" | "member";
-export type OrderType = "posting" | "engagement" | "blasting" | "komentar" | "report_akun";
+export type Gender = "pria" | "wanita";
+export type EmploymentType = "tni" | "pns" | "p3k";
+export type Religion = "islam" | "kristen_protestan" | "katolik" | "hindu" | "buddha" | "konghucu";
+export type OrderType = "posting" | "engagement" | "blasting" | "counter" | "report_akun";
 export type OrderStatus = "draft" | "aktif" | "selesai" | "expired" | "dibatalkan";
 export type AssignmentStatus = "belum_dikerjakan" | "selesai" | "terlambat";
 export type SocialPlatform = "instagram" | "twitter_x" | "facebook" | "tiktok" | "youtube" | "other";
@@ -82,7 +85,13 @@ export type Me = {
   id: string;
   username: string;
   fullName: string;
-  nip: string | null;
+  identityNumber: string | null;
+  gender: Gender | null;
+  employmentType: EmploymentType | null;
+  rank: string | null;
+  grade: string | null;
+  religion: Religion | null;
+  phoneNumber: string | null;
   role: Role;
   isCommander: boolean;
   unit: (UnitSummary & { depthLevel: number }) | null;
@@ -127,7 +136,6 @@ export type Order = {
   description: string;
   targetUrls: OrderSocialTarget[];
   narration: string | null;
-  sentiment: "positive" | "negative" | null;
   engagementActions: string[] | null;
   reportReason: string | null;
   postingSourceUrl?: string | null;
@@ -146,7 +154,13 @@ export type UserListItem = {
   id: string;
   fullName: string;
   username: string;
-  nip?: string | null;
+  identityNumber?: string | null;
+  gender?: Gender | null;
+  employmentType?: EmploymentType | null;
+  rank?: string | null;
+  grade?: string | null;
+  religion?: Religion | null;
+  phoneNumber?: string | null;
   role?: Role;
   isCommander?: boolean;
   isLocked?: boolean;
@@ -217,7 +231,6 @@ export type Assignment = {
     description?: string;
     targetUrls?: OrderSocialTarget[];
     narration?: string | null;
-    sentiment?: "positive" | "negative" | null;
     engagementActions?: string[] | null;
     reportReason?: string | null;
     postingSourceUrl?: string | null;
@@ -320,6 +333,7 @@ export type UnitNode = {
   description?: string | null;
   path: string;
   depthLevel: number;
+  leaderOnlyAssignments: boolean;
   commander?: Pick<UserListItem, "id" | "fullName" | "username"> | null;
   directMembers?: Array<Pick<UserListItem, "id" | "fullName" | "username"> & { joinedAt?: string }>;
   children: UnitNode[];
@@ -331,6 +345,7 @@ export type UnitDetail = {
   description?: string | null;
   path: string;
   depthLevel: number;
+  leaderOnlyAssignments: boolean;
   commander?: Pick<UserListItem, "id" | "fullName" | "username"> | null;
   parent?: { id: string; name: string } | null;
   members: Array<{
@@ -345,7 +360,20 @@ export type UnitDetail = {
 };
 
 export type CommanderMemberDetail = {
-  user: Pick<UserListItem, "id" | "fullName" | "username" | "nip" | "unit">;
+  user: Pick<
+    UserListItem,
+    | "id"
+    | "fullName"
+    | "username"
+    | "identityNumber"
+    | "gender"
+    | "employmentType"
+    | "rank"
+    | "grade"
+    | "religion"
+    | "phoneNumber"
+    | "unit"
+  >;
   socialAccounts: SocialAccount[];
   assignmentSummary: {
     total: number;
@@ -399,7 +427,7 @@ export type DashboardCommanderCharts = {
   orderType: {
     posting: number;
     blasting: number;
-    komentar: number;
+    counter: number;
     report_akun: number;
   };
   progressDistribution: {
@@ -425,6 +453,34 @@ export type DashboardCommander = {
   };
   charts: DashboardCommanderCharts;
   activeOrders: Order[];
+};
+
+export type OrdersSummary = {
+  stats: {
+    total: number;
+    aktif: number;
+    draft: number;
+    selesai: number;
+    expired: number;
+  };
+  charts: {
+    orderStatus: {
+      total: number;
+      aktif: number;
+      draft: number;
+      selesai: number;
+      expired: number;
+    };
+    progressDistribution: {
+      low: number;
+      medium: number;
+      high: number;
+    };
+    weeklyOrders: Array<{
+      label: string;
+      count: number;
+    }>;
+  };
 };
 
 export type DashboardMember = {

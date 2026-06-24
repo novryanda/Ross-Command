@@ -113,7 +113,7 @@ export function OrderProgressMonitoringView({
   defaultTab?: TabMonitor;
   initialUnitId?: string;
   orderId?: string;
-  orderType?: "posting" | "engagement" | "blasting" | "komentar" | "report_akun";
+  orderType?: "posting" | "engagement" | "blasting" | "counter" | "report_akun";
   showBulkSubmit?: boolean;
 }) {
   const [tab, setTab] = useState<TabMonitor>(defaultTab);

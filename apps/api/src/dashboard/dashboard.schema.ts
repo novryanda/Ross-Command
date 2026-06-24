@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  normalizeOrderTypeInput,
+  orderTypeInputValues,
+} from '../orders/order-type.util';
 
 export const dashboardQuerySchema = z.object({
   period: z.enum(['7d', '30d', '90d', 'all']).optional(),
@@ -8,8 +12,8 @@ export const dashboardQuerySchema = z.object({
     .enum(['draft', 'aktif', 'selesai', 'expired', 'dibatalkan'])
     .optional(),
   orderType: z
-    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
-    .transform((value) => (value === 'blasting' ? 'engagement' : value))
+    .enum(orderTypeInputValues)
+    .transform(normalizeOrderTypeInput)
     .optional(),
   deadlineFrom: z.coerce.date().optional(),
   deadlineTo: z.coerce.date().optional(),

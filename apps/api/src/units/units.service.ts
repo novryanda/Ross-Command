@@ -62,6 +62,7 @@ export class UnitsService {
         description: unit.description,
         path: unit.path,
         depthLevel: unit.depthLevel,
+        leaderOnlyAssignments: unit.leaderOnlyAssignments,
         commander: unit.commander,
         directMembers:
           membershipMap.get(unit.id)?.map((membership) => ({
@@ -140,6 +141,7 @@ export class UnitsService {
       description: unit.description,
       path: unit.path,
       depthLevel: unit.depthLevel,
+      leaderOnlyAssignments: unit.leaderOnlyAssignments,
       commander: unit.commander,
       parent: unit.parent,
       members: unit.memberships.map((membership) => ({
@@ -168,6 +170,13 @@ export class UnitsService {
         'Pimpinan satuan hanya dapat dipilih setelah anggota ditambahkan ke satuan',
       );
     }
+    if (parsed.leaderOnlyAssignments) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Pimpinan mewakili anggota hanya dapat diaktifkan setelah pimpinan satuan ditetapkan',
+      );
+    }
 
     await this.ensureSiblingNameAvailable(parsed.parentId ?? null, parsed.name);
 
@@ -181,6 +190,7 @@ export class UnitsService {
         name: parsed.name,
         description: parsed.description,
         commanderId: null,
+        leaderOnlyAssignments: false,
         path,
         depthLevel,
       },
@@ -213,6 +223,22 @@ export class UnitsService {
       await this.ensureDirectUnitMember(unitId, parsed.commanderId);
     }
 
+    const nextCommanderId =
+      parsed.commanderId === undefined
+        ? current.commanderId
+        : parsed.commanderId;
+    const nextLeaderOnlyAssignments =
+      parsed.leaderOnlyAssignments ??
+      (nextCommanderId ? current.leaderOnlyAssignments : false);
+
+    if (nextLeaderOnlyAssignments && !nextCommanderId) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Pimpinan mewakili anggota hanya dapat diaktifkan jika satuan memiliki pimpinan',
+      );
+    }
+
     if (parsed.name && parsed.name !== current.name) {
       await this.ensureSiblingNameAvailable(
         parent?.id ?? null,
@@ -233,6 +259,10 @@ export class UnitsService {
           : {}),
         ...(parsed.commanderId !== undefined
           ? { commanderId: parsed.commanderId }
+          : {}),
+        ...(parsed.leaderOnlyAssignments !== undefined ||
+        (parsed.commanderId === null && current.leaderOnlyAssignments)
+          ? { leaderOnlyAssignments: nextLeaderOnlyAssignments }
           : {}),
         ...(parsed.parentId !== undefined
           ? {
@@ -361,6 +391,7 @@ export class UnitsService {
           },
           data: {
             commanderId: null,
+            leaderOnlyAssignments: false,
           },
         });
       }
@@ -410,6 +441,7 @@ export class UnitsService {
         },
         data: {
           commanderId: null,
+          leaderOnlyAssignments: false,
         },
       }),
       this.prisma.unitMember.create({

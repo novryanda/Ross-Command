@@ -76,7 +76,8 @@ function NavMenuItem({ item, isActive }: { item: NavItem; isActive: (url: string
   const hasChildren = item.items && item.items.length > 0
 
   if (hasChildren) {
-    const defaultOpen = item.items?.some((sub) => isActive(sub.url)) ?? false
+    const defaultOpen =
+      item.items?.some((sub) => sub.kind !== 'label' && sub.url && isActive(sub.url)) ?? false
 
     return (
       <Collapsible asChild defaultOpen={defaultOpen} className='group/collapsible'>
@@ -92,22 +93,30 @@ function NavMenuItem({ item, isActive }: { item: NavItem; isActive: (url: string
             <SidebarMenuSub>
               {item.items!.map((sub) => (
                 <SidebarMenuSubItem key={sub.title}>
-                  <SidebarMenuSubButton
-                    asChild
-                    isActive={isActive(sub.url)}
-                    aria-disabled={sub.disabled || undefined}
-                  >
-                    <Link
-                      href={sub.url}
-                      target={sub.external ? '_blank' : undefined}
-                      rel={sub.external ? 'noreferrer' : undefined}
-                    >
-                      <span>{sub.title}</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                  {sub.badge !== undefined ? (
-                    <SidebarMenuBadge className='bg-primary/10 rounded-full'>{sub.badge}</SidebarMenuBadge>
-                  ) : null}
+                  {sub.kind === 'label' || !sub.url ? (
+                    <div className='text-muted-foreground px-2 py-1 text-xs font-medium tracking-wide uppercase'>
+                      {sub.title}
+                    </div>
+                  ) : (
+                    <>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={isActive(sub.url)}
+                        aria-disabled={sub.disabled || undefined}
+                      >
+                        <Link
+                          href={sub.url}
+                          target={sub.external ? '_blank' : undefined}
+                          rel={sub.external ? 'noreferrer' : undefined}
+                        >
+                          <span>{sub.title}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                      {sub.badge !== undefined ? (
+                        <SidebarMenuBadge className='bg-primary/10 rounded-full'>{sub.badge}</SidebarMenuBadge>
+                      ) : null}
+                    </>
+                  )}
                 </SidebarMenuSubItem>
               ))}
             </SidebarMenuSub>
@@ -122,11 +131,11 @@ function NavMenuItem({ item, isActive }: { item: NavItem; isActive: (url: string
       <SidebarMenuButton
         asChild
         tooltip={item.title}
-        isActive={isActive(item.url)}
+        isActive={item.url ? isActive(item.url) : false}
         aria-disabled={item.disabled || undefined}
       >
         <Link
-          href={item.url}
+          href={item.url ?? '#'}
           target={item.external ? '_blank' : undefined}
           rel={item.external ? 'noreferrer' : undefined}
         >

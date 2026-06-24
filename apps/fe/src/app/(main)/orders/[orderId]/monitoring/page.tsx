@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { OrderProgressMonitoringView } from "@/components/features/orders/order-progress-monitoring-view";
 import { BackButton } from "@/components/komando/back-button";
-import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
+import { DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { PageHero } from "@/components/komando/page-hero";
 import { Button } from "@/components/ui/button";
 import { ApiRequestError, type OrderDetail, type OrderProgressByUnit } from "@/lib/api/types";
@@ -63,9 +63,6 @@ export default async function OrderMonitoringPage({
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={order.orderType} />
-          {order.orderType === "komentar" && order.sentiment ? (
-            <CommentSentimentBadge sentiment={order.sentiment} />
-          ) : null}
           <StatusBadge status={order.status} />
           <DeadlineBadge deadline={order.deadline} />
         </div>

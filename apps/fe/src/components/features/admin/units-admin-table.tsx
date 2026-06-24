@@ -104,7 +104,14 @@ export function UnitsAdminTable({ units, toolbarActions, onSelect }: UnitsAdminT
               onClick={() => onSelect(row.original)}
             >
               <span className="block truncate text-sm font-medium">{row.original.name}</span>
-              <span className="text-muted-foreground block text-xs">Level {row.original.depthLevel}</span>
+              <span className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs">
+                Level {row.original.depthLevel}
+                {row.original.leaderOnlyAssignments ? (
+                  <Badge variant="secondary" className="h-4 rounded-sm px-1 text-[10px]">
+                    Pimpinan saja
+                  </Badge>
+                ) : null}
+              </span>
             </button>
           </div>
         ),
@@ -129,7 +136,14 @@ export function UnitsAdminTable({ units, toolbarActions, onSelect }: UnitsAdminT
         id: "memberCount",
         header: "Anggota",
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{row.original.directMembers?.length ?? 0}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-muted-foreground text-sm">{row.original.directMembers?.length ?? 0}</span>
+            {row.original.leaderOnlyAssignments ? (
+              <Badge variant="outline" className="h-5 rounded-sm px-1.5 text-[10px]">
+                Pimpinan saja
+              </Badge>
+            ) : null}
+          </div>
         ),
       },
       {

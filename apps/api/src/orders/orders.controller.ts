@@ -33,6 +33,18 @@ export class OrdersController {
     return successResponse(result.items, undefined, result.meta);
   }
 
+  @Get('summary')
+  async getOrdersSummary(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const result = await this.ordersService.getOrdersSummary(
+      currentUser.user.id,
+      query,
+    );
+    return successResponse(result);
+  }
+
   @Post()
   async createOrder(
     @CurrentUser() currentUser: AuthenticatedUser,

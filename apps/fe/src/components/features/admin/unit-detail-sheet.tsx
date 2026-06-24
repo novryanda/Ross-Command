@@ -20,6 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { clientApiFetch } from "@/lib/api/client";
 import type { UnitDetail, UnitNode } from "@/lib/api/types";
@@ -55,6 +56,7 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
     parentId: "root",
     description: "",
     commanderId: "none",
+    leaderOnlyAssignments: false,
   });
   const detailQuery = useQuery({
     queryKey: ["units", "detail", unit?.id],
@@ -74,6 +76,7 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
       parentId: detail.parent?.id ?? "root",
       description: detail.description ?? "",
       commanderId: detail.commander?.id ?? "none",
+      leaderOnlyAssignments: detail.leaderOnlyAssignments,
     });
   }, [detail]);
 
@@ -88,6 +91,7 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
           parentId: form.parentId === "root" ? null : form.parentId,
           description: form.description || null,
           commanderId: form.commanderId === "none" ? null : form.commanderId,
+          leaderOnlyAssignments: form.leaderOnlyAssignments,
         }),
       });
       toast.success("Satuan berhasil diperbarui");
@@ -163,7 +167,17 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
                     </div>
                     <div className="grid gap-2">
                       <Label>Pimpinan</Label>
-                      <Select value={form.commanderId} onValueChange={(value) => setForm((current) => ({ ...current, commanderId: value }))}>
+                      <Select
+                        value={form.commanderId}
+                        onValueChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            commanderId: value,
+                            leaderOnlyAssignments:
+                              value === "none" ? false : current.leaderOnlyAssignments,
+                          }))
+                        }
+                      >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Tanpa Pimpinan</SelectItem>
@@ -175,6 +189,26 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                      <div className="grid gap-1">
+                        <Label htmlFor="leader-only-assignments">
+                          Perintah hanya diberikan ke pimpinan.</Label>
+                        <p className="text-muted-foreground text-xs">
+                          Jika diaktifkan, hanya pimpinan satuan ini yang dapat menerima perintah dari atasan.
+                        </p>
+                      </div>
+                      <Switch
+                        id="leader-only-assignments"
+                        checked={form.leaderOnlyAssignments}
+                        disabled={form.commanderId === "none"}
+                        onCheckedChange={(checked) =>
+                          setForm((current) => ({
+                            ...current,
+                            leaderOnlyAssignments: checked,
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
                 ) : (
                   <dl className="grid gap-3 text-sm">
@@ -182,6 +216,18 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
                     <InfoRow label="Level" value={`Level ${detail.depthLevel}`} />
                     <InfoRow label="Parent" value={detail.parent?.name ?? "Root"} />
                     <InfoRow label="Pimpinan" value={detail.commander?.fullName ?? "Belum ditetapkan"} />
+                    <div className="grid gap-1">
+                      <dt className="text-muted-foreground text-xs">Distribusi Perintah</dt>
+                      <dd>
+                        {detail.leaderOnlyAssignments ? (
+                          <Badge variant="secondary" className="rounded-sm">
+                            Pimpinan saja
+                          </Badge>
+                        ) : (
+                          <span className="text-sm">Seluruh anggota</span>
+                        )}
+                      </dd>
+                    </div>
                     <InfoRow label="Deskripsi" value={detail.description?.trim() || "Tidak ada deskripsi"} />
                   </dl>
                 )}

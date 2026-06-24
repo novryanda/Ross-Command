@@ -9,7 +9,7 @@ import { isBlastingOrderType } from "@/lib/order-utils";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
 import { BackButton } from "@/components/komando/back-button";
-import { CommentSentimentBadge, DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
+import { DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { ListViewToggle } from "@/components/komando/list-view-toggle";
 import { PageHero } from "@/components/komando/page-hero";
@@ -67,9 +67,6 @@ export default async function OrderDetailPage({
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={order.orderType} />
-          {order.orderType === "komentar" && order.sentiment ? (
-            <CommentSentimentBadge sentiment={order.sentiment} />
-          ) : null}
           <StatusBadge status={order.status} />
           <DeadlineBadge deadline={order.deadline} />
         </div>
@@ -79,12 +76,7 @@ export default async function OrderDetailPage({
         <Card className="border-border/70 shadow-sm lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
             <CardTitle className="text-base">Instruksi</CardTitle>
-            {order.orderType === "komentar" ? (
-              <>
-                <OrderTypeBadge type="komentar" />
-                {order.sentiment ? <CommentSentimentBadge sentiment={order.sentiment} /> : null}
-              </>
-            ) : null}
+            {order.orderType === "counter" ? <OrderTypeBadge type="counter" /> : null}
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {order.orderType === "posting" ? (

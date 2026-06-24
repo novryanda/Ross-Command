@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { TargetPicker, type OrderTargetInput } from "@/components/komando/trees/target-picker";
-import { CommentSentimentBadge } from "@/components/komando/badges";
 import {
   OrderPostingFields,
   hasValidPostingDraft,
@@ -23,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Stepper } from "@/components/wizard-stepper";
 import { clientApiFetch } from "@/lib/api/client";
 import type { Order, OrderTargetAudience, OrderType, SocialPlatform, UnitNode } from "@/lib/api/types";
@@ -33,7 +31,7 @@ const BLASTING_ACTIONS = ["like", "share", "repost"] as const;
 const defaultDescription: Record<Exclude<OrderType, "posting">, string> = {
   engagement: "Lakukan like, share, dan repost pada URL target.",
   blasting: "Lakukan like, share, dan repost pada URL target.",
-  komentar: "Berikan komentar sesuai narasi pada URL target.",
+  counter: "Berikan counter narasi sesuai instruksi pada URL target.",
   report_akun: "Laporkan akun target sesuai alasan yang ditentukan.",
 };
 
@@ -66,7 +64,6 @@ type OrderDraft = {
   postingTargetPlatforms: SocialPlatform[];
   deskripsi: string;
   narration: string;
-  sentiment: "positive" | "negative" | "";
   engagementActions: string[];
   reportReason: string;
   targetAudience: Exclude<OrderTargetAudience, "direct_user">;
@@ -76,9 +73,11 @@ type OrderDraft = {
 export function OrderForm({
   units,
   currentUserId,
+  initialOrderType = "posting",
 }: {
   units: UnitNode[];
   currentUserId: string;
+  initialOrderType?: OrderType;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -86,14 +85,13 @@ export function OrderForm({
   const [targets, setTargets] = useState<OrderTargetInput[]>([]);
   const [draft, setDraft] = useState<OrderDraft>({
     title: "",
-    orderType: "posting",
+    orderType: initialOrderType,
     description: "",
     targetUrls: [createTargetUrlDraft()],
     postingSourceUrl: "",
     postingTargetPlatforms: [],
     deskripsi: "",
     narration: "",
-    sentiment: "",
     engagementActions: [],
     reportReason: "",
     targetAudience: "all_members",
@@ -102,7 +100,7 @@ export function OrderForm({
 
   const isPosting = draft.orderType === "posting";
   const isBlasting = draft.orderType === "engagement" || draft.orderType === "blasting";
-  const requiresNarration = draft.orderType === "komentar";
+  const requiresNarration = draft.orderType === "counter";
   const requiresReport = draft.orderType === "report_akun";
   const targetCounts = useMemo(
     () => ({
@@ -136,7 +134,7 @@ export function OrderForm({
 
       if (!hasValidTargetUrls(draft.targetUrls)) return false;
       if (requiresNarration) {
-        return draft.narration.length >= 3 && (draft.sentiment === "positive" || draft.sentiment === "negative");
+        return draft.narration.length >= 3;
       }
       if (requiresReport) return draft.reportReason.length >= 3;
       return true;
@@ -181,7 +179,6 @@ export function OrderForm({
                 url: item.url.trim(),
               })),
             narration: draft.narration || undefined,
-            sentiment: draft.sentiment || undefined,
             engagementActions:
               isBlasting ? [...BLASTING_ACTIONS] : undefined,
             reportReason: draft.reportReason || undefined,
@@ -226,7 +223,6 @@ export function OrderForm({
                   setDraft((current) => ({
                     ...current,
                     orderType,
-                    sentiment: orderType === "komentar" ? current.sentiment : "",
                     engagementActions: orderType === "blasting" ? [...BLASTING_ACTIONS] : [],
                   }));
                 }}
@@ -237,26 +233,10 @@ export function OrderForm({
                 <SelectContent>
                   <SelectItem value="posting">Posting</SelectItem>
                   <SelectItem value="blasting">Blasting</SelectItem>
-                  <SelectItem value="komentar">Komentar</SelectItem>
-                  <SelectItem value="report_akun">Report Akun</SelectItem>
+                  <SelectItem value="counter">Counter</SelectItem>
+                  <SelectItem value="report_akun">Report</SelectItem>
                 </SelectContent>
               </Select>
-              {requiresNarration ? (
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  spacing={0}
-                  value={draft.sentiment || undefined}
-                  onValueChange={(value) => setField("sentiment", (value as "positive" | "negative") || "")}
-                >
-                  <ToggleGroupItem value="positive" aria-label="Pro">
-                    👍 Pro
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="negative" aria-label="Kontra">
-                    👎 Kontra
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              ) : null}
             </div>
             {!isPosting ? (
               <OrderTargetUrlsField
@@ -274,16 +254,11 @@ export function OrderForm({
               />
             )}
             <div className="grid gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Label htmlFor="description">Instruksi</Label>
-                {requiresNarration && (draft.sentiment === "positive" || draft.sentiment === "negative") ? (
-                  <CommentSentimentBadge sentiment={draft.sentiment} />
-                ) : null}
-              </div>
+              <Label htmlFor="description">Instruksi</Label>
               <Textarea
                 id="description"
                 rows={4}
-                placeholder="Opsional — tambahan instruksi untuk anggota"
+                placeholder="Opsional - tambahan instruksi untuk anggota"
                 value={draft.description}
                 onChange={(event) => setField("description", event.target.value)}
               />
@@ -294,11 +269,11 @@ export function OrderForm({
             </div>
             {requiresNarration ? (
               <div className="grid gap-2">
-                <Label htmlFor="narration">Narasi Komentar</Label>
+                <Label htmlFor="narration">Narasi Counter</Label>
                 <Textarea
                   id="narration"
                   rows={3}
-                  placeholder="Teks komentar yang harus digunakan anggota"
+                  placeholder="Teks counter narasi yang harus digunakan anggota"
                   value={draft.narration}
                   onChange={(event) => setField("narration", event.target.value)}
                 />
@@ -342,9 +317,6 @@ export function OrderForm({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground">Jenis:</span>
               <span>{draft.orderType}</span>
-              {requiresNarration && (draft.sentiment === "positive" || draft.sentiment === "negative") ? (
-                <CommentSentimentBadge sentiment={draft.sentiment} />
-              ) : null}
             </div>
             {requiresNarration ? (
               <p><span className="text-muted-foreground">Narasi:</span> {draft.narration || "-"}</p>

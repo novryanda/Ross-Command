@@ -234,11 +234,11 @@ Setiap baris di bawah wajib ada sebagai `UnitMember` aktif (`removedAt = null`).
 
 Total membership aktif seed: **34** (semua user member kecuali `superadmin`).
 
-Mengikuti instruksi kamu: **4 jenis perintah variatif** (posting, Blasting, komentar, report_akun), dengan isu yang diangkat dari laporan harian yang kamu lampirkan (isu AS-Iran, kenaikan harga BBM, rapat tertutup Komisi I DPR, dan isu MBG/Luhut). Secara transisi database masih menyimpan Blasting sebagai enum internal `engagement`, tetapi UI/API menampilkan label **Blasting**.
+Mengikuti instruksi kamu: **4 jenis perintah variatif** (posting, Blasting, counter, report_akun), dengan isu yang diangkat dari laporan harian yang kamu lampirkan (isu AS-Iran, kenaikan harga BBM, rapat tertutup Komisi I DPR, dan isu MBG/Luhut). Secara transisi database masih menyimpan Blasting sebagai enum internal `engagement`, tetapi UI/API menampilkan label **Blasting**.
 
 | No | Judul | Jenis | Isu Sumber | Pembuat | Target | Deadline | Status |
 |---|---|---|---|---|---|---|---|
-| 1 | Counter Narasi Provokasi Konflik AS–Iran | `komentar` | Berita AS serang Iran (Internasional) | `pangdam_ibb` | Seluruh Kodam I/BB | +6 jam | `aktif` |
+| 1 | Counter Narasi Provokasi Konflik AS–Iran | `counter` | Berita AS serang Iran (Internasional) | `pangdam_ibb` | Seluruh Kodam I/BB | +6 jam | `aktif` |
 | 2 | Monitoring Sebaran Isu Kenaikan Harga BBM | `report_akun` | Pertamax naik Rp16.250 (Nasional) | `kasdam_ibb` | Korem 022/PT + Korem 023/KS | +24 jam | `aktif` |
 | 3 | Sosialisasi Positif Program MBG di Wilayah | `posting` | Statement Luhut soal MBG (Nasional) | `pangdam_ibb` | Seluruh Korem (4 Korem) | +48 jam | `aktif` |
 | 4 | Engagement Klarifikasi Rapat Tertutup Komisi I DPR | `engagement` | Rapat tertutup Komisi I DPR-Menhan (Nasional) | `asintel_kasdam` | Satbalakdam — Denintel | +12 jam (lampau) | `expired` |
@@ -247,10 +247,9 @@ Mengikuti instruksi kamu: **4 jenis perintah variatif** (posting, Blasting, kome
 
 ### 5.1 Detail Konten Setiap Order (untuk seed)
 
-**Order 1 — Counter Narasi Provokasi Konflik AS–Iran (`komentar`, AKTIF)**
+**Order 1 — Counter Narasi Provokasi Konflik AS–Iran (`counter`, AKTIF)**
 - `targetUrl` referensi: link YouTube "AS-Iran Kembali Panas..." dari laporan
 - `narration`: "Mari kita bijak menyikapi pemberitaan internasional. Fokus pada kondisi dalam negeri yang kondusif dan terus jaga persatuan."
-- `sentiment`: `positive`
 - Memakai `OrderSocialTarget` — disasarkan ke **3 platform sekaligus**: YouTube, Twitter/X, TikTok (mengikuti pola asli laporan yang ada di banyak platform)
 
 **Order 2 — Monitoring Sebaran Isu Kenaikan Harga BBM (`report_akun`, AKTIF)**

@@ -5,6 +5,7 @@ export const createUnitSchema = z.object({
   name: z.string().trim().min(2).max(150),
   description: z.string().trim().max(5000).optional(),
   commanderId: z.string().uuid().nullable().optional(),
+  leaderOnlyAssignments: z.boolean().optional(),
 });
 
 export const updateUnitSchema = z.object({
@@ -12,6 +13,7 @@ export const updateUnitSchema = z.object({
   name: z.string().trim().min(2).max(150).optional(),
   description: z.string().trim().max(5000).nullable().optional(),
   commanderId: z.string().uuid().nullable().optional(),
+  leaderOnlyAssignments: z.boolean().optional(),
 });
 
 export const assignMemberSchema = z.object({

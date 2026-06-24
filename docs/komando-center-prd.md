@@ -23,7 +23,7 @@
 
 ## 1. Executive Summary
 
-**Komando Center** adalah platform web terpusat berbasis REST API untuk manajemen operasi sosial media pada organisasi hierarkis berjenjang. Sistem memungkinkan komandan pada setiap level untuk menerbitkan perintah aksi sosial media (posting, engagement, komentar, report akun) kepada satuan atau anggota di bawah mereka secara rekursif, memantau progress pelaksanaan secara real-time, dan menerima bukti pelaksanaan berupa link Google Drive dari setiap anggota.
+**Komando Center** adalah platform web terpusat berbasis REST API untuk manajemen operasi sosial media pada organisasi hierarkis berjenjang. Sistem memungkinkan komandan pada setiap level untuk menerbitkan perintah aksi sosial media (posting, blasting, counter, report akun) kepada satuan atau anggota di bawah mereka secara rekursif, memantau progress pelaksanaan secara real-time, dan menerima bukti pelaksanaan berupa link Google Drive dari setiap anggota.
 
 Sistem dibangun di atas arsitektur **monolith Next.js** (App Router) dengan database **PostgreSQL**, autentikasi menggunakan **Better Auth**, dan backend API menggunakan **Next.js Route Handlers** — semua dalam satu codebase yang terpadu.
 
@@ -114,7 +114,7 @@ Kondisi ini menyebabkan tingkat ketidakpatuhan yang tinggi, tidak adanya akuntab
 - Manajemen struktur organisasi hierarkis n-level (tree satuan)
 - Manajemen akun user oleh Admin
 - Pendaftaran akun sosial media oleh anggota
-- Pembuatan dan pengiriman perintah dengan 4 jenis: Posting, Engagement, Komentar, Report Akun
+- Pembuatan dan pengiriman perintah dengan 4 jenis: Posting, Blasting, Counter, Report
 - Distribusi perintah otomatis ke seluruh anggota satuan secara rekursif
 - Submission bukti pelaksanaan berupa link Google Drive
 - Dashboard monitoring progress real-time untuk Komandan
@@ -458,8 +458,8 @@ const currentUser = session.user
 
 | ID     | Fitur                          | Deskripsi                                                                           | Prioritas | Acceptance Criteria                                                                        |
 |--------|--------------------------------|-------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------|
-| FR-029 | Buat perintah (4 jenis)        | Komandan SHALL dapat membuat perintah dengan jenis: Posting, Engagement, Komentar, Report Akun | Critical | Form menampilkan field kondisional sesuai jenis yang dipilih; validasi berjalan sebelum submit |
-| FR-030 | Field kondisional per jenis    | System SHALL menampilkan field tambahan sesuai jenis perintah yang dipilih          | Critical  | Posting: narasi + hashtag; Engagement: checkbox like/share/repost; Komentar: narasi + sentimen; Report: alasan |
+| FR-029 | Buat perintah (4 jenis)        | Komandan SHALL dapat membuat perintah dengan jenis: Posting, Blasting, Counter, Report | Critical | Form menampilkan field kondisional sesuai jenis yang dipilih; validasi berjalan sebelum submit |
+| FR-030 | Field kondisional per jenis    | System SHALL menampilkan field tambahan sesuai jenis perintah yang dipilih          | Critical  | Posting: narasi + hashtag; Blasting: checkbox like/share/repost; Counter: narasi; Report: alasan |
 | FR-031 | Validasi deadline minimal      | System SHALL menolak perintah dengan deadline kurang dari 1 jam dari waktu pengiriman | High    | Error "Deadline minimal 1 jam dari sekarang" ditampilkan; form tidak dapat disubmit       |
 | FR-032 | Pilih target perintah          | Komandan SHALL dapat memilih target perintah berupa satuan (multi-select) dan/atau anggota individu | Critical | Preview jumlah anggota yang terdampak tampil real-time saat satuan/anggota dipilih      |
 | FR-033 | Preview target rekursif        | Saat Komandan memilih satuan, system SHALL menampilkan preview jumlah total anggota termasuk sub-satuan | High | Counter "X anggota dari Y satuan" diperbarui real-time saat checkbox berubah           |
@@ -478,7 +478,7 @@ const currentUser = session.user
 | FR-041 | Visual alert deadline mepet    | System SHALL menampilkan visual alert untuk perintah dengan deadline < 24 jam        | High      | Label "⚠️ X jam lagi" dengan warna merah tampil; perintah urgent muncul di atas dashboard |
 | FR-042 | Filter perintah diterima       | Anggota SHALL dapat memfilter daftar perintah berdasarkan jenis, status, periode, dan dari siapa | High | Semua filter berfungsi dan dapat dikombinasikan; reset filter mengembalikan tampilan penuh |
 | FR-043 | Lihat detail perintah          | Anggota SHALL melihat detail lengkap perintah: instruksi, narasi, link target, deadline | Critical | Detail perintah menampilkan semua field yang diisi Komandan; ada tombol "Buka di Tab Baru" untuk link target |
-| FR-044 | Salin narasi                   | System SHALL menyediakan tombol salin untuk narasi komentar/posting                 | Medium    | Klik tombol "Salin Narasi" menyalin teks narasi ke clipboard; notifikasi "Tersalin!" muncul |
+| FR-044 | Salin narasi                   | System SHALL menyediakan tombol salin untuk narasi counter/posting                  | Medium    | Klik tombol "Salin Narasi" menyalin teks narasi ke clipboard; notifikasi "Tersalin!" muncul |
 | FR-045 | Tampil akun sosmed relevan     | System SHALL menampilkan daftar akun sosmed milik anggota di halaman detail perintah | Medium  | Akun sosmed anggota tampil di bawah instruksi sebagai referensi untuk pelaksanaan         |
 | FR-046 | Submit bukti (link Drive)      | Anggota SHALL dapat mengisi link Google Drive sebagai bukti pelaksanaan             | Critical  | Link tersimpan; status assignment berubah ke `selesai` atau `terlambat` secara otomatis  |
 | FR-047 | Validasi URL submission        | System SHALL memvalidasi bahwa link yang disubmit adalah URL yang valid             | High      | URL kosong atau format tidak valid ditolak dengan pesan error spesifik                    |

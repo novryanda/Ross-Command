@@ -1,10 +1,14 @@
 import { z } from 'zod';
+import {
+  normalizeOrderTypeInput,
+  orderTypeInputValues,
+} from './order-type.util';
 
 export const engagementActionSchema = z.enum(['like', 'share', 'repost']);
 
 export const orderTypeInputSchema = z
-  .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
-  .transform((value) => (value === 'blasting' ? 'engagement' : value));
+  .enum(orderTypeInputValues)
+  .transform(normalizeOrderTypeInput);
 
 export const socialPlatformSchema = z.enum([
   'instagram',
@@ -40,7 +44,6 @@ export const orderFieldsSchema = z.object({
   postingSourceUrl: z.string().trim().url().optional(),
   postingTargetPlatforms: z.array(socialPlatformSchema).optional(),
   narration: z.string().trim().optional(),
-  sentiment: z.enum(['positive', 'negative']).optional(),
   engagementActions: z.array(engagementActionSchema).min(1).optional(),
   reportReason: z.string().trim().optional(),
   deadline: z.coerce.date(),
@@ -85,16 +88,22 @@ export const listOrdersQuerySchema = z.object({
   status: z
     .enum(['draft', 'aktif', 'selesai', 'expired', 'dibatalkan'])
     .optional(),
-  orderType: z
-    .enum(['posting', 'engagement', 'blasting', 'komentar', 'report_akun'])
-    .transform((value) => (value === 'blasting' ? 'engagement' : value))
-    .optional(),
-  sentiment: z.enum(['positive', 'negative']).optional(),
+  orderType: orderTypeInputSchema.optional(),
   submitDate: z.coerce.date().optional(),
   deadlineDate: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
   sortBy: z.enum(['createdAt', 'deadline', 'title', 'sentAt']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export const listOrdersSummaryQuerySchema = z.object({
+  status: z
+    .enum(['draft', 'aktif', 'selesai', 'expired', 'dibatalkan'])
+    .optional(),
+  orderType: orderTypeInputSchema.optional(),
+  submitDate: z.coerce.date().optional(),
+  deadlineDate: z.coerce.date().optional(),
+  search: z.string().trim().min(1).optional(),
 });
 
 export const listOrderAssignmentsQuerySchema = z.object({

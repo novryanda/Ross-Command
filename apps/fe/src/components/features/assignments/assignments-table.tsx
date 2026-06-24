@@ -17,7 +17,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { LucideIcon } from "lucide-react";
 
 import {
-  CommentSentimentBadge,
   DeadlineBadge,
   OrderTypeBadge,
   StatusBadge,
@@ -43,7 +42,7 @@ const orderTypeVisual: Record<OrderType, { icon: LucideIcon; className: string }
   posting: { icon: CloudUploadIcon, className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
   engagement: { icon: HeartIcon, className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   blasting: { icon: HeartIcon, className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  komentar: { icon: MessageSquareIcon, className: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  counter: { icon: MessageSquareIcon, className: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
   report_akun: { icon: FlagIcon, className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
 };
 
@@ -164,9 +163,6 @@ export function AssignmentsTable({ assignments, pagination }: AssignmentsTablePr
                 ) : null}
                 <div className="flex flex-wrap gap-1">
                   <OrderTypeBadge type={order.orderType} />
-                  {order.orderType === "komentar" && order.sentiment ? (
-                    <CommentSentimentBadge sentiment={order.sentiment} />
-                  ) : null}
                   <StatusBadge status={assignment.status} />
                   <DeadlineBadge deadline={order.deadline} />
                 </div>

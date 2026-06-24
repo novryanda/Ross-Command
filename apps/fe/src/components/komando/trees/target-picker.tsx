@@ -51,6 +51,7 @@ type FlatUnitRow = {
   depthLevel: number;
   parentName: string | null;
   memberCount: number;
+  leaderOnlyAssignments: boolean;
 };
 
 type LeaderRow = {
@@ -303,7 +304,7 @@ export function TargetPicker({
         <p className="font-medium">{audienceLabel[targetAudience]}</p>
         <p className="text-muted-foreground text-xs">
           {targetAudience === "all_members"
-            ? "Perintah dikirim ke seluruh anggota aktif dalam subtree satuan yang dipilih."
+            ? "Perintah dikirim ke seluruh anggota aktif, kecuali satuan bertanda Pimpinan saja yang diwakili pimpinannya."
             : "Pilih user pimpinan satuan yang akan menerima perintah dan mewakili anggota langsungnya."}
         </p>
       </div>
@@ -381,14 +382,23 @@ export function TargetPicker({
                           className="min-w-0"
                           style={{ paddingLeft: `${row.depthLevel * 16}px` }}
                         >
-                          <p className="truncate font-medium">{row.name}</p>
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <p className="truncate font-medium">{row.name}</p>
+                            {row.leaderOnlyAssignments ? (
+                              <Badge variant="secondary" className="h-5 rounded-sm px-1.5 text-[10px]">
+                                Pimpinan saja
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>Level {row.depthLevel}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {row.parentName ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{row.memberCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.leaderOnlyAssignments ? "Pimpinan" : row.memberCount}
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -529,6 +539,7 @@ function flattenUnits(
       depthLevel: node.depthLevel,
       parentName,
       memberCount: node.directMembers?.length ?? 0,
+      leaderOnlyAssignments: node.leaderOnlyAssignments,
     },
     ...flattenUnits(node.children, node.name),
   ]);

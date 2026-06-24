@@ -11,10 +11,12 @@ type SeedPlatform =
   | 'tiktok'
   | 'youtube'
   | 'other';
-type SeedOrderType = 'posting' | 'engagement' | 'komentar' | 'report_akun';
+type SeedOrderType = 'posting' | 'engagement' | 'counter' | 'report_akun';
 type SeedOrderStatus = 'draft' | 'aktif' | 'expired';
 type SeedAssignmentStatus = 'belum_dikerjakan' | 'selesai' | 'terlambat';
 type SeedActivityType = 'order_created' | 'order_sent' | 'submission_sent';
+type SeedGender = 'pria' | 'wanita';
+type SeedEmploymentType = 'tni' | 'pns' | 'p3k';
 
 type SeedUser = {
   key: string;
@@ -22,7 +24,13 @@ type SeedUser = {
   username: string;
   password: string;
   role: SeedRole;
-  nip?: string;
+  identityNumber?: string;
+  gender?: SeedGender;
+  employmentType?: SeedEmploymentType;
+  rank?: string;
+  grade?: string;
+  religion?: 'islam' | 'kristen_protestan' | 'katolik' | 'hindu' | 'buddha' | 'konghucu';
+  phoneNumber?: string;
 };
 
 type SeedUnit = {
@@ -46,7 +54,6 @@ type SeedOrder = {
   orderType: SeedOrderType;
   description: string;
   narration?: string;
-  sentiment?: 'positive' | 'negative';
   engagementActions?: Array<'like' | 'share' | 'repost'>;
   reportReason?: string;
   postingSourceUrl?: string;
@@ -98,7 +105,7 @@ const users: SeedUser[] = [
     username: 'kasad',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-AD-0001',
+    identityNumber: 'NRP-AD-0001',
   },
   {
     key: 'pangdam_ibb',
@@ -106,7 +113,7 @@ const users: SeedUser[] = [
     username: 'pangdam_ibb',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-KODAM-0001',
+    identityNumber: 'NRP-KODAM-0001',
   },
   {
     key: 'kasdam_ibb',
@@ -114,7 +121,7 @@ const users: SeedUser[] = [
     username: 'kasdam_ibb',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-KODAM-0002',
+    identityNumber: 'NRP-KODAM-0002',
   },
   {
     key: 'irdam_ibb',
@@ -122,7 +129,7 @@ const users: SeedUser[] = [
     username: 'irdam_ibb',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-KODAM-0003',
+    identityNumber: 'NRP-KODAM-0003',
   },
   {
     key: 'asops_kasdam',
@@ -130,7 +137,7 @@ const users: SeedUser[] = [
     username: 'asops_kasdam',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-KODAM-0004',
+    identityNumber: 'NRP-KODAM-0004',
   },
   {
     key: 'asintel_kasdam',
@@ -138,7 +145,7 @@ const users: SeedUser[] = [
     username: 'asintel_kasdam',
     password: 'Komando@123!',
     role: 'member',
-    nip: 'NIP-KODAM-0005',
+    identityNumber: 'NRP-KODAM-0005',
   },
   {
     key: 'danrem_022',
@@ -146,7 +153,7 @@ const users: SeedUser[] = [
     username: 'danrem_022',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-REM-0022',
+    identityNumber: 'NRP-REM-0022',
   },
   {
     key: 'danrem_023',
@@ -154,7 +161,7 @@ const users: SeedUser[] = [
     username: 'danrem_023',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-REM-0023',
+    identityNumber: 'NRP-REM-0023',
   },
   {
     key: 'danrem_031',
@@ -162,7 +169,7 @@ const users: SeedUser[] = [
     username: 'danrem_031',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-REM-0031',
+    identityNumber: 'NRP-REM-0031',
   },
   {
     key: 'danrem_032',
@@ -170,7 +177,7 @@ const users: SeedUser[] = [
     username: 'danrem_032',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-REM-0032',
+    identityNumber: 'NRP-REM-0032',
   },
   {
     key: 'dandenintel',
@@ -178,7 +185,7 @@ const users: SeedUser[] = [
     username: 'dandenintel',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-SAT-0001',
+    identityNumber: 'NRP-SAT-0001',
   },
   {
     key: 'dandenpom',
@@ -186,7 +193,7 @@ const users: SeedUser[] = [
     username: 'dandenpom',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-SAT-0002',
+    identityNumber: 'NRP-SAT-0002',
   },
   {
     key: 'kadenkesyah',
@@ -194,7 +201,7 @@ const users: SeedUser[] = [
     username: 'kadenkesyah',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-SAT-0003',
+    identityNumber: 'NRP-SAT-0003',
   },
   {
     key: 'danzidam',
@@ -202,7 +209,7 @@ const users: SeedUser[] = [
     username: 'danzidam',
     password: 'Komandan@123!',
     role: 'member',
-    nip: 'NIP-SAT-0004',
+    identityNumber: 'NRP-SAT-0004',
   },
   {
     key: 'joko_susilo',
@@ -210,7 +217,7 @@ const users: SeedUser[] = [
     username: 'joko_susilo',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM022-001',
+    identityNumber: 'NRP-REM022-001',
   },
   {
     key: 'agus_salim',
@@ -218,7 +225,7 @@ const users: SeedUser[] = [
     username: 'agus_salim',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM022-002',
+    identityNumber: 'NRP-REM022-002',
   },
   {
     key: 'dwi_cahyono',
@@ -226,7 +233,7 @@ const users: SeedUser[] = [
     username: 'dwi_cahyono',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM022-003',
+    identityNumber: 'NRP-REM022-003',
   },
   {
     key: 'rudi_hartanto',
@@ -234,7 +241,7 @@ const users: SeedUser[] = [
     username: 'rudi_hartanto',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM023-001',
+    identityNumber: 'NRP-REM023-001',
   },
   {
     key: 'bayu_pamungkas',
@@ -242,7 +249,7 @@ const users: SeedUser[] = [
     username: 'bayu_pamungkas',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM023-002',
+    identityNumber: 'NRP-REM023-002',
   },
   {
     key: 'indra_lesmana',
@@ -250,7 +257,7 @@ const users: SeedUser[] = [
     username: 'indra_lesmana',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM023-003',
+    identityNumber: 'NRP-REM023-003',
   },
   {
     key: 'hadi_purnomo',
@@ -258,7 +265,7 @@ const users: SeedUser[] = [
     username: 'hadi_purnomo',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM031-001',
+    identityNumber: 'NRP-REM031-001',
   },
   {
     key: 'fajar_sidiq',
@@ -266,7 +273,7 @@ const users: SeedUser[] = [
     username: 'fajar_sidiq',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM031-002',
+    identityNumber: 'NRP-REM031-002',
   },
   {
     key: 'wahyu_adi',
@@ -274,7 +281,7 @@ const users: SeedUser[] = [
     username: 'wahyu_adi',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM031-003',
+    identityNumber: 'NRP-REM031-003',
   },
   {
     key: 'galih_permana',
@@ -282,7 +289,7 @@ const users: SeedUser[] = [
     username: 'galih_permana',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM032-001',
+    identityNumber: 'NRP-REM032-001',
   },
   {
     key: 'tri_wibowo',
@@ -290,7 +297,7 @@ const users: SeedUser[] = [
     username: 'tri_wibowo',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM032-002',
+    identityNumber: 'NRP-REM032-002',
   },
   {
     key: 'eko_prabowo',
@@ -298,7 +305,7 @@ const users: SeedUser[] = [
     username: 'eko_prabowo',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-REM032-003',
+    identityNumber: 'NRP-REM032-003',
   },
   {
     key: 'doni_saputro',
@@ -306,7 +313,7 @@ const users: SeedUser[] = [
     username: 'doni_saputro',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENINTEL-001',
+    identityNumber: 'NRP-DENINTEL-001',
   },
   {
     key: 'arif_budiman',
@@ -314,7 +321,7 @@ const users: SeedUser[] = [
     username: 'arif_budiman',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENINTEL-002',
+    identityNumber: 'NRP-DENINTEL-002',
   },
   {
     key: 'maman_suherman',
@@ -322,7 +329,7 @@ const users: SeedUser[] = [
     username: 'maman_suherman',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENPOM-001',
+    identityNumber: 'NRP-DENPOM-001',
   },
   {
     key: 'yanto_kurniawan',
@@ -330,7 +337,7 @@ const users: SeedUser[] = [
     username: 'yanto_kurniawan',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENPOM-002',
+    identityNumber: 'NRP-DENPOM-002',
   },
   {
     key: 'dewi_anggraini',
@@ -338,7 +345,7 @@ const users: SeedUser[] = [
     username: 'dewi_anggraini',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENKES-001',
+    identityNumber: 'NRP-DENKES-001',
   },
   {
     key: 'lina_marlina',
@@ -346,7 +353,7 @@ const users: SeedUser[] = [
     username: 'lina_marlina',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-DENKES-002',
+    identityNumber: 'NRP-DENKES-002',
   },
   {
     key: 'bagus_setiadi',
@@ -354,7 +361,7 @@ const users: SeedUser[] = [
     username: 'bagus_setiadi',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-ZIDAM-001',
+    identityNumber: 'NRP-ZIDAM-001',
   },
   {
     key: 'catur_nugraha',
@@ -362,7 +369,7 @@ const users: SeedUser[] = [
     username: 'catur_nugraha',
     password: 'Anggota@123!',
     role: 'member',
-    nip: 'NIP-ZIDAM-002',
+    identityNumber: 'NRP-ZIDAM-002',
   },
 ];
 
@@ -530,12 +537,11 @@ const baseOrders: SeedOrder[] = [
   {
     key: 'order_1',
     title: 'Counter Narasi Provokasi Konflik AS-Iran',
-    orderType: 'komentar',
+    orderType: 'counter',
     description:
       'Laksanakan kontra narasi yang menenangkan situasi dan mengarahkan audiens untuk tetap fokus menjaga persatuan nasional.',
     narration:
       'Mari kita bijak menyikapi pemberitaan internasional. Fokus pada kondisi dalam negeri yang kondusif dan terus jaga persatuan.',
-    sentiment: 'positive',
     socialTargets: [
       {
         platform: 'youtube',
@@ -709,15 +715,15 @@ const scenarioTypeTemplates: Record<
     description:
       'Input hasil blasting berupa views, like, comment, share, dan repost pada target yang ditentukan.',
   },
-  komentar: {
-    label: 'Komentar',
-    title: 'Komentar Penyejuk Isu Publik',
+  counter: {
+    label: 'Counter',
+    title: 'Counter Penyejuk Isu Publik',
     description:
-      'Berikan komentar yang menyejukkan dan menjaga kondusivitas ruang digital.',
+      'Berikan counter narasi yang menyejukkan dan menjaga kondusivitas ruang digital.',
   },
   report_akun: {
-    label: 'Report Akun',
-    title: 'Report Akun Penyebar Disinformasi',
+    label: 'Report',
+    title: 'Report Penyebar Disinformasi',
     description:
       'Laporkan akun atau konten yang terindikasi menyebarkan disinformasi sesuai arahan.',
   },
@@ -735,7 +741,7 @@ function createScenarioOrders(): SeedOrder[] {
   const orderTypes: SeedOrderType[] = [
     'posting',
     'engagement',
-    'komentar',
+    'counter',
     'report_akun',
   ];
   const scenarios: SeedOrder[] = [];
@@ -759,12 +765,11 @@ function createScenarioOrders(): SeedOrder[] {
           orderType,
           description: template.description,
           narration:
-            orderType === 'komentar'
+            orderType === 'counter'
               ? 'Tetap gunakan bahasa yang santun, faktual, dan menenangkan.'
               : orderType === 'posting'
                 ? 'Gunakan narasi resmi, hindari opini personal, dan sertakan tagar sesuai arahan.'
                 : undefined,
-          sentiment: orderType === 'komentar' ? 'positive' : undefined,
           engagementActions:
             orderType === 'engagement' ? ['like', 'share', 'repost'] : undefined,
           reportReason:
@@ -1147,8 +1152,8 @@ function createAutoSubmission(
   return {
     driveLink: `https://drive.google.com/file/d/${order.key}-${userKey}/view`,
     notes:
-      order.orderType === 'komentar'
-        ? 'Screenshot komentar pelaksanaan sudah diunggah.'
+      order.orderType === 'counter'
+        ? 'Screenshot counter narasi pelaksanaan sudah diunggah.'
         : 'Bukti pelaporan akun sudah diunggah.',
     submittedByUserKey,
     submittedAt,
@@ -1260,7 +1265,6 @@ async function main() {
         orderType: order.orderType,
         description: order.description,
         narration: order.narration ?? null,
-        sentiment: order.sentiment ?? null,
         engagementActions: order.engagementActions ?? undefined,
         reportReason: order.reportReason ?? null,
         postingSourceUrl: order.postingSourceUrl ?? null,
@@ -1564,6 +1568,10 @@ async function createSeedUser(
 ) {
   const normalizedUsername = user.username.toLowerCase();
   const email = `${normalizedUsername}@internal.komando`;
+  const employmentType = user.employmentType ?? 'tni';
+  const rank = employmentType === 'tni' ? user.rank ?? inferSeedRank(user.fullName) : null;
+  const grade = employmentType === 'tni' ? null : user.grade ?? null;
+  const gender = user.gender ?? inferSeedGender(user.fullName);
 
   await auth.api.createUser({
     body: {
@@ -1573,7 +1581,13 @@ async function createSeedUser(
       role: user.role,
       data: {
         username: normalizedUsername,
-        nip: user.nip ?? null,
+        identityNumber: user.identityNumber ?? null,
+        gender,
+        employmentType,
+        rank,
+        grade,
+        religion: user.religion ?? null,
+        phoneNumber: user.phoneNumber ?? null,
       },
     },
   });
@@ -1594,7 +1608,13 @@ async function createSeedUser(
     },
     data: {
       role: user.role,
-      nip: user.nip ?? null,
+      identityNumber: user.identityNumber ?? null,
+      gender,
+      employmentType,
+      rank,
+      grade,
+      religion: user.religion ?? null,
+      phoneNumber: user.phoneNumber ?? null,
       emailVerified: true,
       banned: false,
       failedLoginAttempts: 0,
@@ -1604,6 +1624,18 @@ async function createSeedUser(
   });
 
   return createdUser.id;
+}
+
+function inferSeedGender(fullName: string): SeedGender {
+  return /\b(dewi|lina)\b/i.test(fullName) ? 'wanita' : 'pria';
+}
+
+function inferSeedRank(fullName: string) {
+  const rankMatch = fullName.match(
+    /^(Jenderal TNI|Mayor Jenderal TNI|Brigadir Jenderal TNI|Kolonel [^.]+\.|Letnan Kolonel [^.]+\.|Sersan Mayor|Sersan Kepala|Sersan)\b/i,
+  );
+
+  return rankMatch?.[1] ?? 'Prajurit TNI';
 }
 
 async function createSeedUnit(params: {
@@ -1787,3 +1819,5 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+

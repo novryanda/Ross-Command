@@ -25,18 +25,26 @@ type FlatItem = {
   icon?: NavItem['icon']
 }
 
+function flattenNavItem(item: NavItem, groupLabel: string, parentIcon?: NavItem['icon']): FlatItem[] {
+  const icon = item.icon ?? parentIcon
+
+  if (item.items?.length) {
+    return item.items.flatMap((sub) => flattenNavItem(sub, groupLabel, icon))
+  }
+
+  if (item.kind === 'label' || !item.url || item.url === '#') {
+    return []
+  }
+
+  return [{ title: item.title, url: item.url, group: groupLabel, icon }]
+}
+
 function flatten(config: NavConfig): FlatItem[] {
   const result: FlatItem[] = []
   for (const group of config.groups) {
     const groupLabel = group.label ?? 'General'
     for (const item of group.items) {
-      if (item.items?.length) {
-        for (const sub of item.items) {
-          result.push({ title: sub.title, url: sub.url, group: groupLabel, icon: item.icon })
-        }
-      } else if (item.url && item.url !== '#') {
-        result.push({ title: item.title, url: item.url, group: groupLabel, icon: item.icon })
-      }
+      result.push(...flattenNavItem(item, groupLabel))
     }
   }
   return result

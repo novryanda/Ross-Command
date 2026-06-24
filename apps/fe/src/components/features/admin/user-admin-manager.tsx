@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { Loader2Icon, PlusIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { UnitCombobox } from "@/components/features/admin/unit-combobox";
 import { UsersAdminTable } from "@/components/features/admin/users-admin-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,20 +15,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { clientApiFetch } from "@/lib/api/client";
-import type { PaginationMeta, Role, UnitNode, UserListItem } from "@/lib/api/types";
+import type { EmploymentType, Gender, PaginationMeta, Religion, Role, UnitNode, UserListItem } from "@/lib/api/types";
+import {
+  employmentTypeOptions,
+  genderOptions,
+  getIdentityNumberLabel,
+  getRankOrGradeLabel,
+  religionOptions,
+} from "@/lib/user-identity";
 
 type UserFormState = {
   id?: string;
   fullName: string;
   username: string;
   password: string;
-  nip: string;
+  gender: Gender;
+  employmentType: EmploymentType;
+  identityNumber: string;
+  rank: string;
+  grade: string;
+  religion: Religion | "none";
+  phoneNumber: string;
   role: Role;
   unitId: string;
 };
@@ -35,14 +50,16 @@ const emptyForm: UserFormState = {
   fullName: "",
   username: "",
   password: "",
-  nip: "",
+  gender: "pria",
+  employmentType: "tni",
+  identityNumber: "",
+  rank: "",
+  grade: "",
+  religion: "none",
+  phoneNumber: "",
   role: "member",
   unitId: "none",
 };
-
-function flattenUnits(units: UnitNode[]): UnitNode[] {
-  return units.flatMap((unit) => [unit, ...flattenUnits(unit.children ?? [])]);
-}
 
 export function UserAdminManager({
   users,
@@ -59,7 +76,7 @@ export function UserAdminManager({
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
-  const unitOptions = flattenUnits(units);
+  const isTni = form.employmentType === "tni";
 
   function edit(user: UserListItem) {
     setForm({
@@ -67,7 +84,13 @@ export function UserAdminManager({
       fullName: user.fullName,
       username: user.username,
       password: "",
-      nip: user.nip ?? "",
+      gender: user.gender ?? "pria",
+      employmentType: user.employmentType ?? "tni",
+      identityNumber: user.identityNumber ?? "",
+      rank: user.rank ?? "",
+      grade: user.grade ?? "",
+      religion: user.religion ?? "none",
+      phoneNumber: user.phoneNumber ?? "",
       role: user.role ?? "member",
       unitId: user.unit?.id ?? "none",
     });
@@ -81,7 +104,13 @@ export function UserAdminManager({
         fullName: form.fullName,
         username: form.username,
         ...(form.id ? {} : { password: form.password }),
-        nip: form.nip || undefined,
+        gender: form.gender,
+        employmentType: form.employmentType,
+        identityNumber: form.identityNumber || null,
+        rank: form.employmentType === "tni" ? form.rank : null,
+        grade: form.employmentType === "tni" ? null : form.grade,
+        religion: form.religion === "none" ? null : form.religion,
+        phoneNumber: form.phoneNumber.trim() || null,
         role: form.role,
         unitId: form.unitId === "none" ? null : form.unitId,
       };
@@ -129,26 +158,23 @@ export function UserAdminManager({
         onUnlock={(user) => run("/api/v1/auth/admin/unlock-user", "POST", { userId: user.id }, "Akun dibuka")}
         onDeactivate={(user) => run(`/api/v1/users/${user.id}`, "DELETE", undefined, "User dinonaktifkan")}
         toolbarActions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                className="h-8"
-                onClick={() => setForm(emptyForm)}
-              >
-                <PlusIcon className="size-3.5" />
-                Tambah User
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
+          <Button asChild size="sm" className="h-8">
+            <Link href="/admin/users/new">
+              <PlusIcon className="size-3.5" />
+              Tambah User
+            </Link>
+          </Button>
+        }
+      />
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{form.id ? "Edit User" : "Tambah User"}</DialogTitle>
+                <DialogTitle>Edit User</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Nama Lengkap" value={form.fullName} onChange={(value) => setForm((current) => ({ ...current, fullName: value }))} />
                 <Field label="Username" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
-                {!form.id ? <Field label="Password" type="password" value={form.password} onChange={(value) => setForm((current) => ({ ...current, password: value }))} /> : null}
-                <Field label="NIP" value={form.nip} onChange={(value) => setForm((current) => ({ ...current, nip: value }))} />
                 <div className="grid gap-2">
                   <Label>Role</Label>
                   <Select value={form.role} onValueChange={(value) => setForm((current) => ({ ...current, role: value as Role }))}>
@@ -160,27 +186,70 @@ export function UserAdminManager({
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Satuan</Label>
-                  <Select value={form.unitId} onValueChange={(value) => setForm((current) => ({ ...current, unitId: value }))}>
+                  <Label>Jenis Kelamin</Label>
+                  <RadioGroup
+                    value={form.gender}
+                    onValueChange={(value) => setForm((current) => ({ ...current, gender: value as Gender }))}
+                    className="flex flex-wrap gap-4 rounded-md border px-3 py-2"
+                  >
+                    {genderOptions.map((option) => (
+                      <label key={option.value} className="flex items-center gap-2 text-sm">
+                        <RadioGroupItem value={option.value} />
+                        {option.label}
+                      </label>
+                    ))}
+                  </RadioGroup>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Jenis Pekerjaan</Label>
+                  <Select
+                    value={form.employmentType}
+                    onValueChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        employmentType: value as EmploymentType,
+                        rank: value === "tni" ? current.rank : "",
+                        grade: value === "tni" ? "" : current.grade,
+                      }))
+                    }
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Tanpa Satuan</SelectItem>
-                      {unitOptions.map((unit) => <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>)}
+                      {employmentTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <Field label={getIdentityNumberLabel(form.employmentType)} value={form.identityNumber} onChange={(value) => setForm((current) => ({ ...current, identityNumber: value }))} />
+                <Field label={getRankOrGradeLabel(form.employmentType)} value={isTni ? form.rank : form.grade} onChange={(value) => setForm((current) => ({ ...current, [isTni ? "rank" : "grade"]: value }))} />
+                <div className="grid gap-2">
+                  <Label>Agama</Label>
+                  <Select value={form.religion} onValueChange={(value) => setForm((current) => ({ ...current, religion: value as Religion | "none" }))}>
+                    <SelectTrigger><SelectValue placeholder="Opsional" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Tidak diisi</SelectItem>
+                      {religionOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Field label="Nomor HP" value={form.phoneNumber} placeholder="Opsional" onChange={(value) => setForm((current) => ({ ...current, phoneNumber: value }))} />
+                <div className="grid gap-2 md:col-span-2">
+                  <Label>Satuan</Label>
+                  <UnitCombobox units={units} value={form.unitId} onValueChange={(value) => setForm((current) => ({ ...current, unitId: value }))} />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
-                <Button disabled={submitting || !form.fullName || !form.username || (!form.id && !form.password)} onClick={submit}>
+                <Button disabled={submitting || !form.fullName || !form.username || !form.identityNumber || (isTni ? !form.rank : !form.grade)} onClick={submit}>
                   {submitting ? <Loader2Icon className="animate-spin" /> : null}
                   Simpan
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        }
-      />
 
       <Dialog open={Boolean(resetUser)} onOpenChange={(value) => !value && setResetUser(null)}>
         <DialogContent>
@@ -209,16 +278,18 @@ function Field({
   value,
   onChange,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="grid gap-2">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </div>
   );
 }
