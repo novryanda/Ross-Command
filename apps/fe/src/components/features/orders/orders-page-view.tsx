@@ -56,14 +56,14 @@ export async function OrdersPageView({
   return (
     <div className="space-y-6">
       <PageHero
-        eyebrow="Manajemen perintah"
+        eyebrow="Manajemen tugas"
         title={meta.title}
         description={meta.description}
         actions={
           <Button asChild size="sm">
             <Link href={meta.createHref}>
               <PlusIcon />
-              Buat Perintah
+              Buat Tugas
             </Link>
           </Button>
         }
@@ -89,7 +89,7 @@ export async function OrdersPageView({
             : []),
         ]}
         dateFilters={[
-          { key: "submitDate", label: "Submit" },
+          { key: "submitDate", label: "Terlaksana" },
           { key: "deadlineDate", label: "Deadline" },
         ]}
       />
@@ -105,7 +105,7 @@ export async function OrdersPageView({
           <OrdersList orders={response.data} pagination={response.meta?.pagination} />
         </Suspense>
       ) : (
-        <PageState title="Belum ada perintah" description="Perintah yang cocok dengan filter akan muncul di sini." />
+        <PageState title="Belum ada tugas" description="Tugas yang cocok dengan filter akan muncul di sini." />
       )}
 
       {params.view === "card" ? <ServerPagination meta={response.meta?.pagination} searchParams={params} /> : null}

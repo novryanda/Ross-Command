@@ -45,7 +45,7 @@ export function OrdersList({ orders, pagination }: { orders: Order[]; pagination
             <div className="space-y-1.5">
               <div className="text-muted-foreground flex justify-between text-xs">
                 <span>
-                  {order.progress.totalSubmitted}/{order.progress.totalAssigned} submit
+                  {order.progress.totalSubmitted}/{order.progress.totalAssigned} terlaksana
                 </span>
                 <span>{order.progress.percentageComplete}%</span>
               </div>

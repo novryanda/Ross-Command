@@ -1,3 +1,6 @@
+import type { LucideIcon } from "lucide-react";
+import { EyeIcon, HeartIcon, MessageCircleIcon, Repeat2Icon, Share2Icon } from "lucide-react";
+
 import type { OrderSocialTarget, Submission, SubmissionMetrics, TargetMetricEntry } from "@/lib/api/types";
 
 export const emptySubmissionMetrics: SubmissionMetrics = {
@@ -8,12 +11,19 @@ export const emptySubmissionMetrics: SubmissionMetrics = {
   reposts: 0,
 };
 
-export const metricFieldLabels: Array<{ key: keyof SubmissionMetrics; label: string; short: string }> = [
-  { key: "views", label: "Views", short: "T" },
-  { key: "likes", label: "Like", short: "S" },
-  { key: "comments", label: "Comment", short: "K" },
-  { key: "shares", label: "Share", short: "B" },
-  { key: "reposts", label: "Repost", short: "R" },
+export type MetricFieldLabel = {
+  key: keyof SubmissionMetrics;
+  label: string;
+  short: string;
+  icon: LucideIcon;
+};
+
+export const metricFieldLabels: MetricFieldLabel[] = [
+  { key: "views", label: "Tayangan", short: "T", icon: EyeIcon },
+  { key: "likes", label: "Suka", short: "S", icon: HeartIcon },
+  { key: "comments", label: "Komentar", short: "K", icon: MessageCircleIcon },
+  { key: "shares", label: "Bagikan", short: "B", icon: Share2Icon },
+  { key: "reposts", label: "Repost", short: "R", icon: Repeat2Icon },
 ];
 
 export function buildInitialTargetMetricValues(
@@ -27,7 +37,8 @@ export function buildInitialTargetMetricValues(
   return Object.fromEntries(
     targets.map((target) => [
       target.id ?? target.url,
-      fromSubmission.get(target.id ?? "") ?? { ...emptySubmissionMetrics },
+      fromSubmission.get(target.id ?? "") ??
+        target.baselineMetrics ?? { ...emptySubmissionMetrics },
     ]),
   );
 }
@@ -67,4 +78,19 @@ export function sumTargetMetricValues(values: Record<string, SubmissionMetrics>)
     }),
     { ...emptySubmissionMetrics },
   );
+}
+
+export function diffMetrics(
+  current: SubmissionMetrics,
+  baseline?: SubmissionMetrics,
+): SubmissionMetrics {
+  const safeBaseline = baseline ?? emptySubmissionMetrics;
+
+  return {
+    views: current.views - safeBaseline.views,
+    likes: current.likes - safeBaseline.likes,
+    comments: current.comments - safeBaseline.comments,
+    shares: current.shares - safeBaseline.shares,
+    reposts: current.reposts - safeBaseline.reposts,
+  };
 }

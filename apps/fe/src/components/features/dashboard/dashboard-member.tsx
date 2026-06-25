@@ -15,10 +15,10 @@ export function DashboardMemberView({ data }: { data: DashboardMember }) {
       <PageHero
         eyebrow="Anggota"
         title="Dashboard Anggota"
-        description="Perintah yang perlu dikerjakan, status deadline, dan kesiapan akun sosial media kamu."
+        description="Tugas yang perlu dikerjakan, status deadline, dan kesiapan akun sosial media kamu."
         actions={
           <Button asChild size="sm">
-            <Link href="/assignments">Lihat Perintah Saya</Link>
+            <Link href="/assignments">Lihat Tugas Saya</Link>
           </Button>
         }
       />
@@ -30,7 +30,7 @@ export function DashboardMemberView({ data }: { data: DashboardMember }) {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Perintah Terbaru</h2>
+          <h2 className="text-sm font-semibold">Tugas Terbaru</h2>
           <Button asChild size="sm" variant="ghost">
             <Link href="/assignments">Lihat semua</Link>
           </Button>
@@ -58,7 +58,7 @@ export function DashboardMemberView({ data }: { data: DashboardMember }) {
             ))}
           </div>
         ) : (
-          <PageState title="Tidak ada perintah aktif" description="Semua perintah yang tersedia akan muncul di sini." />
+          <PageState title="Tidak ada tugas aktif" description="Semua tugas yang tersedia akan muncul di sini." />
         )}
       </section>
     </div>

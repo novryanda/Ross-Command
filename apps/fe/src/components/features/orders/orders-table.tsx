@@ -128,9 +128,9 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
     () => [
       {
         id: "perintah",
-        meta: { label: "Perintah" },
+        meta: { label: "Tugas" },
         accessorFn: (row) => row.title,
-        header: "Perintah",
+        header: "Tugas",
         cell: ({ row }) => {
           const order = row.original;
           const visual = orderTypeVisual[order.orderType];
@@ -185,7 +185,7 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
           <div className="min-w-36 space-y-1.5">
             <div className="text-muted-foreground flex justify-between text-xs">
               <span>
-                {row.original.progress.totalSubmitted}/{row.original.progress.totalAssigned} submit
+                {row.original.progress.totalSubmitted}/{row.original.progress.totalAssigned} terlaksana
               </span>
               <span>{row.original.progress.percentageComplete}%</span>
             </div>
@@ -195,12 +195,12 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
       },
       {
         id: "submit",
-        meta: { label: "Submit" },
+        meta: { label: "Terlaksana" },
         accessorFn: (row) => row.sentAt ?? row.createdAt,
         enableSorting: false,
         header: () => (
           <ServerSortHeader
-            label="Submit"
+            label="Terlaksana"
             sortKey="sentAt"
             activeSortBy={activeSortBy}
             activeSortOrder={activeSortOrder}
@@ -230,7 +230,7 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8" aria-label="Aksi perintah">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Aksi tugas">
                 <EllipsisVerticalIcon className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -257,7 +257,7 @@ export function OrdersTable({ orders, pagination }: OrdersTableProps) {
       defaultPageSize={20}
       pageSizeOptions={[10, 20, 50]}
       serverPagination={pagination}
-      emptyMessage="Tidak ada perintah ditemukan."
+      emptyMessage="Tidak ada tugas ditemukan."
     />
   );
 }

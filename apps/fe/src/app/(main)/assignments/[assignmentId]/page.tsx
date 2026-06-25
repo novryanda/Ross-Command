@@ -32,21 +32,21 @@ export default async function AssignmentDetailPage({
       <BackButton href="/assignments" />
 
       <PageHero
-        eyebrow="Detail perintah saya"
+        eyebrow="Detail tugas saya"
         title={assignment.order.title}
         description={
           assignment.order.orderType === "posting"
-            ? "Baca instruksi pelaksanaan, unggah posting ke sosmed target, lalu submit link tiap platform."
+            ? "Baca instruksi pelaksanaan, unggah posting ke sosmed target, lalu kirim link tiap platform."
             : isBlasting
               ? "Baca instruksi pelaksanaan, buka target, lalu input metrik blasting."
-              : "Baca instruksi pelaksanaan, buka target, lalu submit bukti melalui link Drive."
+              : "Baca instruksi pelaksanaan, buka target, lalu kirim bukti melalui link Drive."
         }
         actions={
           isBlasting ? null : assignment.order.orderType === "posting" && assignment.canSubmitForMember ? (
             <RepresentativePostingProofDialog
               orderId={assignment.order.id}
               postingTargetPlatforms={assignment.order.postingTargetPlatforms}
-              trigger={<Button size="sm">Submit Bukti</Button>}
+              trigger={<Button size="sm">Kirim Bukti</Button>}
             />
           ) : (
             <SubmitProofDialog
@@ -54,10 +54,10 @@ export default async function AssignmentDetailPage({
               orderType={assignment.order.orderType}
               postingTargetPlatforms={assignment.order.postingTargetPlatforms}
               initialSubmission={assignment.latestSubmission}
-              title={assignment.latestSubmission ? "Edit Bukti Pelaksanaan" : "Submit Bukti Pelaksanaan"}
+              title={assignment.latestSubmission ? "Edit Bukti Pelaksanaan" : "Kirim Bukti Pelaksanaan"}
               trigger={
                 <Button size="sm">
-                  {assignment.latestSubmission ? "Edit Bukti" : "Submit Bukti"}
+                  {assignment.latestSubmission ? "Edit Bukti" : "Kirim Bukti"}
                 </Button>
               }
             />
@@ -148,7 +148,7 @@ export default async function AssignmentDetailPage({
               ) : isBlasting && assignment.latestSubmission.targetMetrics?.length ? (
                 <TargetMetricTotalsSection
                   targets={assignment.latestSubmission.targetMetrics}
-                  title="Metrik per Link Target"
+                  title="Perbandingan per Link Target"
                 />
               ) : assignment.latestSubmission.driveLink ? (
                 <p>

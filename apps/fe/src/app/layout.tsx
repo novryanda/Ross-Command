@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: "Command Center",
     template: "%s - Command Center",
   },
-  description: "Sistem manajemen perintah dan pelaporan operasi siber.",
+  description: "Sistem manajemen tugas dan pelaporan operasi siber.",
   manifest: "/site.webmanifest",
   icons: {
     icon: [{ url: brandAssets.favicon, sizes: "any" }],

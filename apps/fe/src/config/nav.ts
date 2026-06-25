@@ -52,11 +52,11 @@ export function getNavItems(me: Me): NavConfig {
   }
 
   const memberItems: NavItem[] = hasSuperior(me)
-    ? [{ title: 'Perintah Saya', url: '/assignments', icon: ClipboardCheckIcon }]
+    ? [{ title: 'Tugas Saya', url: '/assignments', icon: ClipboardCheckIcon }]
     : []
   const commanderItems: NavItem[] = me.isCommander
     ? [
-        { title: 'Overview', url: '/orders', icon: LayoutListIcon },
+        { title: 'Daftar Tugas', url: '/orders', icon: LayoutListIcon },
         { title: 'Posting', url: '/orders/posting', icon: PenLineIcon },
         {
           title: 'Pro',

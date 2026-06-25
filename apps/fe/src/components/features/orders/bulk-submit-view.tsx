@@ -134,7 +134,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
       }));
 
     if (!submissions.length) {
-      toast.error("Isi minimal satu link posting sebelum submit");
+      toast.error("Isi minimal satu link posting sebelum kirim");
       return;
     }
 
@@ -176,7 +176,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
       }
 
       toast.success(
-        `${response.data.totalSubmitted} anggota berhasil disubmit${
+        `${response.data.totalSubmitted} anggota berhasil dikirim${
           response.data.totalSkipped ? `, ${response.data.totalSkipped} dilewati` : ""
         }`,
       );
@@ -192,7 +192,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
     return (
       <PageState
         title="Tidak ada anggota yang dapat diinput"
-        description="Anda tidak memiliki satuan dengan anggota yang ditugaskan pada perintah ini."
+        description="Anda tidak memiliki satuan dengan anggota yang ditugaskan pada tugas ini."
       />
     );
   }
@@ -202,7 +202,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
       <section className="rounded-xl border bg-muted/20 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Submit Posting - {initialData.order.title}</h2>
+            <h2 className="text-lg font-semibold">Kirim Posting - {initialData.order.title}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <DeadlineBadge deadline={initialData.order.deadline} />
               <StatusBadge status={initialData.order.status} />
@@ -221,7 +221,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
         </div>
         {isLocked ? (
           <p className="text-destructive mt-3 text-sm">
-            Halaman terkunci karena perintah tidak aktif atau deadline sudah lewat.
+            Halaman terkunci karena tugas tidak aktif atau deadline sudah lewat.
           </p>
         ) : null}
       </section>
@@ -229,7 +229,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
       {resultSummary ? (
         <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
           <p className="text-sm font-medium">
-            Hasil submit: {resultSummary.totalSubmitted} berhasil, {resultSummary.totalSkipped}{" "}
+            Hasil kirim: {resultSummary.totalSubmitted} berhasil, {resultSummary.totalSkipped}{" "}
             dilewati
           </p>
           {resultSummary.results.some((item) => item.status === "error") ? (
@@ -263,7 +263,7 @@ export function BulkSubmitView({ orderId, initialData, unitId }: BulkSubmitViewP
           </div>
           <Button onClick={handleSubmit} disabled={isLocked || submitting || filledCount === 0}>
             {submitting ? <Loader2Icon className="size-4 animate-spin" /> : null}
-            Submit Semua
+            Kirim Semua
           </Button>
         </div>
 

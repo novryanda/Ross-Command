@@ -60,7 +60,7 @@ const columnLabels: Record<AssignmentTableColumn, string> = {
   status: "Status",
   postingCompleteness: "Kelengkapan",
   metrics: "Metrik",
-  submittedAt: "Submit",
+  submittedAt: "Terlaksana",
   submitter: "Diinput",
   action: "Aksi",
 };
@@ -198,7 +198,7 @@ export function OrderAssignmentsTable({
                 <TableHead className="text-muted-foreground h-10 min-w-80 text-xs">Metrik</TableHead>
               ) : null}
               {visibleColumns.submittedAt ? (
-                <TableHead className="text-muted-foreground h-10 min-w-32 text-xs">Submit</TableHead>
+                <TableHead className="text-muted-foreground h-10 min-w-32 text-xs">Terlaksana</TableHead>
               ) : null}
               {visibleColumns.submitter ? (
                 <TableHead className="text-muted-foreground h-10 min-w-48 text-xs">Diinput</TableHead>

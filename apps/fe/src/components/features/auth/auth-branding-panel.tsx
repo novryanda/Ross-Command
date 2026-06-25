@@ -9,7 +9,7 @@ export function AuthBrandingPanel() {
           <p className="text-sm text-white/60">Social Command</p>
         </div>
         <p className="max-w-sm text-sm leading-relaxed text-white/70">
-          Perintah. Pantau. Eksekusi. Satu pusat kendali operasi siber di bawah struktur komando.
+          Tugas. Pantau. Eksekusi. Satu pusat kendali operasi siber di bawah struktur komando.
         </p>
       </div>
 
@@ -17,7 +17,7 @@ export function AuthBrandingPanel() {
         <div className="space-y-2">
           <p className="text-sm font-semibold text-white">Siap memimpin operasi?</p>
           <p className="text-sm leading-relaxed text-white/60">
-            Buat perintah, pantau progress anggota, dan pastikan pelaksanaan tepat waktu dari dashboard pimpinan.
+            Buat tugas, pantau progress anggota, dan pastikan pelaksanaan tepat waktu dari dashboard pimpinan.
           </p>
         </div>
         <div className="space-y-2">

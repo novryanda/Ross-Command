@@ -40,5 +40,5 @@ export function formatDashboardFilterSummary(filters: DashboardCommanderFilters)
     parts.push(`Deadline ${filters.deadlineFrom ?? "…"} – ${filters.deadlineTo ?? "…"}`);
   }
 
-  return parts.length ? parts.join(" · ") : "Semua data perintah";
+  return parts.length ? parts.join(" · ") : "Semua data tugas";
 }

@@ -12,7 +12,7 @@ type SeedPlatform =
   | 'youtube'
   | 'other';
 type SeedOrderType = 'posting' | 'engagement' | 'counter' | 'report_akun';
-type SeedOrderStatus = 'draft' | 'aktif' | 'expired';
+type SeedOrderStatus = 'draft' | 'aktif' | 'expired' | 'selesai';
 type SeedAssignmentStatus = 'belum_dikerjakan' | 'selesai' | 'terlambat';
 type SeedActivityType = 'order_created' | 'order_sent' | 'submission_sent';
 type SeedGender = 'pria' | 'wanita';
@@ -62,6 +62,9 @@ type SeedOrder = {
   status: SeedOrderStatus;
   deadline: Date;
   sentAt: Date | null;
+  createdAt?: Date;
+  // Porsi anggota yang mengirim bukti (0..1). Mengatur sebaran progres.
+  completionRate?: number;
   createdByKey: string;
   targetUnitKeys: string[];
   targetLeaderUnitKeys?: string[];
@@ -101,7 +104,7 @@ const users: SeedUser[] = [
   },
   {
     key: 'kasad',
-    fullName: 'Jenderal TNI Maruli Simanjuntak',
+    fullName: 'Jenderal TNI Bambang Hariyanto',
     username: 'kasad',
     password: 'Komando@123!',
     role: 'member',
@@ -533,6 +536,116 @@ const membershipPlan: Array<{ userKey: string; unitKey: string }> = [
   { userKey: 'catur_nugraha', unitKey: 'zidam' },
 ];
 
+// === Anggota tambahan (skala besar) agar agregat & distribusi terlihat penuh ===
+const extraMemberNamePool: Array<{ name: string; gender: SeedGender }> = [
+  { name: 'Bambang Nugroho', gender: 'pria' },
+  { name: 'Slamet Riyadi', gender: 'pria' },
+  { name: 'Hendra Gunawan', gender: 'pria' },
+  { name: 'Agung Prabowo', gender: 'pria' },
+  { name: 'Rizal Maulana', gender: 'pria' },
+  { name: 'Teguh Santoso', gender: 'pria' },
+  { name: 'Anton Wijaya', gender: 'pria' },
+  { name: 'Dimas Aryanto', gender: 'pria' },
+  { name: 'Faisal Rahman', gender: 'pria' },
+  { name: 'Gilang Pratama', gender: 'pria' },
+  { name: 'Hari Setiawan', gender: 'pria' },
+  { name: 'Irfan Hidayat', gender: 'pria' },
+  { name: 'Joni Saputra', gender: 'pria' },
+  { name: 'Krisna Adiputra', gender: 'pria' },
+  { name: 'Lukman Hakim', gender: 'pria' },
+  { name: 'Mahesa Putra', gender: 'pria' },
+  { name: 'Nanda Pratomo', gender: 'pria' },
+  { name: 'Oki Firmansyah', gender: 'pria' },
+  { name: 'Panji Kusuma', gender: 'pria' },
+  { name: 'Reza Fahlevi', gender: 'pria' },
+  { name: 'Sandi Permadi', gender: 'pria' },
+  { name: 'Taufik Hidayat', gender: 'pria' },
+  { name: 'Umar Syahputra', gender: 'pria' },
+  { name: 'Vino Ramadhan', gender: 'pria' },
+  { name: 'Wawan Setiabudi', gender: 'pria' },
+  { name: 'Yoga Pratama', gender: 'pria' },
+  { name: 'Zaki Abdullah', gender: 'pria' },
+  { name: 'Bayu Anggara', gender: 'pria' },
+  { name: 'Candra Wirawan', gender: 'pria' },
+  { name: 'Dani Kurnia', gender: 'pria' },
+  { name: 'Siti Rahmawati', gender: 'wanita' },
+  { name: 'Putri Lestari', gender: 'wanita' },
+  { name: 'Rina Marwati', gender: 'wanita' },
+  { name: 'Maya Anjani', gender: 'wanita' },
+  { name: 'Nurul Aisyah', gender: 'wanita' },
+  { name: 'Fitri Handayani', gender: 'wanita' },
+  { name: 'Eko Wahyudi', gender: 'pria' },
+  { name: 'Galang Saputra', gender: 'pria' },
+  { name: 'Hafiz Ramadhan', gender: 'pria' },
+  { name: 'Ilham Nugraha', gender: 'pria' },
+];
+
+const anggotaRanks = [
+  'Sersan Mayor',
+  'Sersan Kepala',
+  'Sersan',
+  'Kopral Kepala',
+  'Kopral Satu',
+  'Praka',
+  'Pratu',
+];
+
+const extraSocialPlatforms: SeedPlatform[] = [
+  'instagram',
+  'tiktok',
+  'facebook',
+  'twitter_x',
+  'youtube',
+];
+
+const extraMemberUnits: Array<{ unitKey: string; prefix: string; count: number }> = [
+  { unitKey: 'korem_022', prefix: 'REM022', count: 5 },
+  { unitKey: 'korem_023', prefix: 'REM023', count: 5 },
+  { unitKey: 'korem_031', prefix: 'REM031', count: 5 },
+  { unitKey: 'korem_032', prefix: 'REM032', count: 5 },
+  { unitKey: 'denintel', prefix: 'DENINTEL', count: 4 },
+  { unitKey: 'denpom', prefix: 'DENPOM', count: 4 },
+  { unitKey: 'denkesyah', prefix: 'DENKES', count: 4 },
+  { unitKey: 'zidam', prefix: 'ZIDAM', count: 4 },
+];
+
+let extraNameCursor = 0;
+for (const spec of extraMemberUnits) {
+  for (let i = 1; i <= spec.count; i += 1) {
+    const pool = extraMemberNamePool[extraNameCursor % extraMemberNamePool.length];
+    const rank = anggotaRanks[extraNameCursor % anggotaRanks.length];
+    extraNameCursor += 1;
+
+    const slug = pool.name.toLowerCase().replace(/[^a-z]+/g, '_').replace(/^_|_$/g, '');
+    const key = `${spec.unitKey}_m${i}`;
+    const host = spec.prefix.toLowerCase();
+
+    users.push({
+      key,
+      fullName: `${rank} ${pool.name}`,
+      username: `${slug}_${host}`,
+      password: 'Anggota@123!',
+      role: 'member',
+      identityNumber: `NRP-${spec.prefix}-1${String(i).padStart(2, '0')}`,
+      gender: pool.gender,
+      rank,
+    });
+
+    membershipPlan.push({ userKey: key, unitKey: spec.unitKey });
+
+    if (i % 2 === 1) {
+      const platform = extraSocialPlatforms[extraNameCursor % extraSocialPlatforms.length];
+      const domain = platform === 'twitter_x' ? 'x' : platform;
+      socialAccounts.push({
+        userKey: key,
+        platform,
+        username: `@${slug}_tni`,
+        profileUrl: `https://${domain}.com/${slug}`,
+      });
+    }
+  }
+}
+
 const baseOrders: SeedOrder[] = [
   {
     key: 'order_1',
@@ -751,13 +864,42 @@ function createScenarioOrders(): SeedOrder[] {
     for (const orderType of orderTypes) {
       for (const targetMode of targetModes) {
         const template = scenarioTypeTemplates[orderType];
+
+        // Sebar order ke 8 minggu terakhir agar tren perintah membentuk kurva.
+        const weekOffset = index % 8; // 0 (minggu ini) .. 7 (8 minggu lalu)
+        const jitterHours = (index % 5) * 5;
+        const sentHoursAgo = weekOffset * 7 * 24 + 18 + jitterHours;
+
+        // Order terbaru cenderung masih berjalan, yang lama sudah selesai/expired.
+        const cycle = index % 10;
         const status: SeedOrderStatus =
-          index % 11 === 0 ? 'expired' : index % 17 === 0 ? 'draft' : 'aktif';
-        const sentAt = status === 'draft' ? null : hoursFromNow(-((index % 12) + 1));
-        const deadline =
-          status === 'expired'
-            ? hoursFromNow(-((index % 8) + 2))
-            : hoursFromNow(12 + (index % 72));
+          cycle === 0
+            ? 'draft'
+            : weekOffset <= 1
+              ? 'aktif'
+              : cycle % 2 === 0
+                ? 'selesai'
+                : 'expired';
+
+        const createdAt = hoursFromNow(-(sentHoursAgo + 3));
+        const sentAt = status === 'draft' ? null : hoursFromNow(-sentHoursAgo);
+
+        let deadline: Date;
+        let completionRate: number;
+        if (status === 'aktif') {
+          deadline = hoursFromNow(12 + (index % 6) * 18); // masih akan datang
+          // Variasikan capaian agar distribusi progres terisi semua bucket.
+          completionRate = [0.3, 0.6, 0.85, 0.45, 0.95][index % 5];
+        } else if (status === 'selesai') {
+          deadline = hoursFromNow(-(sentHoursAgo - 36)); // ~1,5 hari setelah dikirim (lampau)
+          completionRate = 1;
+        } else if (status === 'expired') {
+          deadline = hoursFromNow(-(sentHoursAgo - 30)); // lampau
+          completionRate = [0.35, 0.55, 0.75][index % 3];
+        } else {
+          deadline = hoursFromNow(7 * 24);
+          completionRate = 0;
+        }
 
         scenarios.push({
           key: `scenario_${String(index).padStart(2, '0')}_${targetSet.key}_${orderType}_${targetMode.key}`,
@@ -809,6 +951,8 @@ function createScenarioOrders(): SeedOrder[] {
           status,
           deadline,
           sentAt,
+          createdAt,
+          completionRate,
           createdByKey: targetSet.createdByKey,
           targetUnitKeys:
             targetMode.key === 'pimpinan' ? [] : targetSet.targetUnitKeys,
@@ -1085,27 +1229,55 @@ const submissionSpecs: Record<
   },
 };
 
+function defaultCompletionRate(status: SeedOrderStatus): number {
+  if (status === 'selesai') {
+    return 1;
+  }
+  if (status === 'aktif') {
+    return 0.75;
+  }
+  if (status === 'expired') {
+    return 0.6;
+  }
+  return 0;
+}
+
+function resolveAutoSubmittedAt(order: SeedOrder, memberIndex: number): Date {
+  const sentMs = (order.sentAt ?? order.createdAt ?? new Date()).getTime();
+  const deadlineMs = order.deadline.getTime();
+
+  // Expired: anggota yang submit melakukannya setelah deadline (terlambat).
+  if (order.status === 'expired') {
+    return new Date(deadlineMs + ((memberIndex % 6) + 1) * 60 * 60 * 1000);
+  }
+
+  // Selesai/aktif: submit di antara waktu kirim dan deadline (tepat waktu).
+  const span = Math.max(60 * 60 * 1000, deadlineMs - sentMs);
+  let submittedMs = sentMs + span * (0.2 + (memberIndex % 5) * 0.13);
+  const ceiling = Math.min(deadlineMs - 30 * 60 * 1000, Date.now() - 30 * 60 * 1000);
+  if (submittedMs > ceiling) {
+    submittedMs = ceiling;
+  }
+  return new Date(submittedMs);
+}
+
 function createAutoSubmission(
   order: SeedOrder,
   userKey: string,
   memberIndex: number,
+  totalMembers: number,
 ): SeedSubmission | undefined {
   if (order.status === 'draft') {
     return undefined;
   }
 
-  if (order.status === 'aktif' && memberIndex % 4 === 3) {
+  const rate = order.completionRate ?? defaultCompletionRate(order.status);
+  const submitCount = Math.round(totalMembers * rate);
+  if (memberIndex >= submitCount) {
     return undefined;
   }
 
-  if (order.status === 'expired' && memberIndex % 3 === 2) {
-    return undefined;
-  }
-
-  const submittedAt =
-    order.status === 'expired'
-      ? hoursFromNow(-((memberIndex % 10) + 1))
-      : hoursFromNow(-((memberIndex % 8) + 0.5));
+  const submittedAt = resolveAutoSubmittedAt(order, memberIndex);
   const submittedByUserKey = resolveRepresentedSubmitterKey(
     order,
     userKey,
@@ -1131,15 +1303,16 @@ function createAutoSubmission(
   }
 
   if (order.orderType === 'engagement') {
-    const base = (memberIndex + 1) * 37;
+    // Tiap personel hanya menyumbang 1-2 interaksi (blasting perorangan).
+    const oneOrTwo = (offset: number) => ((memberIndex + offset) % 2) + 1;
 
     return {
       metrics: {
-        views: base * 12,
-        likes: base * 3,
-        comments: base,
-        shares: Math.max(1, Math.floor(base / 2)),
-        reposts: Math.max(1, Math.floor(base / 3)),
+        views: oneOrTwo(0),
+        likes: oneOrTwo(1),
+        comments: oneOrTwo(2),
+        shares: oneOrTwo(0),
+        reposts: oneOrTwo(1),
       },
       notes: submittedByUserKey
         ? 'Metrik blasting direkap dan diinput oleh pimpinan satuan.'
@@ -1272,6 +1445,7 @@ async function main() {
         status: order.status,
         deadline: order.deadline,
         sentAt: order.sentAt,
+        createdAt: order.createdAt ?? undefined,
         createdById: getRequiredMapValue(userIds, order.createdByKey, 'user'),
         socialTargets: order.socialTargets?.length
           ? {
@@ -1358,7 +1532,8 @@ async function main() {
       const userKey = getUserKeyById(userIds, memberId);
       const explicitSubmission = submissionSpecs[order.key]?.[userKey];
       const autoSubmission =
-        explicitSubmission ?? createAutoSubmission(order, userKey, memberIndex);
+        explicitSubmission ??
+        createAutoSubmission(order, userKey, memberIndex, orderedMemberIds.length);
       const submission = explicitSubmission ?? autoSubmission;
       const status =
         assignmentStatuses[order.key]?.[userKey] ??

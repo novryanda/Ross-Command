@@ -12,7 +12,7 @@ export default async function SocialAccountsPage() {
       <PageHero
         eyebrow="Kesiapan akun"
         title="Akun Sosmed"
-        description="Kelola akun sosial media yang digunakan untuk melaksanakan perintah posting, blasting, counter, dan report."
+        description="Kelola akun sosial media yang digunakan untuk melaksanakan tugas posting, blasting, counter, dan report."
       />
 
       {response.data.length ? (

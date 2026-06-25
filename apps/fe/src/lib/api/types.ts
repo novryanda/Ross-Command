@@ -56,6 +56,7 @@ export type OrderSocialTarget = {
   id?: string;
   platform: SocialPlatform;
   url: string;
+  baselineMetrics?: SubmissionMetrics;
 };
 export type NotificationCategory =
   | "assignment"
@@ -113,7 +114,9 @@ export type TargetMetricEntry = {
   targetId: string;
   platform: SocialPlatform;
   url: string;
+  baselineMetrics?: SubmissionMetrics;
   metrics: SubmissionMetrics;
+  deltaMetrics?: SubmissionMetrics;
 };
 
 export type TargetMetricTotal = TargetMetricEntry;
@@ -126,6 +129,8 @@ export type ProgressSummary = {
   totalPending: number;
   percentageComplete: number;
   metricTotals: SubmissionMetrics;
+  baselineMetricTotals?: SubmissionMetrics;
+  deltaMetricTotals?: SubmissionMetrics;
   targetMetricTotals?: TargetMetricTotal[];
 };
 
@@ -424,6 +429,10 @@ export type DashboardCommanderCharts = {
     expired: number;
     dibatalkan: number;
   };
+  taskStatus: {
+    running: number;
+    completed: number;
+  };
   orderType: {
     posting: number;
     blasting: number;
@@ -437,22 +446,52 @@ export type DashboardCommanderCharts = {
   };
   weeklyOrders: Array<{
     label: string;
-    count: number;
+    posting: number;
+    blasting: number;
+    counter: number;
+    report_akun: number;
+    total: number;
   }>;
 };
 
 export type DashboardCommander = {
   filters: DashboardCommanderFilters;
   stats: {
-    totalActiveOrders: number;
+    totalOrders: number;
     totalSubordinateMembers: number;
-    totalPendingAssignments: number;
-    totalCompletedAssignments: number;
+    totalExecutedOrders: number;
+    totalRunningOrders: number;
     needsAttentionCount: number;
-    totalFilteredOrders: number;
+    totalCompletedOrders: number;
   };
   charts: DashboardCommanderCharts;
   activeOrders: Order[];
+};
+
+export type CommandTaskChartsData = {
+  taskStatus: {
+    running: number;
+    completed: number;
+  };
+  orderType: {
+    posting: number;
+    blasting: number;
+    counter: number;
+    report_akun: number;
+  };
+  progressDistribution: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  weeklyOrders: Array<{
+    label: string;
+    posting: number;
+    blasting: number;
+    counter: number;
+    report_akun: number;
+    total: number;
+  }>;
 };
 
 export type OrdersSummary = {
@@ -463,24 +502,7 @@ export type OrdersSummary = {
     selesai: number;
     expired: number;
   };
-  charts: {
-    orderStatus: {
-      total: number;
-      aktif: number;
-      draft: number;
-      selesai: number;
-      expired: number;
-    };
-    progressDistribution: {
-      low: number;
-      medium: number;
-      high: number;
-    };
-    weeklyOrders: Array<{
-      label: string;
-      count: number;
-    }>;
-  };
+  charts: CommandTaskChartsData;
 };
 
 export type DashboardMember = {

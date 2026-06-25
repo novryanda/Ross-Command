@@ -24,7 +24,8 @@ const statusChartConfig = {
 } satisfies ChartConfig;
 
 const metricsChartConfig = {
-  value: { label: "Jumlah", color: "hsl(221 83% 53%)" },
+  baseline: { label: "Baseline", color: "hsl(215 16% 65%)" },
+  current: { label: "Current", color: "hsl(221 83% 53%)" },
 } satisfies ChartConfig;
 
 export function OrderMonitoringSummaryCharts({
@@ -70,12 +71,15 @@ export function OrderMonitoringSummaryCharts({
       metricFieldLabels.map((field) => ({
         key: field.key,
         label: field.label,
-        value: summary.metricTotals[field.key],
+        baseline: summary.baselineMetricTotals?.[field.key] ?? 0,
+        current: summary.metricTotals[field.key],
+        delta: summary.deltaMetricTotals?.[field.key] ?? summary.metricTotals[field.key],
       })),
-    [summary.metricTotals],
+    [summary.baselineMetricTotals, summary.deltaMetricTotals, summary.metricTotals],
   );
 
-  const hasMetrics = metricsChartData.some((item) => item.value > 0);
+  const hasMetrics = metricsChartData.some((item) => item.current > 0 || item.baseline > 0);
+  const hasBaseline = metricsChartData.some((item) => item.baseline > 0);
 
   return (
     <section className={cn("space-y-4", className)}>
@@ -116,7 +120,13 @@ export function OrderMonitoringSummaryCharts({
         {showMetrics ? (
         <ChartPanel
           title="Metrik Blasting"
-          description={hasMetrics ? "Total agregat seluruh submission" : "Belum ada metrik tercatat"}
+          description={
+            hasMetrics
+              ? hasBaseline
+                ? "Perbandingan baseline awal dengan capaian metrik saat ini"
+                : "Total agregat seluruh submission"
+              : "Belum ada metrik tercatat"
+          }
         >
           {hasMetrics ? (
             <ChartContainer config={metricsChartConfig} className="aspect-[4/3] w-full max-h-[260px]">
@@ -126,16 +136,36 @@ export function OrderMonitoringSummaryCharts({
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => [Number(value).toLocaleString("id-ID"), "Jumlah"]}
+                      formatter={(value, name) => [
+                        Number(value).toLocaleString("id-ID"),
+                        name === "baseline" ? "Baseline" : "Current",
+                      ]}
                     />
                   }
                 />
-                <Bar dataKey="value" fill="var(--color-value)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="baseline" fill="var(--color-baseline)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="current" fill="var(--color-current)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ChartContainer>
           ) : (
             <EmptyChartState message="Metrik akan muncul setelah ada submission blasting." />
           )}
+          {hasMetrics ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+              {metricsChartData.map((item) => (
+                <div key={item.key} className="rounded-md bg-muted/40 px-2 py-1.5">
+                  <p className="text-muted-foreground">{item.label}</p>
+                  <p className="font-medium tabular-nums">
+                    {item.baseline.toLocaleString("id-ID")} → {item.current.toLocaleString("id-ID")}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Delta {item.delta > 0 ? "+" : ""}
+                    {item.delta.toLocaleString("id-ID")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </ChartPanel>
         ) : null}
       </div>

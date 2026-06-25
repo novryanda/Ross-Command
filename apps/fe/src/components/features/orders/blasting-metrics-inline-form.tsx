@@ -41,7 +41,7 @@ export function BlastingMetricsInlineForm({
   if (!resolvedTargets.length) {
     return (
       <p className="text-muted-foreground text-sm">
-        Link target blasting belum tersedia untuk perintah ini.
+        Link target blasting belum tersedia untuk tugas ini.
       </p>
     );
   }

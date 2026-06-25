@@ -192,9 +192,9 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
                     <div className="flex items-center justify-between gap-3 rounded-md border p-3">
                       <div className="grid gap-1">
                         <Label htmlFor="leader-only-assignments">
-                          Perintah hanya diberikan ke pimpinan.</Label>
+                          Tugas hanya diberikan ke pimpinan.</Label>
                         <p className="text-muted-foreground text-xs">
-                          Jika diaktifkan, hanya pimpinan satuan ini yang dapat menerima perintah dari atasan.
+                          Jika diaktifkan, hanya pimpinan satuan ini yang dapat menerima tugas dari atasan.
                         </p>
                       </div>
                       <Switch
@@ -217,7 +217,7 @@ export function UnitDetailSheet({ unit, units, open, onOpenChange }: UnitDetailS
                     <InfoRow label="Parent" value={detail.parent?.name ?? "Root"} />
                     <InfoRow label="Pimpinan" value={detail.commander?.fullName ?? "Belum ditetapkan"} />
                     <div className="grid gap-1">
-                      <dt className="text-muted-foreground text-xs">Distribusi Perintah</dt>
+                      <dt className="text-muted-foreground text-xs">Distribusi Tugas</dt>
                       <dd>
                         {detail.leaderOnlyAssignments ? (
                           <Badge variant="secondary" className="rounded-sm">

@@ -177,6 +177,7 @@ export function OrderForm({
               .map((item) => ({
                 platform: item.platform,
                 url: item.url.trim(),
+                baselineMetrics: isBlasting ? item.baselineMetrics : undefined,
               })),
             narration: draft.narration || undefined,
             engagementActions:
@@ -190,11 +191,11 @@ export function OrderForm({
         method: "POST",
         body: JSON.stringify(payload),
       });
-      toast.success(status === "aktif" ? "Perintah berhasil dibuat dan dikirim" : "Draft perintah berhasil dibuat");
+      toast.success(status === "aktif" ? "Tugas berhasil dibuat dan dikirim" : "Draft tugas berhasil dibuat");
       router.push(`/orders/${response.data.id}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal membuat perintah");
+      toast.error(error instanceof Error ? error.message : "Gagal membuat tugas");
     } finally {
       setSubmitting(null);
     }
@@ -207,7 +208,7 @@ export function OrderForm({
       {step === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Detail Perintah</CardTitle>
+            <CardTitle className="text-base">Detail Tugas</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
@@ -215,7 +216,7 @@ export function OrderForm({
               <Input id="title" value={draft.title} onChange={(event) => setField("title", event.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label>Jenis Perintah</Label>
+              <Label>Jenis Tugas</Label>
               <Select
                 value={draft.orderType}
                 onValueChange={(value) => {
@@ -242,6 +243,7 @@ export function OrderForm({
               <OrderTargetUrlsField
                 value={draft.targetUrls}
                 onChange={(targetUrls) => setField("targetUrls", targetUrls)}
+                showBaselineMetrics={isBlasting}
               />
             ) : (
               <OrderPostingFields
@@ -310,7 +312,7 @@ export function OrderForm({
       {step === 2 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Review Perintah</CardTitle>
+            <CardTitle className="text-base">Review Tugas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <p><span className="text-muted-foreground">Judul:</span> {draft.title}</p>
@@ -341,7 +343,16 @@ export function OrderForm({
                     .filter((item) => item.url.trim())
                     .map((item) => (
                       <li key={item.clientId} className="text-sm">
-                        {item.platform}: {item.url}
+                        <div>{item.platform}: {item.url}</div>
+                        {isBlasting ? (
+                          <div className="text-muted-foreground text-xs">
+                            Baseline: V {item.baselineMetrics.views.toLocaleString("id-ID")} • L{" "}
+                            {item.baselineMetrics.likes.toLocaleString("id-ID")} • C{" "}
+                            {item.baselineMetrics.comments.toLocaleString("id-ID")} • S{" "}
+                            {item.baselineMetrics.shares.toLocaleString("id-ID")} • R{" "}
+                            {item.baselineMetrics.reposts.toLocaleString("id-ID")}
+                          </div>
+                        ) : null}
                       </li>
                     ))}
                 </ul>
@@ -373,7 +384,7 @@ export function OrderForm({
             </Button>
             <Button type="button" disabled={Boolean(submitting)} onClick={() => submit("aktif")}>
               {submitting === "aktif" ? <Loader2Icon className="animate-spin" /> : null}
-              Kirim Perintah
+              Kirim Tugas
             </Button>
           </div>
         )}

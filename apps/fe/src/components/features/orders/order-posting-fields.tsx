@@ -1,6 +1,7 @@
 "use client";
 
 import { PlatformBadge, platformLabel } from "@/components/komando/badges";
+import { PlatformIcon } from "@/components/komando/platform-icon";
 import { ExpandableText, LabeledExpandableText } from "@/components/komando/expandable-text";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,7 @@ export function OrderPostingFields({
                   checked={checked}
                   onCheckedChange={(value) => togglePlatform(platform, value === true)}
                 />
+                <PlatformIcon platform={platform} className="size-4" />
                 <span>{platformLabel[platform]}</span>
               </label>
             );

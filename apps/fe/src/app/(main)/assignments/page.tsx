@@ -38,8 +38,8 @@ export default async function AssignmentsPage({
     <div className="space-y-6">
       <PageHero
         eyebrow="Tugas"
-        title="Perintah Saya"
-        description="Daftar perintah yang diterima, deadline pelaksanaan, dan status bukti yang sudah dikirim."
+        title="Tugas Saya"
+        description="Daftar tugas yang diterima, deadline pelaksanaan, dan status bukti yang sudah dikirim."
       />
 
       <FilterBar
@@ -59,7 +59,7 @@ export default async function AssignmentsPage({
           },
         ]}
         dateFilters={[
-          { key: "submitDate", label: "Submit" },
+          { key: "submitDate", label: "Terlaksana" },
           { key: "deadlineDate", label: "Deadline" },
         ]}
       />
@@ -75,7 +75,7 @@ export default async function AssignmentsPage({
           <AssignmentsList assignments={response.data} pagination={response.meta?.pagination} />
         </Suspense>
       ) : (
-        <PageState title="Tidak ada perintah" description="Perintah yang cocok dengan filter akan tampil di halaman ini." />
+        <PageState title="Tidak ada tugas" description="Tugas yang cocok dengan filter akan tampil di halaman ini." />
       )}
 
       {params.view === "table" ? null : <ServerPagination meta={response.meta?.pagination} searchParams={params} />}

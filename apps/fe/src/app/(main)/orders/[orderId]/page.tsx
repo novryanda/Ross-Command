@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 
 import { OrderActions } from "@/components/features/orders/order-actions";
 import { OrderAssignmentsList } from "@/components/features/orders/order-assignments-list";
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import { buildQueryString } from "@/lib/api/client";
+import { metricFieldLabels } from "@/lib/blasting-metrics";
 import { ApiRequestError } from "@/lib/api/types";
 import { serverApiFetch } from "@/lib/api/server";
 import type { Assignment, OrderDetail } from "@/lib/api/types";
@@ -60,9 +62,9 @@ export default async function OrderDetailPage({
       <BackButton href="/orders" />
 
       <PageHero
-        eyebrow="Detail perintah"
+        eyebrow="Detail tugas"
         title={order.title}
-        description="Instruksi, target, progres anggota, dan bukti pelaksanaan dari perintah ini."
+        description="Instruksi, target, progres anggota, dan bukti pelaksanaan dari tugas ini."
         actions={<OrderActions order={order} />}
       >
         <div className="flex flex-wrap gap-1.5">
@@ -125,15 +127,21 @@ export default async function OrderDetailPage({
             </div>
             {isBlastingOrderType(order.orderType) ? (
               <>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <Info label="Tayangan" value={order.progress.metricTotals.views} />
-                  <Info label="Suka" value={order.progress.metricTotals.likes} />
-                  <Info label="Komentar" value={order.progress.metricTotals.comments} />
-                  <Info label="Bagikan" value={order.progress.metricTotals.shares} />
-                  <Info label="Repost" value={order.progress.metricTotals.reposts} />
+                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                  {metricFieldLabels.map((field) => (
+                    <MetricInfo
+                      key={field.key}
+                      icon={field.icon}
+                      label={field.label}
+                      value={order.progress.metricTotals[field.key]}
+                    />
+                  ))}
                 </div>
                 {order.progress.targetMetricTotals?.length ? (
-                  <TargetMetricTotalsSection targets={order.progress.targetMetricTotals} />
+                  <TargetMetricTotalsSection
+                    targets={order.progress.targetMetricTotals}
+                    title="Perbandingan per Link Target"
+                  />
                 ) : null}
               </>
             ) : null}
@@ -183,7 +191,7 @@ export default async function OrderDetailPage({
             />
           </Suspense>
         ) : (
-          <PageState title="Belum ada assignment" description="Assignment akan muncul setelah perintah dikirim." />
+          <PageState title="Belum ada assignment" description="Assignment akan muncul setelah tugas dikirim." />
         )}
         <ServerPagination meta={assignmentsResponse.meta?.pagination} searchParams={queryParams} />
       </section>
@@ -196,6 +204,26 @@ function Info({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border bg-background/70 p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className="text-sm font-semibold tabular-nums">{value.toLocaleString("id-ID")}</p>
+    </div>
+  );
+}
+
+function MetricInfo({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-md border bg-background/70 p-3" title={label}>
+      <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+        <Icon className="size-3.5" aria-hidden />
+        <span className="truncate">{label}</span>
+      </div>
+      <p className="mt-1 text-sm font-semibold tabular-nums">{value.toLocaleString("id-ID")}</p>
     </div>
   );
 }

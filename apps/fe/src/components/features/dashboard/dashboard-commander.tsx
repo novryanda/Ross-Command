@@ -1,16 +1,15 @@
 import { Suspense } from "react";
 import {
   AlertTriangleIcon,
-  ClipboardCheckIcon,
+  CircleCheckBigIcon,
   ClipboardListIcon,
-  FilterIcon,
-  SendIcon,
+  PlayCircleIcon,
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 
 import { DashboardFilterBar } from "@/components/features/dashboard/dashboard-filter-bar";
-import { DashboardCommanderCharts } from "@/components/features/dashboard/dashboard-commander-charts";
+import { CommandTaskCharts } from "@/components/komando/command-task-charts";
 import { formatDashboardFilterSummary } from "@/lib/dashboard-filter-utils";
 import { DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { PageHero } from "@/components/komando/page-hero";
@@ -32,7 +31,7 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
         description={`${filterSummary}. Pantau progress pelaksanaan dan tren operasi di bawah struktur komando.`}
         actions={
           <Button asChild size="sm">
-            <Link href="/orders/new">Buat Perintah Baru</Link>
+            <Link href="/orders/new">Buat Tugas Baru</Link>
           </Button>
         }
       />
@@ -42,30 +41,46 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
       </Suspense>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <StatsCard title="Perintah Aktif" value={data.stats.totalActiveOrders} icon={SendIcon} />
+        <StatsCard
+          title="Jumlah Total Tugas"
+          value={data.stats.totalOrders}
+          description="Semua tugas sesuai filter"
+          icon={ClipboardListIcon}
+        />
         <StatsCard title="Personil Satuan" value={data.stats.totalSubordinateMembers} icon={UsersIcon} />
-        <StatsCard title="Belum Submit" value={data.stats.totalPendingAssignments} icon={ClipboardListIcon} />
-        <StatsCard title="Sudah Submit" value={data.stats.totalCompletedAssignments} icon={ClipboardCheckIcon} />
+        <StatsCard
+          title="Jumlah Tugas Terlaksana"
+          value={data.stats.totalExecutedOrders}
+          description="Tugas 100% terlaksana"
+          icon={CircleCheckBigIcon}
+        />
+        <StatsCard
+          title="Tugas Sedang Berjalan"
+          value={data.stats.totalRunningOrders}
+          description="Aktif & deadline belum lewat"
+          icon={PlayCircleIcon}
+        />
         <StatsCard
           title="Perlu Perhatian"
           value={data.stats.needsAttentionCount}
-          description="Perintah aktif progress < 50%"
+          description="Sedang berjalan, progress < 50%"
           icon={AlertTriangleIcon}
           className="border-amber-500/20 hover:border-amber-500/40"
         />
         <StatsCard
-          title="Perintah Terfilter"
-          value={data.stats.totalFilteredOrders}
-          description="Sesuai filter aktif"
-          icon={FilterIcon}
+          title="Total Tugas Selesai"
+          value={data.stats.totalCompletedOrders}
+          description="Terlaksana penuh & waktu selesai"
+          icon={CircleCheckBigIcon}
+          className="border-emerald-500/20 hover:border-emerald-500/40"
         />
       </div>
 
-      <DashboardCommanderCharts charts={data.charts} />
+      <CommandTaskCharts charts={data.charts} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Perintah Terbaru</h2>
+          <h2 className="text-sm font-semibold">Tugas Terbaru</h2>
           <Button asChild size="sm" variant="ghost">
             <Link href="/orders">Lihat semua</Link>
           </Button>
@@ -93,7 +108,7 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
                   <div className="space-y-1.5">
                     <div className="text-muted-foreground flex justify-between text-xs">
                       <span>
-                        {order.progress.totalSubmitted}/{order.progress.totalAssigned} submit
+                        {order.progress.totalSubmitted}/{order.progress.totalAssigned} terlaksana
                       </span>
                       <span>{order.progress.percentageComplete}%</span>
                     </div>
@@ -105,8 +120,8 @@ export function DashboardCommanderView({ data }: { data: DashboardCommander }) {
           </div>
         ) : (
           <PageState
-            title="Tidak ada perintah"
-            description="Tidak ada data yang cocok dengan filter. Coba ubah periode, status, atau jenis perintah."
+            title="Tidak ada tugas"
+            description="Tidak ada data yang cocok dengan filter. Coba ubah periode, status, atau jenis tugas."
           />
         )}
       </section>

@@ -19,7 +19,7 @@ export function OrderActions({ order }: { order: OrderDetail }) {
       await clientApiFetch(`/api/v1/orders/${order.id}/${action === "send" ? "send" : "cancel"}`, {
         method: "POST",
       });
-      toast.success(action === "send" ? "Perintah berhasil dikirim" : "Perintah berhasil dibatalkan");
+      toast.success(action === "send" ? "Tugas berhasil dikirim" : "Tugas berhasil dibatalkan");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Aksi gagal diproses");

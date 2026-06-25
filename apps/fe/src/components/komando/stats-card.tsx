@@ -11,15 +11,14 @@ type StatsCardProps = {
   className?: string;
 };
 
-export function StatsCard({ title, value, description, icon: Icon, className }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, className }: StatsCardProps) {
   return (
     <Card className={cn("group overflow-hidden border-border/70 shadow-sm transition-colors hover:border-primary/35", className)}>
       <CardContent className="relative flex items-center justify-between gap-4 p-5">
         <span className="bg-primary/70 absolute inset-x-0 top-0 h-0.5 opacity-70 transition-opacity group-hover:opacity-100" />
-        <div className="space-y-1">
-          <p className="text-muted-foreground text-xs font-medium">{title}</p>
-          <p className="text-2xl font-semibold tabular-nums">{value}</p>
-          {description ? <p className="text-muted-foreground text-xs">{description}</p> : null}
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <p className="text-muted-foreground text-base font-medium">{title}</p>
+          <p className="text-4xl font-semibold tabular-nums">{value}</p>
         </div>
         {Icon ? (
           <div className="bg-primary/10 text-primary ring-primary/10 flex size-10 items-center justify-center rounded-md ring-1">

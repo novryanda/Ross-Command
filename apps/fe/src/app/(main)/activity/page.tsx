@@ -10,7 +10,7 @@ import type { ActivityCategory, ActivityItem } from '@/lib/api/types'
 
 const categoryLabel: Record<ActivityCategory, string> = {
   auth: 'Autentikasi',
-  order: 'Perintah',
+  order: 'Tugas',
   submission: 'Bukti',
 }
 

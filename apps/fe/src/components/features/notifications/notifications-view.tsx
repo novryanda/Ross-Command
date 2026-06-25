@@ -35,7 +35,7 @@ const categoryMeta: Record<
   { label: string; icon: LucideIcon; className: string }
 > = {
   assignment: {
-    label: "Perintah",
+    label: "Tugas",
     icon: ClipboardCheckIcon,
     className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
   },
@@ -151,7 +151,7 @@ export function NotificationsView({
       <PageHero
         eyebrow="Pusat aktivitas"
         title="Notifikasi"
-        description="Alert operasional dari perintah, deadline, submission anggota, akun, dan struktur organisasi."
+        description="Alert operasional dari tugas, deadline, submission anggota, akun, dan struktur organisasi."
         actions={
           <Button variant="outline" size="sm" onClick={markAllRead} disabled={unreadCount === 0}>
             <CheckCheckIcon />

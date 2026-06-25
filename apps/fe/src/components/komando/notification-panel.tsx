@@ -30,7 +30,7 @@ const categoryMeta: Record<
   { label: string; icon: LucideIcon; className: string }
 > = {
   assignment: {
-    label: "Perintah",
+    label: "Tugas",
     icon: ClipboardCheckIcon,
     className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
   },

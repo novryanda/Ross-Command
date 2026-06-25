@@ -8,8 +8,11 @@ import { buildPaginationMeta } from '../common/utils/api-response.util';
 import {
   aggregateTargetMetricTotals,
   emptySubmissionMetrics,
+  normalizeMetrics,
   resolveSubmissionMetrics,
   serializeLatestSubmission,
+  subtractMetrics,
+  sumTargetBaselineMetrics,
   type SubmissionMetrics,
   type TargetMetricTotal,
 } from '../common/utils/submission.util';
@@ -85,8 +88,21 @@ function formatWeekLabel(date: Date) {
   }).format(date);
 }
 
+type WeeklyTrendBucket = {
+  label: string;
+  posting: number;
+  blasting: number;
+  counter: number;
+  report_akun: number;
+  total: number;
+};
+
+function createWeeklyTrendBucket(label: string): WeeklyTrendBucket {
+  return { label, posting: 0, blasting: 0, counter: 0, report_akun: 0, total: 0 };
+}
+
 function buildWeeklyOrderTrend(
-  orders: Array<{ sentAt: Date | null; createdAt: Date }>,
+  orders: Array<{ sentAt: Date | null; createdAt: Date; orderType: OrderType }>,
   range?: { dateFrom?: Date; dateTo?: Date },
 ) {
   const endReference = range?.dateTo ?? new Date();
@@ -96,35 +112,40 @@ function buildWeeklyOrderTrend(
 
   const weekEnd = getWeekStart(endReference);
   const weekStart = getWeekStart(startReference);
-  const buckets = new Map<string, { label: string; count: number }>();
+  const buckets = new Map<string, WeeklyTrendBucket>();
   const cursor = new Date(weekStart);
   let bucketCount = 0;
 
   while (cursor <= weekEnd && bucketCount < 12) {
     const key = cursor.toISOString();
-    buckets.set(key, {
-      label: formatWeekLabel(cursor),
-      count: 0,
-    });
+    buckets.set(key, createWeeklyTrendBucket(formatWeekLabel(cursor)));
     cursor.setDate(cursor.getDate() + 7);
     bucketCount += 1;
   }
 
   if (!buckets.size) {
     const key = weekEnd.toISOString();
-    buckets.set(key, {
-      label: formatWeekLabel(weekEnd),
-      count: 0,
-    });
+    buckets.set(key, createWeeklyTrendBucket(formatWeekLabel(weekEnd)));
   }
 
   for (const order of orders) {
     const referenceDate = order.sentAt ?? order.createdAt;
     const weekKey = getWeekStart(referenceDate).toISOString();
     const bucket = buckets.get(weekKey);
-    if (bucket) {
-      bucket.count += 1;
+    if (!bucket) {
+      continue;
     }
+
+    const typeKey = serializeOrderType(order.orderType);
+    if (
+      typeKey === 'posting' ||
+      typeKey === 'blasting' ||
+      typeKey === 'counter' ||
+      typeKey === 'report_akun'
+    ) {
+      bucket[typeKey] += 1;
+    }
+    bucket.total += 1;
   }
 
   return Array.from(buckets.values());
@@ -206,27 +227,41 @@ export class OrdersService {
     await this.hierarchyService.ensureCommander(commanderId);
     const parsed = listOrdersSummaryQuerySchema.parse(query);
     const where = this.buildOrdersWhere(commanderId, parsed);
-    const [orders, orderStatusStats] = await this.prisma.$transaction([
-      this.prisma.order.findMany({
-        where,
-        select: {
-          id: true,
-          sentAt: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.order.groupBy({
-        by: ['status'],
-        where,
-        orderBy: {
-          status: 'asc',
-        },
-        _count: {
-          _all: true,
-        },
-      }),
-    ]);
+    const [orders, orderStatusStats, orderTypeStats] =
+      await this.prisma.$transaction([
+        this.prisma.order.findMany({
+          where,
+          select: {
+            id: true,
+            status: true,
+            orderType: true,
+            deadline: true,
+            sentAt: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.order.groupBy({
+          by: ['status'],
+          where,
+          orderBy: {
+            status: 'asc',
+          },
+          _count: {
+            _all: true,
+          },
+        }),
+        this.prisma.order.groupBy({
+          by: ['orderType'],
+          where,
+          orderBy: {
+            orderType: 'asc',
+          },
+          _count: {
+            _all: true,
+          },
+        }),
+      ]);
 
     const progressMap = await this.getProgressMap(orders.map((order) => order.id));
     const orderStatus = {
@@ -249,21 +284,64 @@ export class OrdersService {
       orderStatus[item.status] = count;
     }
 
+    const orderType = {
+      posting: 0,
+      blasting: 0,
+      counter: 0,
+      report_akun: 0,
+    };
+
+    for (const item of orderTypeStats) {
+      const key = serializeOrderType(item.orderType);
+      const count =
+        typeof item._count === 'object' && item._count
+          ? (item._count._all ?? 0)
+          : 0;
+      if (key in orderType) {
+        orderType[key as keyof typeof orderType] += count;
+      }
+    }
+
     const progressDistribution = {
       low: 0,
       medium: 0,
       high: 0,
     };
 
+    const now = new Date();
+    let totalRunningOrders = 0;
+    let totalCompletedOrders = 0;
+
     for (const order of orders) {
       const progress = progressMap.get(order.id);
-      progressDistribution[getProgressBucket(progress?.percentageComplete ?? 0)] += 1;
+      const isFullySubmitted =
+        (progress?.totalAssigned ?? 0) > 0 && (progress?.totalPending ?? 0) === 0;
+      const deadlinePassed = order.deadline
+        ? order.deadline.getTime() < now.getTime()
+        : false;
+      const isRunning = order.status === 'aktif' && !deadlinePassed;
+
+      if (isFullySubmitted && deadlinePassed) {
+        totalCompletedOrders += 1;
+      }
+
+      if (isRunning) {
+        totalRunningOrders += 1;
+        // Distribusi progress hanya menghitung tugas yang sedang berjalan.
+        progressDistribution[
+          getProgressBucket(progress?.percentageComplete ?? 0)
+        ] += 1;
+      }
     }
 
     return {
       stats: orderStatus,
       charts: {
-        orderStatus,
+        taskStatus: {
+          running: totalRunningOrders,
+          completed: totalCompletedOrders,
+        },
+        orderType,
         progressDistribution,
         weeklyOrders: buildWeeklyOrderTrend(orders, {
           dateFrom: parsed.submitDate,
@@ -658,6 +736,13 @@ export class OrdersService {
     const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
       ? (order.postingTargetPlatforms as string[])
       : null;
+    const socialTargets =
+      order.orderType === 'engagement'
+        ? await this.prisma.orderSocialTarget.findMany({
+            where: { orderId },
+            orderBy: { sortOrder: 'asc' },
+          })
+        : [];
     const where: Prisma.TaskAssignmentWhereInput = {
       orderId,
       ...(parsed.status ? { status: parsed.status } : {}),
@@ -716,6 +801,7 @@ export class OrdersService {
           commanderId,
           order.orderType,
           postingTargetPlatforms,
+          socialTargets,
         ),
       ),
       meta: {
@@ -729,6 +815,13 @@ export class OrdersService {
     const postingTargetPlatforms = Array.isArray(order.postingTargetPlatforms)
       ? (order.postingTargetPlatforms as string[])
       : null;
+    const socialTargets =
+      order.orderType === 'engagement'
+        ? await this.prisma.orderSocialTarget.findMany({
+            where: { orderId },
+            orderBy: { sortOrder: 'asc' },
+          })
+        : [];
     const assignments = await this.prisma.taskAssignment.findMany({
       where: {
         orderId,
@@ -816,6 +909,7 @@ export class OrdersService {
         commanderId,
         order.orderType,
         postingTargetPlatforms,
+        socialTargets,
       );
 
       const current =
@@ -948,6 +1042,13 @@ export class OrdersService {
       order?.orderType === 'engagement'
         ? await this.getTargetMetricTotals(orderId)
         : undefined;
+    const baselineMetricTotals =
+      targetMetricTotals?.length
+        ? sumTargetBaselineMetrics(targetMetricTotals)
+        : undefined;
+    const deltaMetricTotals = baselineMetricTotals
+      ? subtractMetrics(metricTotals, baselineMetricTotals)
+      : undefined;
 
     return {
       totalAssigned,
@@ -960,6 +1061,9 @@ export class OrdersService {
           ? 0
           : Math.round((totalSubmitted / totalAssigned) * 10000) / 100,
       metricTotals,
+      ...(baselineMetricTotals
+        ? { baselineMetricTotals, deltaMetricTotals }
+        : {}),
       ...(targetMetricTotals?.length ? { targetMetricTotals } : {}),
     };
   }
@@ -1173,6 +1277,7 @@ export class OrdersService {
       id: string;
       platform: SocialPlatform;
       url: string;
+      baselineMetrics: Prisma.JsonValue | null;
       sortOrder: number;
     }> = [],
   ) {
@@ -1192,6 +1297,7 @@ export class OrdersService {
         id: target.id,
         platform: target.platform,
         url: target.url,
+        baselineMetrics: normalizeMetrics(target.baselineMetrics),
       })),
       narration: order.narration,
       engagementActions: order.engagementActions,
@@ -1358,11 +1464,16 @@ export class OrdersService {
   }
 
   private mapSocialTargetsInput(
-    targetUrls: Array<{ platform: SocialPlatform; url: string }>,
+    targetUrls: Array<{
+      platform: SocialPlatform;
+      url: string;
+      baselineMetrics?: SubmissionMetrics;
+    }>,
   ) {
     return targetUrls.map((target, index) => ({
       platform: target.platform,
       url: target.url,
+      baselineMetrics: normalizeMetrics(target.baselineMetrics),
       sortOrder: index,
     }));
   }
@@ -1375,6 +1486,7 @@ export class OrdersService {
           id: string;
           platform: SocialPlatform;
           url: string;
+          baselineMetrics: Prisma.JsonValue | null;
           sortOrder: number;
         }>
       >();
@@ -1395,6 +1507,7 @@ export class OrdersService {
         id: string;
         platform: SocialPlatform;
         url: string;
+        baselineMetrics: Prisma.JsonValue | null;
         sortOrder: number;
       }>
     >();
@@ -1606,6 +1719,12 @@ export class OrdersService {
     commanderId: string,
     orderType: OrderType,
     postingTargetPlatforms: string[] | null,
+    blastingTargets: Array<{
+      id: string;
+      platform: SocialPlatform;
+      url: string;
+      baselineMetrics: Prisma.JsonValue | null;
+    }> = [],
   ): SerializedAssignmentItem {
     return {
       id: assignment.id,
@@ -1630,6 +1749,7 @@ export class OrdersService {
         assignment.submissions[0],
         orderType,
         postingTargetPlatforms,
+        blastingTargets,
       ),
     };
   }

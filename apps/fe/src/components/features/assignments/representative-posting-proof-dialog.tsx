@@ -166,11 +166,11 @@ export function RepresentativePostingProofDialog({
       }}
     >
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm">Submit Bukti</Button>}
+        {trigger ?? <Button size="sm">Kirim Bukti</Button>}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Submit Bukti Anggota Satuan</DialogTitle>
+          <DialogTitle>Kirim Bukti Anggota Satuan</DialogTitle>
           <DialogDescription>
             Isi link posting Instagram/Facebook sesuai nama anggota yang diwakili pimpinan satuan.
           </DialogDescription>
@@ -260,7 +260,7 @@ export function RepresentativePostingProofDialog({
           </div>
         ) : (
           <div className="rounded-md border p-4 text-sm text-muted-foreground">
-            Belum ada anggota satuan yang bisa diinput untuk perintah ini.
+            Belum ada anggota satuan yang bisa diinput untuk tugas ini.
           </div>
         )}
 

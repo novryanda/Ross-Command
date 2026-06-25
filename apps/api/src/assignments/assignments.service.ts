@@ -7,6 +7,7 @@ import {
   hasAnyMetric,
   normalizeMetrics,
   serializeLatestSubmission,
+  subtractMetrics,
   sumTargetMetricEntries,
 } from '../common/utils/submission.util';
 import { parseLinks, type ParsedLink } from '../common/utils/url-parser';
@@ -183,16 +184,17 @@ export class AssignmentsService {
       status: assignment.status,
       assignedAt: assignment.assignedAt,
       completedAt: assignment.completedAt,
-      order: {
-        id: assignment.order.id,
-        title: assignment.order.title,
-        orderType: serializeOrderType(assignment.order.orderType),
-        description: assignment.order.description,
-        targetUrls: socialTargets.map((target) => ({
-          id: target.id,
-          platform: target.platform,
-          url: target.url,
-        })),
+        order: {
+          id: assignment.order.id,
+          title: assignment.order.title,
+          orderType: serializeOrderType(assignment.order.orderType),
+          description: assignment.order.description,
+          targetUrls: socialTargets.map((target) => ({
+            id: target.id,
+            platform: target.platform,
+            url: target.url,
+            baselineMetrics: normalizeMetrics(target.baselineMetrics),
+          })),
         narration: assignment.order.narration,
         engagementActions: assignment.order.engagementActions,
         reportReason: assignment.order.reportReason,
@@ -205,6 +207,7 @@ export class AssignmentsService {
         assignment.submissions[0],
         assignment.order.orderType,
         postingTargetPlatforms,
+        socialTargets,
       ),
       canSubmitForMember,
     };
@@ -1061,7 +1064,14 @@ export class AssignmentsService {
         targetId: entry.targetId,
         platform: entry.platform,
         url: entry.url,
+        baselineMetrics: normalizeMetrics(
+          targetMap.get(entry.targetId)?.baselineMetrics,
+        ),
         metrics: normalizeMetrics(entry.metrics),
+        deltaMetrics: subtractMetrics(
+          normalizeMetrics(entry.metrics),
+          normalizeMetrics(targetMap.get(entry.targetId)?.baselineMetrics),
+        ),
       }));
 
       metrics = sumTargetMetricEntries(targetMetricsPayload);

@@ -32,12 +32,12 @@ const typeConfig: Record<ActivityType, { icon: typeof LogInIcon; color: string; 
   order_created: {
     icon: ClipboardCheckIcon,
     color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    label: 'Perintah dibuat'
+    label: 'Tugas dibuat'
   },
   order_sent: {
     icon: SendIcon,
     color: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    label: 'Perintah dikirim'
+    label: 'Tugas dikirim'
   },
   submission_sent: {
     icon: InboxIcon,
@@ -52,7 +52,7 @@ const sampleActivities: ActivityItem[] = [
     category: 'order',
     type: 'order_created',
     actor: { id: null, name: 'Pimpinan Pusat', username: 'komando_pusat' },
-    title: 'Perintah dibuat',
+    title: 'Tugas dibuat',
     description: 'Upload Konten Kampanye Juni',
     href: null,
     occurredAt: new Date().toISOString()
@@ -71,7 +71,7 @@ const sampleActivities: ActivityItem[] = [
 
 const categoryLabels: Record<ActivityCategory, string> = {
   auth: 'Autentikasi',
-  order: 'Perintah',
+  order: 'Tugas',
   submission: 'Bukti'
 }
 

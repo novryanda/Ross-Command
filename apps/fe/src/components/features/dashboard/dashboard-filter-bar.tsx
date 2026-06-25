@@ -107,7 +107,7 @@ export function DashboardFilterBar() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Filter Dashboard</p>
-          <p className="text-muted-foreground text-xs">Sesuaikan periode, status, jenis, dan deadline perintah.</p>
+          <p className="text-muted-foreground text-xs">Sesuaikan periode, status, jenis, dan deadline tugas.</p>
         </div>
         <Button type="button" size="sm" variant="destructive" className="h-8 shrink-0" onClick={reset}>
           Reset
@@ -144,7 +144,7 @@ export function DashboardFilterBar() {
           </div>
         </FilterSection>
 
-        <FilterSection title="Perintah">
+        <FilterSection title="Tugas">
           <Select value={searchParams.get("status") ?? "all"} onValueChange={(value) => setParam("status", value)}>
             <SelectTrigger size="sm" className="w-full">
               <SelectValue placeholder="Status" />

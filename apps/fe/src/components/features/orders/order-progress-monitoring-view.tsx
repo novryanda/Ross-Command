@@ -277,7 +277,7 @@ export function OrderProgressMonitoringView({
               <div>
                 <h3 className="text-base font-semibold">Rincian Perorangan</h3>
                 <p className="text-muted-foreground text-sm">
-                  Lihat status tugas, metrik, dan waktu submit bukti.
+                  Lihat status tugas, metrik, dan waktu kirim bukti.
                 </p>
               </div>
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -320,7 +320,7 @@ export function OrderProgressMonitoringView({
                           <TableHead className="min-w-80">Metrik</TableHead>
                         ) : null}
                         {memberColumns.submittedAt ? (
-                          <TableHead className="min-w-36">Submit Terakhir</TableHead>
+                          <TableHead className="min-w-36">Terlaksana Terakhir</TableHead>
                         ) : null}
                       </TableRow>
                     </TableHeader>
@@ -544,7 +544,7 @@ export function OrderProgressMonitoringView({
                     <Button variant="default" size="sm" asChild>
                       <Link href={selectedUnitBulkSubmitHref}>
                         <ClipboardListIcon className="size-4" />
-                        Bulk Submit
+                        Kirim Massal
                       </Link>
                     </Button>
                   ) : null}
@@ -574,7 +574,7 @@ export function OrderProgressMonitoringView({
                             <TableHead className="min-w-80">Metrik</TableHead>
                           ) : null}
                           {selectedUnitMemberColumns.submittedAt ? (
-                            <TableHead className="min-w-36">Submit Terakhir</TableHead>
+                            <TableHead className="min-w-36">Terlaksana Terakhir</TableHead>
                           ) : null}
                         </TableRow>
                       </TableHeader>

@@ -60,7 +60,7 @@ export function SubmitProofDialog({
   postingTargetPlatforms = [],
   submitUrl,
   trigger,
-  title = "Submit Bukti Pelaksanaan",
+  title = "Kirim Bukti Pelaksanaan",
   initialSubmission,
 }: SubmitProofDialogProps) {
   const isPosting = orderType === "posting";
@@ -142,7 +142,7 @@ export function SubmitProofDialog({
       }}
     >
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm">Submit Bukti</Button>}
+        {trigger ?? <Button size="sm">Kirim Bukti</Button>}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
@@ -151,7 +151,7 @@ export function SubmitProofDialog({
             {isPosting
               ? "Masukkan link posting untuk setiap sosmed target. Boleh dikirim sebagian, asalkan minimal satu link terisi."
               : "Masukkan link Google Drive atau dokumen bukti yang dapat dibuka pimpinan."}{" "}
-            Submit ulang akan tercatat sebagai aktivitas baru.
+            Kirim ulang akan tercatat sebagai aktivitas baru.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

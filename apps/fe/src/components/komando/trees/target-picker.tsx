@@ -304,8 +304,8 @@ export function TargetPicker({
         <p className="font-medium">{audienceLabel[targetAudience]}</p>
         <p className="text-muted-foreground text-xs">
           {targetAudience === "all_members"
-            ? "Perintah dikirim ke seluruh anggota aktif, kecuali satuan bertanda Pimpinan saja yang diwakili pimpinannya."
-            : "Pilih user pimpinan satuan yang akan menerima perintah dan mewakili anggota langsungnya."}
+            ? "Tugas dikirim ke seluruh anggota aktif, kecuali satuan bertanda Pimpinan saja yang diwakili pimpinannya."
+            : "Pilih user pimpinan satuan yang akan menerima tugas dan mewakili anggota langsungnya."}
         </p>
       </div>
 

@@ -2,6 +2,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { id } from "date-fns/locale";
 
 import { Badge } from "@/components/ui/badge";
+import { PlatformIcon } from "@/components/komando/platform-icon";
 import type { AssignmentStatus, OrderStatus, OrderType, SocialPlatform } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +80,12 @@ export function OrderTypeBadge({ type }: { type: OrderType }) {
 }
 
 export function PlatformBadge({ platform }: { platform: SocialPlatform }) {
-  return <Badge variant="secondary" className="h-5 rounded-sm px-1.5 text-xs">{platformLabel[platform]}</Badge>;
+  return (
+    <Badge variant="secondary" className="h-5 gap-1 rounded-sm px-1.5 text-xs">
+      <PlatformIcon platform={platform} className="size-3" />
+      {platformLabel[platform]}
+    </Badge>
+  );
 }
 
 export function submissionInputLabel(submission?: {

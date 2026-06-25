@@ -29,7 +29,7 @@ export function DashboardAdminView({ data }: { data: DashboardAdmin }) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatsCard title="Total User" value={data.stats.totalUsers} icon={UsersIcon} />
         <StatsCard title="Total Satuan" value={data.stats.totalUnits} icon={Building2Icon} />
-        <StatsCard title="Total Perintah" value={data.stats.totalOrders} icon={ClipboardListIcon} />
+        <StatsCard title="Total Tugas" value={data.stats.totalOrders} icon={ClipboardListIcon} />
         <StatsCard title="Akun Sosmed" value={data.stats.totalSocialAccounts} icon={Share2Icon} />
         <StatsCard title="Akun Dikunci" value={data.stats.lockedUsers} icon={LockIcon} />
       </div>

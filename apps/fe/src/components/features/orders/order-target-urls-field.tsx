@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { OrderSocialTarget, SocialPlatform } from "@/lib/api/types";
+import { metricFieldLabels } from "@/lib/blasting-metrics";
+import type { OrderSocialTarget, SocialPlatform, SubmissionMetrics } from "@/lib/api/types";
 
 const platformOptions: SocialPlatform[] = [
   "instagram",
@@ -22,16 +23,27 @@ export type OrderTargetUrlDraft = {
   clientId: string;
   platform: SocialPlatform;
   url: string;
+  baselineMetrics: SubmissionMetrics;
+};
+
+const emptyMetrics: SubmissionMetrics = {
+  views: 0,
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  reposts: 0,
 };
 
 export function createTargetUrlDraft(
   platform: SocialPlatform = "instagram",
   url = "",
+  baselineMetrics: SubmissionMetrics = emptyMetrics,
 ): OrderTargetUrlDraft {
   return {
     clientId: crypto.randomUUID(),
     platform,
     url,
+    baselineMetrics: { ...baselineMetrics },
   };
 }
 
@@ -53,9 +65,14 @@ export function hasValidTargetUrls(targetUrls: OrderTargetUrlDraft[]) {
 type OrderTargetUrlsFieldProps = {
   value: OrderTargetUrlDraft[];
   onChange: (value: OrderTargetUrlDraft[]) => void;
+  showBaselineMetrics?: boolean;
 };
 
-export function OrderTargetUrlsField({ value, onChange }: OrderTargetUrlsFieldProps) {
+export function OrderTargetUrlsField({
+  value,
+  onChange,
+  showBaselineMetrics = false,
+}: OrderTargetUrlsFieldProps) {
   function updateEntry(clientId: string, patch: Partial<OrderTargetUrlDraft>) {
     onChange(value.map((item) => (item.clientId === clientId ? { ...item, ...patch } : item)));
   }
@@ -115,12 +132,43 @@ export function OrderTargetUrlsField({ value, onChange }: OrderTargetUrlsFieldPr
               </Button>
             </div>
             <div className="p-3">
-              <Input
-                type="url"
-                placeholder="https://"
-                value={entry.url}
-                onChange={(event) => updateEntry(entry.clientId, { url: event.target.value })}
-              />
+              <div className="space-y-3">
+                <Input
+                  type="url"
+                  placeholder="https://"
+                  value={entry.url}
+                  onChange={(event) => updateEntry(entry.clientId, { url: event.target.value })}
+                />
+                {showBaselineMetrics ? (
+                  <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Baseline Metrik Awal</p>
+                      <PlatformBadge platform={entry.platform} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                      {metricFieldLabels.map((field) => (
+                        <label key={field.key} className="grid gap-1 text-xs">
+                          <span className="text-muted-foreground">{field.label}</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={entry.baselineMetrics[field.key]}
+                            onChange={(event) =>
+                              updateEntry(entry.clientId, {
+                                baselineMetrics: {
+                                  ...entry.baselineMetrics,
+                                  [field.key]: Math.max(0, Number(event.target.value) || 0),
+                                },
+                              })
+                            }
+                            className="h-8"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         ))}
@@ -144,6 +192,22 @@ export function OrderTargetUrlsList({ targets }: { targets: OrderSocialTarget[] 
             <a href={target.url} target="_blank" rel="noreferrer" className="text-primary break-all text-sm hover:underline">
               {target.url}
             </a>
+            {target.baselineMetrics ? (
+              <div className="mt-3 grid grid-cols-5 gap-1">
+                {metricFieldLabels.map((field) => (
+                  <div
+                    key={field.key}
+                    title={field.label}
+                    className="flex flex-col items-center gap-0.5 rounded-md bg-muted/60 px-1.5 py-1.5 text-center"
+                  >
+                    <field.icon className="text-muted-foreground size-3.5" aria-label={field.label} />
+                    <p className="truncate text-xs font-medium tabular-nums">
+                      {target.baselineMetrics?.[field.key].toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

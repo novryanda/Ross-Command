@@ -47,16 +47,16 @@ export default async function OrderMonitoringPage({
 
   return (
     <div className="min-w-0 space-y-6 overflow-x-hidden">
-      <BackButton href={`/orders/${orderId}`} label="Kembali ke detail perintah" />
+      <BackButton href={`/orders/${orderId}`} label="Kembali ke detail tugas" />
 
       <PageHero
-        eyebrow="Monitoring perintah"
+        eyebrow="Monitoring tugas"
         title={`Monitoring - ${order.title}`}
         description="Pantau progres keseluruhan, perorangan, dan persatuan dalam tampilan penuh yang lebih nyaman."
         actions={
           showBulkSubmit && order.orderType === "posting" ? (
             <Button asChild>
-              <Link href={`/orders/${orderId}/monitoring/bulk-submit`}>Bulk Submit</Link>
+              <Link href={`/orders/${orderId}/monitoring/bulk-submit`}>Kirim Massal</Link>
             </Button>
           ) : null
         }

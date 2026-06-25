@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { OrderType } from '@prisma/client';
 
 import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
@@ -27,8 +28,21 @@ function formatWeekLabel(date: Date) {
   }).format(date);
 }
 
+type WeeklyTrendBucket = {
+  label: string;
+  posting: number;
+  blasting: number;
+  counter: number;
+  report_akun: number;
+  total: number;
+};
+
+function createWeeklyTrendBucket(label: string): WeeklyTrendBucket {
+  return { label, posting: 0, blasting: 0, counter: 0, report_akun: 0, total: 0 };
+}
+
 function buildWeeklyOrderTrend(
-  orders: Array<{ sentAt: Date | null; createdAt: Date }>,
+  orders: Array<{ sentAt: Date | null; createdAt: Date; orderType: OrderType }>,
   range?: { dateFrom?: Date; dateTo?: Date },
 ) {
   const endReference = range?.dateTo ?? new Date();
@@ -38,35 +52,40 @@ function buildWeeklyOrderTrend(
 
   const weekEnd = getWeekStart(endReference);
   const weekStart = getWeekStart(startReference);
-  const buckets = new Map<string, { label: string; count: number }>();
+  const buckets = new Map<string, WeeklyTrendBucket>();
   const cursor = new Date(weekStart);
   let bucketCount = 0;
 
   while (cursor <= weekEnd && bucketCount < 12) {
     const key = cursor.toISOString();
-    buckets.set(key, {
-      label: formatWeekLabel(cursor),
-      count: 0,
-    });
+    buckets.set(key, createWeeklyTrendBucket(formatWeekLabel(cursor)));
     cursor.setDate(cursor.getDate() + 7);
     bucketCount += 1;
   }
 
   if (!buckets.size) {
     const key = weekEnd.toISOString();
-    buckets.set(key, {
-      label: formatWeekLabel(weekEnd),
-      count: 0,
-    });
+    buckets.set(key, createWeeklyTrendBucket(formatWeekLabel(weekEnd)));
   }
 
   for (const order of orders) {
     const referenceDate = order.sentAt ?? order.createdAt;
     const weekKey = getWeekStart(referenceDate).toISOString();
     const bucket = buckets.get(weekKey);
-    if (bucket) {
-      bucket.count += 1;
+    if (!bucket) {
+      continue;
     }
+
+    const typeKey = serializeOrderType(order.orderType);
+    if (
+      typeKey === 'posting' ||
+      typeKey === 'blasting' ||
+      typeKey === 'counter' ||
+      typeKey === 'report_akun'
+    ) {
+      bucket[typeKey] += 1;
+    }
+    bucket.total += 1;
   }
 
   return Array.from(buckets.values());
@@ -99,20 +118,9 @@ export class DashboardService {
 
     const subordinateUserIds =
       await this.hierarchyService.getSubordinateUserIds(userId);
-    const [
-      totalActiveOrders,
-      assignmentStats,
-      filteredOrders,
-      orderStatusStats,
-      orderTypeStats,
-    ] = await Promise.all([
-      this.prisma.order.count({
-        where: {
-          ...orderWhere,
-          status: 'aktif',
-        },
-      }),
-      this.prisma.taskAssignment.groupBy({
+    const [assignmentStats, filteredOrders, orderStatusStats, orderTypeStats] =
+      await Promise.all([
+        this.prisma.taskAssignment.groupBy({
         by: ['status'],
         where: {
           order: orderWhere,
@@ -202,6 +210,13 @@ export class DashboardService {
     let totalPending = 0;
     let totalLate = 0;
     let needsAttentionCount = 0;
+    // Tugas terlaksana = perintah yang semua penugasannya sudah tersubmit (100%).
+    let totalExecutedOrders = 0;
+    // Tugas sedang berjalan = perintah aktif yang deadline-nya belum lewat.
+    let totalRunningOrders = 0;
+    // Tugas selesai = tersubmit penuh DAN waktunya sudah lewat (deadline lewat).
+    let totalCompletedOrders = 0;
+    const now = new Date();
 
     for (const order of filteredOrders) {
       const progress = progressMap.get(order.id);
@@ -214,7 +229,26 @@ export class DashboardService {
       totalPending += progress.totalPending;
       totalLate += progress.totalLate;
 
-      progressDistribution[getProgressBucket(progress.percentageComplete)] += 1;
+      const isFullySubmitted =
+        progress.totalAssigned > 0 && progress.totalPending === 0;
+      const deadlinePassed = order.deadline
+        ? order.deadline.getTime() < now.getTime()
+        : false;
+      const isRunning = order.status === 'aktif' && !deadlinePassed;
+
+      if (isFullySubmitted) {
+        totalExecutedOrders += 1;
+        if (deadlinePassed) {
+          totalCompletedOrders += 1;
+        }
+      }
+
+      if (isRunning) {
+        totalRunningOrders += 1;
+        // Distribusi progress hanya menghitung tugas yang sedang berjalan.
+        progressDistribution[getProgressBucket(progress.percentageComplete)] +=
+          1;
+      }
 
       if (order.status === 'aktif' && progress.percentageComplete < 50) {
         needsAttentionCount += 1;
@@ -229,13 +263,17 @@ export class DashboardService {
     return {
       filters: serializeDashboardFilters(parsed),
       stats: {
-        totalActiveOrders,
+        // Jumlah Total Tugas — semua perintah sesuai filter aktif.
+        totalOrders: filteredOrders.length,
         totalSubordinateMembers: subordinateUserIds.length,
-        totalPendingAssignments: assignmentStatus.pending,
-        totalCompletedAssignments:
-          assignmentStatus.submitted + assignmentStatus.late,
+        // Jumlah Tugas Terlaksana — perintah yang 100% tersubmit.
+        totalExecutedOrders,
+        // Tugas Sedang Berjalan — perintah aktif & deadline belum lewat.
+        totalRunningOrders,
+        // Perlu Perhatian — perintah berjalan dengan progress < 50%.
         needsAttentionCount,
-        totalFilteredOrders: filteredOrders.length,
+        // Total Tugas Selesai — tersubmit penuh & waktunya sudah lewat.
+        totalCompletedOrders,
       },
       charts: {
         overallProgress: {
@@ -247,6 +285,11 @@ export class DashboardService {
         },
         assignmentStatus,
         orderStatus,
+        // Status Tugas — sedang berjalan vs sudah selesai.
+        taskStatus: {
+          running: totalRunningOrders,
+          completed: totalCompletedOrders,
+        },
         orderType,
         progressDistribution,
         weeklyOrders: buildWeeklyOrderTrend(filteredOrders, dateRange),

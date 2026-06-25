@@ -71,7 +71,7 @@ export default async function MemberDetailPage({
       </Card>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Riwayat Perintah</h2>
+        <h2 className="text-sm font-semibold">Riwayat Tugas</h2>
         {detail.assignments.length ? (
           <div className="grid gap-3">
             {detail.assignments.map((assignment) => (

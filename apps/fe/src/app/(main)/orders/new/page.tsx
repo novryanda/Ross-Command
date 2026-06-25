@@ -27,9 +27,9 @@ export default async function NewOrderPage({
   return (
     <div className="space-y-6">
       <PageHero
-        eyebrow="Wizard perintah"
-        title="Buat Perintah Baru"
-        description="Susun instruksi, pilih target satuan, lalu tentukan apakah perintah dikirim ke seluruh anggota atau cukup ke pimpinan satuan."
+        eyebrow="Wizard tugas"
+        title="Buat Tugas Baru"
+        description="Susun instruksi, pilih target satuan, lalu tentukan apakah tugas dikirim ke seluruh anggota atau cukup ke pimpinan satuan."
       />
       <OrderForm units={units.data} currentUserId={me.id} initialOrderType={initialOrderType} />
     </div>

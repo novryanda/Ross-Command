@@ -19,9 +19,18 @@ export const socialPlatformSchema = z.enum([
   'other',
 ]);
 
+const submissionMetricsSchema = z.object({
+  views: z.coerce.number().int().min(0).default(0),
+  likes: z.coerce.number().int().min(0).default(0),
+  comments: z.coerce.number().int().min(0).default(0),
+  shares: z.coerce.number().int().min(0).default(0),
+  reposts: z.coerce.number().int().min(0).default(0),
+});
+
 export const orderSocialTargetSchema = z.object({
   platform: socialPlatformSchema,
   url: z.string().trim().url(),
+  baselineMetrics: submissionMetricsSchema.optional(),
 });
 
 export const targetAudienceSchema = z.enum([

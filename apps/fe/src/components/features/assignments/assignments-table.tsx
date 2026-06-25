@@ -127,9 +127,9 @@ export function AssignmentsTable({ assignments, pagination }: AssignmentsTablePr
     () => [
       {
         id: "perintah",
-        meta: { label: "Perintah" },
+        meta: { label: "Tugas" },
         accessorFn: (row) => row.order.title,
-        header: "Perintah",
+        header: "Tugas",
         cell: ({ row }) => {
           const assignment = row.original;
           const order = assignment.order;
@@ -178,12 +178,12 @@ export function AssignmentsTable({ assignments, pagination }: AssignmentsTablePr
       },
       {
         id: "submit",
-        meta: { label: "Submit" },
+        meta: { label: "Terlaksana" },
         accessorFn: (row) => row.assignedAt,
         enableSorting: false,
         header: () => (
           <ServerSortHeader
-            label="Submit"
+            label="Terlaksana"
             sortKey="assignedAt"
             activeSortBy={activeSortBy}
             activeSortOrder={activeSortOrder}
@@ -212,7 +212,7 @@ export function AssignmentsTable({ assignments, pagination }: AssignmentsTablePr
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8" aria-label="Aksi perintah">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Aksi tugas">
                 <EllipsisVerticalIcon className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -239,7 +239,7 @@ export function AssignmentsTable({ assignments, pagination }: AssignmentsTablePr
       defaultPageSize={20}
       pageSizeOptions={[10, 20, 50]}
       serverPagination={pagination}
-      emptyMessage="Tidak ada perintah ditemukan."
+      emptyMessage="Tidak ada tugas ditemukan."
     />
   );
 }
