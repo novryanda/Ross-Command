@@ -1,11 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 
 import { OrderActions } from "@/components/features/orders/order-actions";
 import { OrderAssignmentsList } from "@/components/features/orders/order-assignments-list";
-import { TargetMetricTotalsSection } from "@/components/features/orders/target-metric-section";
 import { isBlastingOrderType } from "@/lib/order-utils";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
@@ -20,10 +18,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToneProgressBar } from "@/components/komando/tone-progress-bar";
 import { buildQueryString } from "@/lib/api/client";
-import { metricFieldLabels } from "@/lib/blasting-metrics";
 import { ApiRequestError } from "@/lib/api/types";
 import { serverApiFetch } from "@/lib/api/server";
 import type { Assignment, OrderDetail } from "@/lib/api/types";
+import { OrdersPageView } from "@/components/features/orders/orders-page-view";
+import { type OrdersPageScope } from "@/lib/order-page-scope";
+
+const ORDER_LIST_SCOPE_BY_SEGMENT: Partial<Record<string, OrdersPageScope>> = {
+  blasting: "blasting",
+  counter: "counter",
+  report: "report",
+  posting: "posting",
+};
+
+function isOrderUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
 
 export default async function OrderDetailPage({
   params,
@@ -33,6 +45,16 @@ export default async function OrderDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { orderId } = await params;
+
+  const listScope = ORDER_LIST_SCOPE_BY_SEGMENT[orderId];
+  if (listScope) {
+    return <OrdersPageView scope={listScope} searchParams={searchParams} />;
+  }
+
+  if (!isOrderUuid(orderId)) {
+    notFound();
+  }
+
   const queryParams = await searchParams;
   const query = buildQueryString({
     page: queryParams.page,
@@ -114,36 +136,23 @@ export default async function OrderDetailPage({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="text-muted-foreground flex justify-between text-xs">
-                <span>{order.progress.totalSubmitted}/{order.progress.totalAssigned} terkirim</span>
+                <span>
+                  {order.progress.totalSubmitted}/{order.progress.totalAssigned} melaksanakan
+                </span>
                 <span>{order.progress.percentageComplete}%</span>
               </div>
               <ToneProgressBar value={order.progress.percentageComplete} />
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Info label="Ditugaskan" value={order.progress.totalAssigned} />
-              <Info label="Sudah Kirim" value={order.progress.totalSubmitted} />
-              <Info label="Menunggu" value={order.progress.totalPending} />
+              <Info label="Sudah Melaksanakan" value={order.progress.totalSubmitted} />
+              <Info label="Belum Melaksanakan" value={order.progress.totalPending} />
               <Info label="Terlambat" value={order.progress.totalLate} />
             </div>
             {isBlastingOrderType(order.orderType) ? (
-              <>
-                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                  {metricFieldLabels.map((field) => (
-                    <MetricInfo
-                      key={field.key}
-                      icon={field.icon}
-                      label={field.label}
-                      value={order.progress.metricTotals[field.key]}
-                    />
-                  ))}
-                </div>
-                {order.progress.targetMetricTotals?.length ? (
-                  <TargetMetricTotalsSection
-                    targets={order.progress.targetMetricTotals}
-                    title="Perbandingan per Link Target"
-                  />
-                ) : null}
-              </>
+              <Button asChild className="w-full">
+                <Link href={`/orders/${order.id}/metrics`}>Monitoring Detail</Link>
+              </Button>
             ) : null}
             <div className="grid gap-2 sm:grid-cols-2">
               <Button asChild variant="outline" className="w-full">
@@ -159,7 +168,7 @@ export default async function OrderDetailPage({
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Target</CardTitle>
+          <CardTitle className="text-base">Penugasan</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 md:grid-cols-2">
           {order.targets.map((target) => (
@@ -175,7 +184,7 @@ export default async function OrderDetailPage({
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Progres Anggota</h2>
+          <h2 className="text-sm font-semibold"></h2>
           <Suspense fallback={null}>
             <ListViewToggle defaultView="card" />
           </Suspense>
@@ -204,26 +213,6 @@ function Info({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border bg-background/70 p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className="text-sm font-semibold tabular-nums">{value.toLocaleString("id-ID")}</p>
-    </div>
-  );
-}
-
-function MetricInfo({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-md border bg-background/70 p-3" title={label}>
-      <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-        <Icon className="size-3.5" aria-hidden />
-        <span className="truncate">{label}</span>
-      </div>
-      <p className="mt-1 text-sm font-semibold tabular-nums">{value.toLocaleString("id-ID")}</p>
     </div>
   );
 }

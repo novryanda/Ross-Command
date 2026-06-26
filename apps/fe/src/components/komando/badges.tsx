@@ -10,7 +10,7 @@ const orderStatusLabel: Record<OrderStatus, string> = {
   draft: "Draft",
   aktif: "Aktif",
   selesai: "Selesai",
-  expired: "Expired",
+  expired: "Lewat Batas Waktu",
   dibatalkan: "Dibatalkan",
 };
 

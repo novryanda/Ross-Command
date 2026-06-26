@@ -1,6 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import { ActivityService } from '../activity/activity.service';
+import {
+  aggregateScrapedTotals,
+  ApifyService,
+  computeGrowthPercent,
+  summarizeScrapePhaseStatus,
+} from '../apify/apify.service';
 import { HierarchyService } from '../common/hierarchy.service';
 import { PrismaService } from '../common/prisma.service';
 import { ApiException } from '../common/utils/api-exception.util';
@@ -22,6 +28,7 @@ import {
   OrderType,
   Prisma,
   SocialPlatform,
+  type MetricScrapePhase,
 } from '@prisma/client';
 import {
   baseOrderSchema,
@@ -169,6 +176,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly hierarchyService: HierarchyService,
     private readonly activityService: ActivityService,
+    private readonly apifyService: ApifyService,
   ) {}
 
   async listOrders(commanderId: string, query: unknown) {
@@ -420,6 +428,7 @@ export class OrdersService {
         orderId: order.id,
         occurredAt: order.sentAt ?? new Date(),
       });
+      await this.triggerEngagementBaselineScrape(order.id, parsed.orderType);
     }
 
     return this.getOrderDetail(commanderId, order.id);
@@ -626,6 +635,7 @@ export class OrdersService {
         orderId,
         occurredAt: activatedAt,
       });
+      await this.triggerEngagementBaselineScrape(orderId, nextOrderType);
     }
 
     return this.getOrderDetail(commanderId, orderId);
@@ -697,6 +707,7 @@ export class OrdersService {
       actorUserId: commanderId,
       orderId,
     });
+    await this.triggerEngagementBaselineScrape(orderId, order.orderType);
     return this.getOrderDetail(commanderId, orderId);
   }
 
@@ -1151,6 +1162,147 @@ export class OrdersService {
     }
   }
 
+  async getMetricsDashboard(
+    userId: string,
+    userRole: string,
+    orderId: string,
+  ) {
+    const order = await this.ensureMetricsDashboardAccess(
+      userId,
+      userRole,
+      orderId,
+    );
+
+    if (order.orderType !== 'engagement') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Dashboard metrik hanya tersedia untuk tugas blasting',
+      );
+    }
+
+    const [socialTargets, scrapeRuns] = await Promise.all([
+      this.prisma.orderSocialTarget.findMany({
+        where: { orderId },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.metricScrapeRun.findMany({
+        where: { orderId },
+        orderBy: { startedAt: 'asc' },
+      }),
+    ]);
+
+    const targets = socialTargets.map((target) => {
+      const baselineMetrics = normalizeMetrics(target.baselineMetrics);
+      const finalMetrics = normalizeMetrics(target.finalMetrics);
+      const deltaMetrics = subtractMetrics(finalMetrics, baselineMetrics);
+
+      return {
+        targetId: target.id,
+        platform: target.platform,
+        url: target.url,
+        baselineMetrics,
+        finalMetrics,
+        baselineScrapedAt: target.baselineScrapedAt?.toISOString() ?? null,
+        finalScrapedAt: target.finalScrapedAt?.toISOString() ?? null,
+        deltaMetrics,
+        growthPercent: computeGrowthPercent(baselineMetrics, finalMetrics),
+        scrapeRuns: scrapeRuns
+          .filter((run) => run.orderSocialTargetId === target.id)
+          .map((run) => ({
+            phase: run.phase,
+            status: run.status,
+            errorMessage: run.errorMessage,
+            completedAt: run.completedAt?.toISOString() ?? null,
+          })),
+      };
+    });
+
+    return {
+      orderId: order.id,
+      status: order.status,
+      deadline: order.deadline.toISOString(),
+      scrapeStatus: {
+        baseline: summarizeScrapePhaseStatus(scrapeRuns, 'baseline'),
+        deadline: summarizeScrapePhaseStatus(scrapeRuns, 'deadline'),
+      },
+      targets,
+      totals: aggregateScrapedTotals(
+        socialTargets.map((target) => ({
+          baselineMetrics: normalizeMetrics(target.baselineMetrics),
+          finalMetrics: normalizeMetrics(target.finalMetrics),
+        })),
+      ),
+    };
+  }
+
+  async retryMetricsScrape(
+    userId: string,
+    userRole: string,
+    orderId: string,
+    phase: MetricScrapePhase,
+  ) {
+    const order = await this.ensureMetricsDashboardAccess(
+      userId,
+      userRole,
+      orderId,
+    );
+
+    if (order.orderType !== 'engagement') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Retry scrape hanya tersedia untuk tugas blasting',
+      );
+    }
+
+    if (phase === 'baseline') {
+      await this.apifyService.retryScrape(orderId, 'baseline');
+    } else {
+      await this.apifyService.retryScrape(orderId, 'deadline');
+    }
+
+    return this.getMetricsDashboard(userId, userRole, orderId);
+  }
+
+  private async triggerEngagementBaselineScrape(
+    orderId: string,
+    orderType: OrderType,
+  ) {
+    if (orderType !== 'engagement') {
+      return;
+    }
+
+    await this.apifyService.triggerBaselineScrape(orderId);
+  }
+
+  private async ensureMetricsDashboardAccess(
+    userId: string,
+    userRole: string,
+    orderId: string,
+  ) {
+    if (userRole === 'super_admin') {
+      const order = await this.prisma.order.findFirst({
+        where: {
+          id: orderId,
+          deletedAt: null,
+        },
+      });
+
+      if (!order) {
+        throw new ApiException(
+          HttpStatus.NOT_FOUND,
+          'NOT_FOUND',
+          'Order tidak ditemukan',
+        );
+      }
+
+      return order;
+    }
+
+    return this.ensureCommanderOrder(userId, orderId);
+  }
+
   private async ensureCommanderOrder(commanderId: string, orderId: string) {
     await this.hierarchyService.ensureCommander(commanderId);
     const order = await this.prisma.order.findFirst({
@@ -1278,6 +1430,9 @@ export class OrdersService {
       platform: SocialPlatform;
       url: string;
       baselineMetrics: Prisma.JsonValue | null;
+      finalMetrics?: Prisma.JsonValue | null;
+      baselineScrapedAt?: Date | null;
+      finalScrapedAt?: Date | null;
       sortOrder: number;
     }> = [],
   ) {
@@ -1298,6 +1453,9 @@ export class OrdersService {
         platform: target.platform,
         url: target.url,
         baselineMetrics: normalizeMetrics(target.baselineMetrics),
+        finalMetrics: normalizeMetrics(target.finalMetrics),
+        baselineScrapedAt: target.baselineScrapedAt?.toISOString() ?? null,
+        finalScrapedAt: target.finalScrapedAt?.toISOString() ?? null,
       })),
       narration: order.narration,
       engagementActions: order.engagementActions,
@@ -1467,13 +1625,11 @@ export class OrdersService {
     targetUrls: Array<{
       platform: SocialPlatform;
       url: string;
-      baselineMetrics?: SubmissionMetrics;
     }>,
   ) {
     return targetUrls.map((target, index) => ({
       platform: target.platform,
       url: target.url,
-      baselineMetrics: normalizeMetrics(target.baselineMetrics),
       sortOrder: index,
     }));
   }

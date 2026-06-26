@@ -14,6 +14,7 @@ import type { AuthenticatedUser } from '../auth/auth.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SessionAuthGuard } from '../common/guards/session-auth.guard';
 import { successResponse } from '../common/utils/api-response.util';
+import { retryMetricsScrapeQuerySchema } from './orders.schema';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -55,6 +56,35 @@ export class OrdersController {
       body,
     );
     return successResponse(result, 'Perintah berhasil dibuat');
+  }
+
+  @Get(':orderId/metrics-dashboard')
+  async getMetricsDashboard(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+  ) {
+    const result = await this.ordersService.getMetricsDashboard(
+      currentUser.user.id,
+      currentUser.user.role,
+      orderId,
+    );
+    return successResponse(result);
+  }
+
+  @Post(':orderId/metrics-dashboard/retry')
+  async retryMetricsScrape(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const { phase } = retryMetricsScrapeQuerySchema.parse(query);
+    const result = await this.ordersService.retryMetricsScrape(
+      currentUser.user.id,
+      currentUser.user.role,
+      orderId,
+      phase,
+    );
+    return successResponse(result, 'Scrape ulang telah dimulai');
   }
 
   @Get(':orderId')

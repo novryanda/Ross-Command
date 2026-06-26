@@ -54,11 +54,18 @@ export default async function OrderMonitoringPage({
         title={`Monitoring - ${order.title}`}
         description="Pantau progres keseluruhan, perorangan, dan persatuan dalam tampilan penuh yang lebih nyaman."
         actions={
-          showBulkSubmit && order.orderType === "posting" ? (
-            <Button asChild>
-              <Link href={`/orders/${orderId}/monitoring/bulk-submit`}>Kirim Massal</Link>
-            </Button>
-          ) : null
+          <>
+            {order.orderType === "blasting" || order.orderType === "engagement" ? (
+              <Button asChild variant="outline">
+                <Link href={`/orders/${orderId}/metrics`}>Dashboard Metrik</Link>
+              </Button>
+            ) : null}
+            {showBulkSubmit && order.orderType === "posting" ? (
+              <Button asChild>
+                <Link href={`/orders/${orderId}/monitoring/bulk-submit`}>Kirim Massal</Link>
+              </Button>
+            ) : null}
+          </>
         }
       >
         <div className="flex flex-wrap gap-1.5">

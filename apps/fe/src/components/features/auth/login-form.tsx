@@ -77,7 +77,8 @@ export function LoginForm() {
     }
 
     toast.success("Selamat datang");
-    router.push(next);
+    // Full navigation agar cookie session terbaca SSR setelah login (penting untuk tunnel).
+    window.location.assign(next);
     router.refresh();
   }
 

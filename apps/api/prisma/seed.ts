@@ -1,7 +1,25 @@
 import 'dotenv/config';
-import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
-import { createKomandoAuth } from '../src/auth/create-better-auth';
+import { encryptSecret } from '../src/common/utils/encryption.util';
+import {
+  coreMembershipPlan,
+  coreUsers,
+  seedUnits,
+} from './seed-data/org';
+import {
+  assertUnitCommandersHaveActiveMembership,
+  createKomandoAuthFromEnv,
+  createSeedUnit,
+  createSeedUser,
+  daysAgo,
+  getRequiredMapValue,
+  guardSeedExecution,
+  hoursFromNow,
+  prisma,
+  teardownDatabase,
+  validateSeedMembershipPlan,
+  type SeedGender,
+  type SeedUser,
+} from './seed-shared';
 
 type SeedRole = 'super_admin' | 'member';
 type SeedPlatform =
@@ -15,31 +33,6 @@ type SeedOrderType = 'posting' | 'engagement' | 'counter' | 'report_akun';
 type SeedOrderStatus = 'draft' | 'aktif' | 'expired' | 'selesai';
 type SeedAssignmentStatus = 'belum_dikerjakan' | 'selesai' | 'terlambat';
 type SeedActivityType = 'order_created' | 'order_sent' | 'submission_sent';
-type SeedGender = 'pria' | 'wanita';
-type SeedEmploymentType = 'tni' | 'pns' | 'p3k';
-
-type SeedUser = {
-  key: string;
-  fullName: string;
-  username: string;
-  password: string;
-  role: SeedRole;
-  identityNumber?: string;
-  gender?: SeedGender;
-  employmentType?: SeedEmploymentType;
-  rank?: string;
-  grade?: string;
-  religion?: 'islam' | 'kristen_protestan' | 'katolik' | 'hindu' | 'buddha' | 'konghucu';
-  phoneNumber?: string;
-};
-
-type SeedUnit = {
-  key: string;
-  name: string;
-  description: string;
-  commanderKey: string;
-  parentKey?: string;
-};
 
 type SeedSocialAccount = {
   userKey: string;
@@ -69,6 +62,7 @@ type SeedOrder = {
   targetUnitKeys: string[];
   targetLeaderUnitKeys?: string[];
   targetUserKeys?: string[];
+  apifyScrapes?: SeedApifyScrape[];
 };
 
 type SeedSubmission = {
@@ -86,367 +80,26 @@ type SeedSubmission = {
   submittedAt: Date;
 };
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: getEnvOrThrow('DATABASE_URL'),
-    },
-  },
-});
+type SeedMetricSnapshot = {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  reposts: number;
+};
 
-const users: SeedUser[] = [
-  {
-    key: 'superadmin',
-    fullName: 'Super Admin Sistem',
-    username: 'superadmin',
-    password: 'Admin@1234!',
-    role: 'super_admin',
-  },
-  {
-    key: 'kasad',
-    fullName: 'Jenderal TNI Bambang Hariyanto',
-    username: 'kasad',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-AD-0001',
-  },
-  {
-    key: 'pangdam_ibb',
-    fullName: 'Mayor Jenderal TNI Putranto Gatot',
-    username: 'pangdam_ibb',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-KODAM-0001',
-  },
-  {
-    key: 'kasdam_ibb',
-    fullName: 'Brigadir Jenderal TNI Hendra Wijaya',
-    username: 'kasdam_ibb',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-KODAM-0002',
-  },
-  {
-    key: 'irdam_ibb',
-    fullName: 'Kolonel Inf. Bambang Setiawan',
-    username: 'irdam_ibb',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-KODAM-0003',
-  },
-  {
-    key: 'asops_kasdam',
-    fullName: 'Kolonel Inf. Andi Prasetya',
-    username: 'asops_kasdam',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-KODAM-0004',
-  },
-  {
-    key: 'asintel_kasdam',
-    fullName: 'Kolonel Inf. Dedi Kurniawan',
-    username: 'asintel_kasdam',
-    password: 'Komando@123!',
-    role: 'member',
-    identityNumber: 'NRP-KODAM-0005',
-  },
-  {
-    key: 'danrem_022',
-    fullName: 'Kolonel Inf. Ridwan Hutapea',
-    username: 'danrem_022',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM-0022',
-  },
-  {
-    key: 'danrem_023',
-    fullName: 'Kolonel Inf. Surya Atmaja',
-    username: 'danrem_023',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM-0023',
-  },
-  {
-    key: 'danrem_031',
-    fullName: 'Kolonel Inf. Fadli Ramadhan',
-    username: 'danrem_031',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM-0031',
-  },
-  {
-    key: 'danrem_032',
-    fullName: 'Kolonel Inf. Yusuf Maulana',
-    username: 'danrem_032',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM-0032',
-  },
-  {
-    key: 'dandenintel',
-    fullName: 'Letnan Kolonel Inf. Aditya Wibowo',
-    username: 'dandenintel',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-SAT-0001',
-  },
-  {
-    key: 'dandenpom',
-    fullName: 'Letnan Kolonel Cpm. Bayu Saputra',
-    username: 'dandenpom',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-SAT-0002',
-  },
-  {
-    key: 'kadenkesyah',
-    fullName: 'Letnan Kolonel Ckm. dr. Reza Pahlevi',
-    username: 'kadenkesyah',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-SAT-0003',
-  },
-  {
-    key: 'danzidam',
-    fullName: 'Letnan Kolonel Czi. Hario Nugroho',
-    username: 'danzidam',
-    password: 'Komandan@123!',
-    role: 'member',
-    identityNumber: 'NRP-SAT-0004',
-  },
-  {
-    key: 'joko_susilo',
-    fullName: 'Sersan Mayor Joko Susilo',
-    username: 'joko_susilo',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM022-001',
-  },
-  {
-    key: 'agus_salim',
-    fullName: 'Sersan Kepala Agus Salim',
-    username: 'agus_salim',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM022-002',
-  },
-  {
-    key: 'dwi_cahyono',
-    fullName: 'Sersan Dwi Cahyono',
-    username: 'dwi_cahyono',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM022-003',
-  },
-  {
-    key: 'rudi_hartanto',
-    fullName: 'Sersan Mayor Rudi Hartanto',
-    username: 'rudi_hartanto',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM023-001',
-  },
-  {
-    key: 'bayu_pamungkas',
-    fullName: 'Sersan Kepala Bayu Pamungkas',
-    username: 'bayu_pamungkas',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM023-002',
-  },
-  {
-    key: 'indra_lesmana',
-    fullName: 'Sersan Indra Lesmana',
-    username: 'indra_lesmana',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM023-003',
-  },
-  {
-    key: 'hadi_purnomo',
-    fullName: 'Sersan Mayor Hadi Purnomo',
-    username: 'hadi_purnomo',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM031-001',
-  },
-  {
-    key: 'fajar_sidiq',
-    fullName: 'Sersan Kepala Fajar Sidiq',
-    username: 'fajar_sidiq',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM031-002',
-  },
-  {
-    key: 'wahyu_adi',
-    fullName: 'Sersan Wahyu Adi',
-    username: 'wahyu_adi',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM031-003',
-  },
-  {
-    key: 'galih_permana',
-    fullName: 'Sersan Mayor Galih Permana',
-    username: 'galih_permana',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM032-001',
-  },
-  {
-    key: 'tri_wibowo',
-    fullName: 'Sersan Kepala Tri Wibowo',
-    username: 'tri_wibowo',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM032-002',
-  },
-  {
-    key: 'eko_prabowo',
-    fullName: 'Sersan Eko Prabowo',
-    username: 'eko_prabowo',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-REM032-003',
-  },
-  {
-    key: 'doni_saputro',
-    fullName: 'Sersan Kepala Doni Saputro',
-    username: 'doni_saputro',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENINTEL-001',
-  },
-  {
-    key: 'arif_budiman',
-    fullName: 'Sersan Arif Budiman',
-    username: 'arif_budiman',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENINTEL-002',
-  },
-  {
-    key: 'maman_suherman',
-    fullName: 'Sersan Kepala Maman Suherman',
-    username: 'maman_suherman',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENPOM-001',
-  },
-  {
-    key: 'yanto_kurniawan',
-    fullName: 'Sersan Yanto Kurniawan',
-    username: 'yanto_kurniawan',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENPOM-002',
-  },
-  {
-    key: 'dewi_anggraini',
-    fullName: 'Sersan Kepala Dewi Anggraini',
-    username: 'dewi_anggraini',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENKES-001',
-  },
-  {
-    key: 'lina_marlina',
-    fullName: 'Sersan Lina Marlina',
-    username: 'lina_marlina',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-DENKES-002',
-  },
-  {
-    key: 'bagus_setiadi',
-    fullName: 'Sersan Kepala Bagus Setiadi',
-    username: 'bagus_setiadi',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-ZIDAM-001',
-  },
-  {
-    key: 'catur_nugraha',
-    fullName: 'Sersan Catur Nugraha',
-    username: 'catur_nugraha',
-    password: 'Anggota@123!',
-    role: 'member',
-    identityNumber: 'NRP-ZIDAM-002',
-  },
-];
+type SeedApifyScrape = {
+  targetIndex: number;
+  baselineMetrics: SeedMetricSnapshot;
+  finalMetrics?: SeedMetricSnapshot;
+  baselineScrapedAt: Date;
+  finalScrapedAt?: Date;
+};
 
-const units: SeedUnit[] = [
-  {
-    key: 'mabes_ad',
-    name: 'Mabes AD',
-    description: 'Markas Besar Angkatan Darat.',
-    commanderKey: 'kasad',
-  },
-  {
-    key: 'kodam_ibb',
-    name: 'Kodam I/Bukit Barisan',
-    description: 'Komando Daerah Militer I/Bukit Barisan.',
-    commanderKey: 'pangdam_ibb',
-    parentKey: 'mabes_ad',
-  },
-  {
-    key: 'korem_022',
-    name: 'Korem 022/Pantai Timur',
-    description: 'Komando Resor Militer 022/Pantai Timur.',
-    commanderKey: 'danrem_022',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'korem_023',
-    name: 'Korem 023/Kawal Samudera',
-    description: 'Komando Resor Militer 023/Kawal Samudera.',
-    commanderKey: 'danrem_023',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'korem_031',
-    name: 'Korem 031/Wira Bima',
-    description: 'Komando Resor Militer 031/Wira Bima.',
-    commanderKey: 'danrem_031',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'korem_032',
-    name: 'Korem 032/Wirabraja',
-    description: 'Komando Resor Militer 032/Wirabraja.',
-    commanderKey: 'danrem_032',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'denintel',
-    name: 'Satbalakdam - Denintel',
-    description: 'Satuan pelaksana Denintel Kodam I/BB.',
-    commanderKey: 'dandenintel',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'denpom',
-    name: 'Satbalakdam - Denpom',
-    description: 'Satuan pelaksana Denpom Kodam I/BB.',
-    commanderKey: 'dandenpom',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'denkesyah',
-    name: 'Satbalakdam - Denkesyah',
-    description: 'Satuan pelaksana Denkesyah Kodam I/BB.',
-    commanderKey: 'kadenkesyah',
-    parentKey: 'kodam_ibb',
-  },
-  {
-    key: 'zidam',
-    name: 'Satbalakdam - Zidam',
-    description: 'Satuan pelaksana Zidam Kodam I/BB.',
-    commanderKey: 'danzidam',
-    parentKey: 'kodam_ibb',
-  },
-];
+
+const users: SeedUser[] = [...coreUsers];
+const units = seedUnits;
+const membershipPlan = [...coreMembershipPlan];
 
 const socialAccounts: SeedSocialAccount[] = [
   {
@@ -497,43 +150,6 @@ const socialAccounts: SeedSocialAccount[] = [
     username: '@bagus.zidam',
     profileUrl: 'https://instagram.com/bagus.zidam',
   },
-];
-
-const membershipPlan: Array<{ userKey: string; unitKey: string }> = [
-  { userKey: 'kasad', unitKey: 'mabes_ad' },
-  { userKey: 'pangdam_ibb', unitKey: 'kodam_ibb' },
-  { userKey: 'kasdam_ibb', unitKey: 'kodam_ibb' },
-  { userKey: 'irdam_ibb', unitKey: 'kodam_ibb' },
-  { userKey: 'asops_kasdam', unitKey: 'kodam_ibb' },
-  { userKey: 'asintel_kasdam', unitKey: 'kodam_ibb' },
-  { userKey: 'danrem_022', unitKey: 'korem_022' },
-  { userKey: 'danrem_023', unitKey: 'korem_023' },
-  { userKey: 'danrem_031', unitKey: 'korem_031' },
-  { userKey: 'danrem_032', unitKey: 'korem_032' },
-  { userKey: 'dandenintel', unitKey: 'denintel' },
-  { userKey: 'dandenpom', unitKey: 'denpom' },
-  { userKey: 'kadenkesyah', unitKey: 'denkesyah' },
-  { userKey: 'danzidam', unitKey: 'zidam' },
-  { userKey: 'joko_susilo', unitKey: 'korem_022' },
-  { userKey: 'agus_salim', unitKey: 'korem_022' },
-  { userKey: 'dwi_cahyono', unitKey: 'korem_022' },
-  { userKey: 'rudi_hartanto', unitKey: 'korem_023' },
-  { userKey: 'bayu_pamungkas', unitKey: 'korem_023' },
-  { userKey: 'indra_lesmana', unitKey: 'korem_023' },
-  { userKey: 'hadi_purnomo', unitKey: 'korem_031' },
-  { userKey: 'fajar_sidiq', unitKey: 'korem_031' },
-  { userKey: 'wahyu_adi', unitKey: 'korem_031' },
-  { userKey: 'galih_permana', unitKey: 'korem_032' },
-  { userKey: 'tri_wibowo', unitKey: 'korem_032' },
-  { userKey: 'eko_prabowo', unitKey: 'korem_032' },
-  { userKey: 'doni_saputro', unitKey: 'denintel' },
-  { userKey: 'arif_budiman', unitKey: 'denintel' },
-  { userKey: 'maman_suherman', unitKey: 'denpom' },
-  { userKey: 'yanto_kurniawan', unitKey: 'denpom' },
-  { userKey: 'dewi_anggraini', unitKey: 'denkesyah' },
-  { userKey: 'lina_marlina', unitKey: 'denkesyah' },
-  { userKey: 'bagus_setiadi', unitKey: 'zidam' },
-  { userKey: 'catur_nugraha', unitKey: 'zidam' },
 ];
 
 // === Anggota tambahan (skala besar) agar agregat & distribusi terlihat penuh ===
@@ -737,6 +353,27 @@ const baseOrders: SeedOrder[] = [
         url: 'https://www.liputan6.com/news/read/rapat-tertutup-komisi-i-dpr',
       },
     ],
+    apifyScrapes: [
+      {
+        targetIndex: 0,
+        baselineMetrics: {
+          views: 12400,
+          likes: 820,
+          comments: 156,
+          shares: 430,
+          reposts: 95,
+        },
+        finalMetrics: {
+          views: 28750,
+          likes: 2140,
+          comments: 402,
+          shares: 1180,
+          reposts: 310,
+        },
+        baselineScrapedAt: hoursFromNow(-24),
+        finalScrapedAt: hoursFromNow(-10),
+      },
+    ],
     status: 'expired',
     deadline: hoursFromNow(-12),
     sentAt: hoursFromNow(-24),
@@ -775,6 +412,103 @@ const baseOrders: SeedOrder[] = [
     sentAt: null,
     createdByKey: 'pangdam_ibb',
     targetUnitKeys: [],
+  },
+  {
+    key: 'order_blasting_apify_demo',
+    title: 'Blasting Dukungan Program Digitalisasi Kodam',
+    orderType: 'engagement',
+    description:
+      'Like dan share konten resmi program digitalisasi untuk memperkuat jangkauan narasi positif.',
+    engagementActions: ['like', 'share', 'repost'],
+    socialTargets: [
+      {
+        platform: 'instagram',
+        url: 'https://instagram.com/p/digitalisasi-kodam-demo',
+      },
+      {
+        platform: 'twitter_x',
+        url: 'https://x.com/kodam/status/digitalisasi-kodam-demo',
+      },
+    ],
+    apifyScrapes: [
+      {
+        targetIndex: 0,
+        baselineMetrics: {
+          views: 5200,
+          likes: 340,
+          comments: 48,
+          shares: 120,
+          reposts: 22,
+        },
+        finalMetrics: {
+          views: 14800,
+          likes: 1260,
+          comments: 188,
+          shares: 540,
+          reposts: 96,
+        },
+        baselineScrapedAt: hoursFromNow(-72),
+        finalScrapedAt: hoursFromNow(-4),
+      },
+      {
+        targetIndex: 1,
+        baselineMetrics: {
+          views: 3100,
+          likes: 210,
+          comments: 35,
+          shares: 88,
+          reposts: 41,
+        },
+        finalMetrics: {
+          views: 9200,
+          likes: 780,
+          comments: 124,
+          shares: 310,
+          reposts: 155,
+        },
+        baselineScrapedAt: hoursFromNow(-72),
+        finalScrapedAt: hoursFromNow(-4),
+      },
+    ],
+    status: 'expired',
+    deadline: hoursFromNow(-6),
+    sentAt: hoursFromNow(-70),
+    createdByKey: 'pangdam_ibb',
+    targetUnitKeys: ['korem_022', 'korem_023'],
+    completionRate: 0.75,
+  },
+  {
+    key: 'order_blasting_apify_active',
+    title: 'Blasting Klarifikasi Isu Latihan Gabungan',
+    orderType: 'engagement',
+    description:
+      'Distribusikan like dan share pada konten klarifikasi resmi terkait latihan gabungan.',
+    engagementActions: ['like', 'share'],
+    socialTargets: [
+      {
+        platform: 'facebook',
+        url: 'https://facebook.com/official/posts/latihan-gabungan-klarifikasi',
+      },
+    ],
+    apifyScrapes: [
+      {
+        targetIndex: 0,
+        baselineMetrics: {
+          views: 8900,
+          likes: 560,
+          comments: 92,
+          shares: 210,
+          reposts: 0,
+        },
+        baselineScrapedAt: hoursFromNow(-8),
+      },
+    ],
+    status: 'aktif',
+    deadline: hoursFromNow(36),
+    sentAt: hoursFromNow(-8),
+    createdByKey: 'asintel_kasdam',
+    targetUnitKeys: ['denintel'],
+    completionRate: 0.4,
   },
 ];
 
@@ -1354,23 +1088,15 @@ function resolveRepresentedSubmitterKey(
 
 async function main() {
   guardSeedExecution();
-  validateSeedMembershipPlan();
+  validateSeedMembershipPlan(units, membershipPlan);
 
   console.log('Menjalankan seed Komando Center TNI...\n');
 
-  const auth = await createKomandoAuth(prisma, {
-    baseURL: getEnvOrThrow('BETTER_AUTH_URL'),
-    secret: getEnvOrThrow('BETTER_AUTH_SECRET'),
-    nodeEnv: process.env.NODE_ENV,
-    trustedOrigins: parseTrustedOrigins(
-      process.env.BETTER_AUTH_TRUSTED_ORIGINS,
-    ),
-    trustedProxyHeaders: parseBoolean(
-      process.env.BETTER_AUTH_TRUST_PROXY_HEADERS,
-    ),
-  });
+  const auth = await createKomandoAuthFromEnv();
 
-  await teardown();
+  await teardownDatabase();
+
+  ensureSeedEncryptionKey();
 
   console.log('1. Membuat users melalui Better Auth...');
   const userIds = new Map<string, string>();
@@ -1379,6 +1105,8 @@ async function main() {
     userIds.set(user.key, userId);
   }
   console.log(`   OK ${userIds.size} user dibuat`);
+
+  await seedSystemSettings(userIds);
 
   console.log('\n2. Membuat struktur satuan...');
   const unitIds = new Map<string, string>();
@@ -1476,6 +1204,60 @@ async function main() {
         orderId: createdOrder.id,
         createdAt: order.sentAt,
       });
+    }
+
+    if (order.apifyScrapes?.length) {
+      const socialTargetRows = await prisma.orderSocialTarget.findMany({
+        where: { orderId: createdOrder.id },
+        orderBy: { sortOrder: 'asc' },
+      });
+
+      for (const scrape of order.apifyScrapes) {
+        const target = socialTargetRows[scrape.targetIndex];
+        if (!target) {
+          continue;
+        }
+
+        await prisma.orderSocialTarget.update({
+          where: { id: target.id },
+          data: {
+            baselineMetrics: scrape.baselineMetrics,
+            baselineScrapedAt: scrape.baselineScrapedAt,
+            ...(scrape.finalMetrics
+              ? {
+                  finalMetrics: scrape.finalMetrics,
+                  finalScrapedAt: scrape.finalScrapedAt ?? null,
+                }
+              : {}),
+          },
+        });
+
+        await prisma.metricScrapeRun.create({
+          data: {
+            orderId: createdOrder.id,
+            orderSocialTargetId: target.id,
+            phase: 'baseline',
+            status: 'succeeded',
+            metrics: scrape.baselineMetrics,
+            startedAt: scrape.baselineScrapedAt,
+            completedAt: scrape.baselineScrapedAt,
+          },
+        });
+
+        if (scrape.finalMetrics) {
+          await prisma.metricScrapeRun.create({
+            data: {
+              orderId: createdOrder.id,
+              orderSocialTargetId: target.id,
+              phase: 'deadline',
+              status: 'succeeded',
+              metrics: scrape.finalMetrics,
+              startedAt: scrape.finalScrapedAt ?? scrape.baselineScrapedAt,
+              completedAt: scrape.finalScrapedAt ?? scrape.baselineScrapedAt,
+            },
+          });
+        }
+      }
     }
 
     const resolvedMemberIds = new Set<string>();
@@ -1638,210 +1420,46 @@ async function main() {
   console.log(`   Activity Logs   : ${createdActivityLogs.length}`);
 }
 
-function guardSeedExecution() {
-  const databaseUrl = getEnvOrThrow('DATABASE_URL');
-  const allowProductionSeed = parseBoolean(process.env.ALLOW_PRODUCTION_SEED);
-  const nodeEnv = process.env.NODE_ENV?.toLowerCase();
-  const isProductionLike =
-    nodeEnv === 'production' || !isLocalDatabaseUrl(databaseUrl);
-
-  if (isProductionLike && !allowProductionSeed) {
-    throw new Error(
-      'Seed ke database production/non-local diblokir. Set ALLOW_PRODUCTION_SEED=true jika memang ingin reset dan seed database ini.',
-    );
+function ensureSeedEncryptionKey() {
+  if (!process.env.SETTINGS_ENCRYPTION_KEY) {
+    process.env.SETTINGS_ENCRYPTION_KEY =
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   }
 }
 
-function validateSeedMembershipPlan() {
-  const activeMembershipKeys = new Set(
-    membershipPlan.map((membership) =>
-      [membership.userKey, membership.unitKey].join(':'),
-    ),
-  );
-  const missingCommanders = units
-    .filter(
-      (unit) =>
-        !activeMembershipKeys.has([unit.commanderKey, unit.key].join(':')),
-    )
-    .map((unit) => `${unit.name} -> ${unit.commanderKey}`);
-
-  if (missingCommanders.length) {
-    throw new Error(
-      [
-        'Seed tidak valid: setiap pimpinan satuan wajib menjadi anggota aktif langsung satuannya.',
-        ...missingCommanders.map((item) => `- ${item}`),
-      ].join('\n'),
-    );
-  }
-}
-
-async function assertUnitCommandersHaveActiveMembership() {
-  const unitsWithCommanders = await prisma.unit.findMany({
-    select: {
-      name: true,
-      commanderId: true,
-      commander: {
-        select: {
-          username: true,
-        },
+async function seedSystemSettings(userIds: Map<string, string>) {
+  const superAdminId = userIds.get('superadmin');
+  await prisma.systemSetting.upsert({
+    where: { id: 'default' },
+    create: {
+      id: 'default',
+      apifyApiTokenEnc: encryptSecret('apify_api_seed_token_placeholder'),
+      apifyWebhookSecretEnc: encryptSecret('apify_webhook_seed_secret'),
+      apifyActors: {
+        instagram: 'apify~instagram-post-scraper',
+        twitter_x: 'apify~twitter-scraper',
+        facebook: 'apify~facebook-posts-scraper',
+        tiktok: 'apify~tiktok-scraper',
+        youtube: 'apify~youtube-scraper',
+        other: 'apify~website-content-crawler',
       },
-      memberships: {
-        where: {
-          removedAt: null,
-        },
-        select: {
-          userId: true,
-        },
+      updatedById: superAdminId ?? null,
+    },
+    update: {
+      apifyApiTokenEnc: encryptSecret('apify_api_seed_token_placeholder'),
+      apifyWebhookSecretEnc: encryptSecret('apify_webhook_seed_secret'),
+      apifyActors: {
+        instagram: 'apify~instagram-post-scraper',
+        twitter_x: 'apify~twitter-scraper',
+        facebook: 'apify~facebook-posts-scraper',
+        tiktok: 'apify~tiktok-scraper',
+        youtube: 'apify~youtube-scraper',
+        other: 'apify~website-content-crawler',
       },
+      updatedById: superAdminId ?? null,
     },
   });
-  const invalidUnits = unitsWithCommanders.filter(
-    (unit) =>
-      unit.commanderId &&
-      !unit.memberships.some(
-        (membership) => membership.userId === unit.commanderId,
-      ),
-  );
-
-  if (invalidUnits.length) {
-    throw new Error(
-      [
-        'Seed gagal: ada pimpinan satuan yang bukan anggota aktif langsung satuannya.',
-        ...invalidUnits.map(
-          (unit) => `- ${unit.name} -> ${unit.commander?.username ?? '-'}`,
-        ),
-      ].join('\n'),
-    );
-  }
-}
-
-async function teardown() {
-  console.log('Membersihkan data lama...');
-
-  await prisma.activityLog.deleteMany();
-  await prisma.submission.deleteMany();
-  await prisma.taskAssignment.deleteMany();
-  await prisma.orderTarget.deleteMany();
-  await prisma.orderSocialTarget.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.socialAccount.deleteMany();
-  await prisma.unitMember.deleteMany();
-  await prisma.unit.deleteMany();
-  await prisma.loginAttempt.deleteMany();
-  await prisma.session.deleteMany();
-  await prisma.account.deleteMany();
-  await prisma.verification.deleteMany();
-  await prisma.rateLimit.deleteMany();
-  await prisma.user.deleteMany();
-
-  console.log('   OK Data lama dibersihkan');
-}
-
-async function createSeedUser(
-  auth: Awaited<ReturnType<typeof createKomandoAuth>>,
-  user: SeedUser,
-) {
-  const normalizedUsername = user.username.toLowerCase();
-  const email = `${normalizedUsername}@internal.komando`;
-  const employmentType = user.employmentType ?? 'tni';
-  const rank = employmentType === 'tni' ? user.rank ?? inferSeedRank(user.fullName) : null;
-  const grade = employmentType === 'tni' ? null : user.grade ?? null;
-  const gender = user.gender ?? inferSeedGender(user.fullName);
-
-  await auth.api.createUser({
-    body: {
-      email,
-      password: user.password,
-      name: user.fullName,
-      role: user.role,
-      data: {
-        username: normalizedUsername,
-        identityNumber: user.identityNumber ?? null,
-        gender,
-        employmentType,
-        rank,
-        grade,
-        religion: user.religion ?? null,
-        phoneNumber: user.phoneNumber ?? null,
-      },
-    },
-  });
-
-  const createdUser = await prisma.user.findUnique({
-    where: {
-      username: normalizedUsername,
-    },
-  });
-
-  if (!createdUser) {
-    throw new Error(`User gagal dibuat: ${normalizedUsername}`);
-  }
-
-  await prisma.user.update({
-    where: {
-      id: createdUser.id,
-    },
-    data: {
-      role: user.role,
-      identityNumber: user.identityNumber ?? null,
-      gender,
-      employmentType,
-      rank,
-      grade,
-      religion: user.religion ?? null,
-      phoneNumber: user.phoneNumber ?? null,
-      emailVerified: true,
-      banned: false,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      deletedAt: null,
-    },
-  });
-
-  return createdUser.id;
-}
-
-function inferSeedGender(fullName: string): SeedGender {
-  return /\b(dewi|lina)\b/i.test(fullName) ? 'wanita' : 'pria';
-}
-
-function inferSeedRank(fullName: string) {
-  const rankMatch = fullName.match(
-    /^(Jenderal TNI|Mayor Jenderal TNI|Brigadir Jenderal TNI|Kolonel [^.]+\.|Letnan Kolonel [^.]+\.|Sersan Mayor|Sersan Kepala|Sersan)\b/i,
-  );
-
-  return rankMatch?.[1] ?? 'Prajurit TNI';
-}
-
-async function createSeedUnit(params: {
-  name: string;
-  description: string;
-  parentId: string | null;
-  commanderId: string;
-}) {
-  const id = randomUUID();
-  const parent = params.parentId
-    ? await prisma.unit.findUnique({
-        where: {
-          id: params.parentId,
-        },
-      })
-    : null;
-
-  const path = parent ? `${parent.path}${id}/` : `/${id}/`;
-  const depthLevel = parent ? parent.depthLevel + 1 : 0;
-
-  return prisma.unit.create({
-    data: {
-      id,
-      name: params.name,
-      description: params.description,
-      parentId: params.parentId,
-      commanderId: params.commanderId,
-      path,
-      depthLevel,
-    },
-  });
+  console.log('\n1b. Konfigurasi sistem Apify di-seed');
 }
 
 async function resolveUnitMemberIds(unitId: string) {
@@ -1912,52 +1530,6 @@ async function resolveUnitLeaderIds(unitId: string) {
     .filter((commanderId): commanderId is string => Boolean(commanderId));
 }
 
-function getEnvOrThrow(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Environment variable ${name} wajib diisi`);
-  }
-
-  return value;
-}
-
-function parseTrustedOrigins(rawValue: string | undefined) {
-  return rawValue
-    ?.split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-function parseBoolean(value: string | undefined) {
-  if (!value) {
-    return false;
-  }
-
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-}
-
-function isLocalDatabaseUrl(databaseUrl: string) {
-  try {
-    const parsed = new URL(databaseUrl);
-    return ['localhost', '127.0.0.1'].includes(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function getRequiredMapValue(
-  map: Map<string, string>,
-  key: string,
-  label: string,
-) {
-  const value = map.get(key);
-  if (!value) {
-    throw new Error(`${label} dengan key "${key}" tidak ditemukan`);
-  }
-
-  return value;
-}
-
 function getUserKeyById(userIds: Map<string, string>, userId: string) {
   for (const [key, value] of userIds.entries()) {
     if (value === userId) {
@@ -1975,14 +1547,6 @@ function getUnitKeyForUser(userKey: string) {
   }
 
   return membership.unitKey;
-}
-
-function hoursFromNow(hours: number) {
-  return new Date(Date.now() + hours * 60 * 60 * 1000);
-}
-
-function daysAgo(days: number) {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
 main()

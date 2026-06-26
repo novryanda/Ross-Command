@@ -12,6 +12,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { CommandTaskChartsData } from "@/lib/api/types";
+import type { OrdersPageScope } from "@/lib/order-page-scope";
 import {
   MONITORING_PROGRESS_THRESHOLDS,
   monitoringProgressLegendClass,
@@ -82,7 +83,14 @@ function formatPercent(value: number, total: number) {
   return `${Math.round((value / total) * 1000) / 10}%`;
 }
 
-export function CommandTaskCharts({ charts }: { charts: CommandTaskChartsData }) {
+export function CommandTaskCharts({
+  charts,
+  scope = "all",
+}: {
+  charts: CommandTaskChartsData;
+  scope?: OrdersPageScope;
+}) {
+  const isScopedPage = scope !== "all";
   const [taskSel, setTaskSel] = useState<"running" | "completed" | null>(null);
   const [typeSel, setTypeSel] = useState<keyof CommandTaskChartsData["orderType"] | null>(null);
   const [progressSel, setProgressSel] = useState<"low" | "medium" | "high" | null>(null);
@@ -210,7 +218,12 @@ export function CommandTaskCharts({ charts }: { charts: CommandTaskChartsData })
 
   return (
     <section className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={cn(
+          "grid gap-4",
+          isScopedPage ? "lg:grid-cols-2" : "lg:grid-cols-2 xl:grid-cols-3",
+        )}
+      >
         <ChartPanel title="Status Tugas" description="Tugas sedang berjalan & sudah selesai">
           {taskStatusChartData.length ? (
             <ChartContainer config={taskStatusChartConfig} className="mx-auto aspect-square max-h-[220px] w-full">
@@ -245,43 +258,45 @@ export function CommandTaskCharts({ charts }: { charts: CommandTaskChartsData })
           <ChartDetail detail={taskDetail} />
         </ChartPanel>
 
-        <ChartPanel title="Jenis Tugas" description="Distribusi berdasarkan tipe operasi">
-          {orderTypeChartData.some((item) => item.count > 0) ? (
-            <ChartContainer config={orderTypeChartConfig} className="aspect-[4/3] w-full max-h-[220px]">
-              <BarChart data={orderTypeChartData} margin={{ top: 16, right: 8, left: 4, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-                <YAxis hide allowDecimals={false} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent formatter={(value) => [formatNumber(Number(value)), "Tugas"]} />
-                  }
-                />
-                <Bar
-                  dataKey="count"
-                  fill="var(--color-count)"
-                  radius={[6, 6, 0, 0]}
-                  onClick={(entry) =>
-                    setTypeSel(readChartKey<keyof CommandTaskChartsData["orderType"]>(entry))
-                  }
-                  className="cursor-pointer"
-                >
-                  <LabelList
-                    dataKey="count"
-                    position="top"
-                    offset={6}
-                    className="fill-foreground tabular-nums"
-                    fontSize={11}
-                    formatter={(value) => formatNumber(Number(value))}
+        {!isScopedPage ? (
+          <ChartPanel title="Jenis Tugas" description="Distribusi berdasarkan tipe operasi">
+            {orderTypeChartData.some((item) => item.count > 0) ? (
+              <ChartContainer config={orderTypeChartConfig} className="aspect-[4/3] w-full max-h-[220px]">
+                <BarChart data={orderTypeChartData} margin={{ top: 16, right: 8, left: 4, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis hide allowDecimals={false} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent formatter={(value) => [formatNumber(Number(value)), "Tugas"]} />
+                    }
                   />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          ) : (
-            <EmptyChartState message="Belum ada tugas." />
-          )}
-          <ChartDetail detail={typeDetail} />
-        </ChartPanel>
+                  <Bar
+                    dataKey="count"
+                    fill="var(--color-count)"
+                    radius={[6, 6, 0, 0]}
+                    onClick={(entry) =>
+                      setTypeSel(readChartKey<keyof CommandTaskChartsData["orderType"]>(entry))
+                    }
+                    className="cursor-pointer"
+                  >
+                    <LabelList
+                      dataKey="count"
+                      position="top"
+                      offset={6}
+                      className="fill-foreground tabular-nums"
+                      fontSize={11}
+                      formatter={(value) => formatNumber(Number(value))}
+                    />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <EmptyChartState message="Belum ada tugas." />
+            )}
+            <ChartDetail detail={typeDetail} />
+          </ChartPanel>
+        ) : null}
 
         <ChartPanel title="Distribusi Progress" description="Tugas sedang berjalan berdasarkan capaian terlaksana">
           {progressDistributionData.length ? (
@@ -322,57 +337,59 @@ export function CommandTaskCharts({ charts }: { charts: CommandTaskChartsData })
         </ChartPanel>
       </div>
 
-      <ChartPanel title="Tren Tugas" description="Tugas per jenis dibuat atau dikirim per minggu (8 minggu terakhir)">
-        {charts.weeklyOrders.some((item) => item.total > 0) ? (
-          <ChartContainer config={trendConfig} className="aspect-[5/2] w-full max-h-[260px]">
-            <AreaChart
-              data={charts.weeklyOrders}
-              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-              onClick={(state) => {
-                const label = (state as { activeLabel?: string })?.activeLabel;
-                if (label) setWeekSel(label);
-              }}
-              className="cursor-pointer"
-            >
-              <defs>
+      {!isScopedPage ? (
+        <ChartPanel title="Tren Tugas" description="Tugas per jenis dibuat atau dikirim per minggu (8 minggu terakhir)">
+          {charts.weeklyOrders.some((item) => item.total > 0) ? (
+            <ChartContainer config={trendConfig} className="aspect-[5/2] w-full max-h-[260px]">
+              <AreaChart
+                data={charts.weeklyOrders}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                onClick={(state) => {
+                  const label = (state as { activeLabel?: string })?.activeLabel;
+                  if (label) setWeekSel(label);
+                }}
+                className="cursor-pointer"
+              >
+                <defs>
+                  {trendSeries.map((series) => (
+                    <linearGradient
+                      key={series.key}
+                      id={`trendFill-${series.key}`}
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor={`var(--color-${series.key})`} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={`var(--color-${series.key})`} stopOpacity={0.02} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} width={28} allowDecimals={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
                 {trendSeries.map((series) => (
-                  <linearGradient
+                  <Area
                     key={series.key}
-                    id={`trendFill-${series.key}`}
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor={`var(--color-${series.key})`} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={`var(--color-${series.key})`} stopOpacity={0.02} />
-                  </linearGradient>
+                    type="monotone"
+                    dataKey={series.key}
+                    name={series.label}
+                    stroke={`var(--color-${series.key})`}
+                    fill={`url(#trendFill-${series.key})`}
+                    strokeWidth={2}
+                    stackId={undefined}
+                  />
                 ))}
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} width={28} allowDecimals={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              {trendSeries.map((series) => (
-                <Area
-                  key={series.key}
-                  type="monotone"
-                  dataKey={series.key}
-                  name={series.label}
-                  stroke={`var(--color-${series.key})`}
-                  fill={`url(#trendFill-${series.key})`}
-                  strokeWidth={2}
-                  stackId={undefined}
-                />
-              ))}
-            </AreaChart>
-          </ChartContainer>
-        ) : (
-          <EmptyChartState message="Belum ada tren tugas dalam 8 minggu terakhir." />
-        )}
-        <ChartDetail detail={weekDetail} />
-      </ChartPanel>
+              </AreaChart>
+            </ChartContainer>
+          ) : (
+            <EmptyChartState message="Belum ada tren tugas dalam 8 minggu terakhir." />
+          )}
+          <ChartDetail detail={weekDetail} />
+        </ChartPanel>
+      ) : null}
     </section>
   );
 }

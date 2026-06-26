@@ -177,7 +177,6 @@ export function OrderForm({
               .map((item) => ({
                 platform: item.platform,
                 url: item.url.trim(),
-                baselineMetrics: isBlasting ? item.baselineMetrics : undefined,
               })),
             narration: draft.narration || undefined,
             engagementActions:
@@ -243,7 +242,7 @@ export function OrderForm({
               <OrderTargetUrlsField
                 value={draft.targetUrls}
                 onChange={(targetUrls) => setField("targetUrls", targetUrls)}
-                showBaselineMetrics={isBlasting}
+                showApifyNotice={isBlasting}
               />
             ) : (
               <OrderPostingFields
@@ -346,11 +345,7 @@ export function OrderForm({
                         <div>{item.platform}: {item.url}</div>
                         {isBlasting ? (
                           <div className="text-muted-foreground text-xs">
-                            Baseline: V {item.baselineMetrics.views.toLocaleString("id-ID")} • L{" "}
-                            {item.baselineMetrics.likes.toLocaleString("id-ID")} • C{" "}
-                            {item.baselineMetrics.comments.toLocaleString("id-ID")} • S{" "}
-                            {item.baselineMetrics.shares.toLocaleString("id-ID")} • R{" "}
-                            {item.baselineMetrics.reposts.toLocaleString("id-ID")}
+                            Metrik akan diambil otomatis oleh Apify setelah tugas dikirim.
                           </div>
                         ) : null}
                       </li>

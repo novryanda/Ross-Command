@@ -54,6 +54,18 @@ enum ActivityLogType {
   submission_sent
 }
 
+enum MetricScrapePhase {
+  baseline
+  deadline
+}
+
+enum MetricScrapeStatus {
+  pending
+  running
+  succeeded
+  failed
+}
+
 enum Gender {
   pria
   wanita
@@ -111,6 +123,7 @@ model User {
   representedSubmissions Submission[]     @relation("submitted_by_user")
   loginAttempts          LoginAttempt[]
   activityLogs           ActivityLog[]    @relation("activity_actor")
+  updatedSystemSettings  SystemSetting[]  @relation("system_settings_updated_by")
 
   @@index([deletedAt])
   @@index([role])
@@ -256,6 +269,7 @@ model Order {
   socialTargets          OrderSocialTarget[]
   assignments            TaskAssignment[]
   activityLogs           ActivityLog[]
+  metricScrapeRuns       MetricScrapeRun[]
 
   @@index([createdById])
   @@index([status])
@@ -265,14 +279,18 @@ model Order {
 }
 
 model OrderSocialTarget {
-  id        String         @id @default(uuid()) @db.Uuid
-  orderId   String         @map("order_id") @db.Uuid
-  platform  SocialPlatform
-  url       String         @db.Text
-  baselineMetrics Json?    @map("baseline_metrics")
-  sortOrder Int            @default(0) @map("sort_order")
-  createdAt DateTime       @default(now()) @map("created_at")
-  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                String              @id @default(uuid()) @db.Uuid
+  orderId           String              @map("order_id") @db.Uuid
+  platform          SocialPlatform
+  url               String              @db.Text
+  baselineMetrics   Json?               @map("baseline_metrics")
+  finalMetrics      Json?               @map("final_metrics")
+  baselineScrapedAt DateTime?           @map("baseline_scraped_at")
+  finalScrapedAt    DateTime?           @map("final_scraped_at")
+  sortOrder         Int                 @default(0) @map("sort_order")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  metricScrapeRuns  MetricScrapeRun[]
 
   @@index([orderId])
   @@map("order_social_targets")
@@ -383,4 +401,39 @@ model ActivityLog {
   @@index([submissionId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+model SystemSetting {
+  id                    String   @id @default("default") @db.VarChar(50)
+  apifyApiTokenEnc      String?  @map("apify_api_token_enc") @db.Text
+  apifyWebhookSecretEnc String?  @map("apify_webhook_secret_enc") @db.Text
+  apifyActors           Json?    @map("apify_actors")
+  updatedById           String?  @map("updated_by_id") @db.Uuid
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  updatedBy             User?    @relation("system_settings_updated_by", fields: [updatedById], references: [id])
+
+  @@map("system_settings")
+}
+
+model MetricScrapeRun {
+  id                  String             @id @default(uuid()) @db.Uuid
+  orderId             String             @map("order_id") @db.Uuid
+  orderSocialTargetId String             @map("order_social_target_id") @db.Uuid
+  phase               MetricScrapePhase
+  status              MetricScrapeStatus   @default(pending)
+  apifyRunId          String?            @map("apify_run_id") @db.VarChar(100)
+  apifyActorId        String?            @map("apify_actor_id") @db.VarChar(200)
+  metrics             Json?
+  rawPayload          Json?              @map("raw_payload")
+  errorMessage        String?            @map("error_message") @db.Text
+  startedAt           DateTime           @default(now()) @map("started_at")
+  completedAt         DateTime?          @map("completed_at")
+  order               Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderSocialTarget   OrderSocialTarget  @relation(fields: [orderSocialTargetId], references: [id], onDelete: Cascade)
+
+  @@unique([orderSocialTargetId, phase])
+  @@index([orderId])
+  @@index([status])
+  @@index([apifyRunId])
+  @@map("metric_scrape_runs")
 }

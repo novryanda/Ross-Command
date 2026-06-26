@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ActivityModule } from './activity/activity.module';
+import { ApifyModule } from './apify/apify.module';
 import { AuthModule } from './auth/auth.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { CommonModule } from './common/common.module';
@@ -8,7 +9,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 import { SocialAccountsModule } from './social-accounts/social-accounts.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 import { UnitsModule } from './units/units.module';
 import { UsersModule } from './users/users.module';
 
@@ -26,6 +29,9 @@ import { UsersModule } from './users/users.module';
     CommanderModule,
     NotificationsModule,
     HealthModule,
+    SystemSettingsModule,
+    ApifyModule,
+    SchedulerModule,
   ],
 })
 export class AppModule {}

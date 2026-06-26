@@ -30,7 +30,6 @@ const submissionMetricsSchema = z.object({
 export const orderSocialTargetSchema = z.object({
   platform: socialPlatformSchema,
   url: z.string().trim().url(),
-  baselineMetrics: submissionMetricsSchema.optional(),
 });
 
 export const targetAudienceSchema = z.enum([
@@ -120,6 +119,10 @@ export const listOrderAssignmentsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   status: z.enum(['belum_dikerjakan', 'selesai', 'terlambat']).optional(),
   unitId: z.string().uuid().optional(),
+});
+
+export const retryMetricsScrapeQuerySchema = z.object({
+  phase: z.enum(['baseline', 'deadline']),
 });
 
 export type BaseOrderInput = z.infer<typeof orderFieldsSchema>;

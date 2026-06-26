@@ -69,7 +69,7 @@ export async function OrdersPageView({
         }
       />
 
-      <OrdersSummaryCharts summary={summaryResponse.data} />
+      <OrdersSummaryCharts summary={summaryResponse.data} scope={scope} />
 
       <FilterBar
         searchKey="search"

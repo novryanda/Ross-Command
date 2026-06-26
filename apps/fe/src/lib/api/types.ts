@@ -57,6 +57,66 @@ export type OrderSocialTarget = {
   platform: SocialPlatform;
   url: string;
   baselineMetrics?: SubmissionMetrics;
+  finalMetrics?: SubmissionMetrics;
+  baselineScrapedAt?: string | null;
+  finalScrapedAt?: string | null;
+};
+
+export type MetricScrapeStatus = "pending" | "running" | "succeeded" | "failed";
+
+export type ApifyActorsConfig = {
+  instagram?: string;
+  twitter_x?: string;
+  facebook?: string;
+  tiktok?: string;
+  youtube?: string;
+  other?: string;
+};
+
+export type SystemSettings = {
+  apifyApiToken: string | null;
+  apifyWebhookSecret: string | null;
+  hasApifyApiToken: boolean;
+  hasApifyWebhookSecret: boolean;
+  encryptionKeyConfigured: boolean;
+  secretsDecryptable: boolean;
+  apifyActors: ApifyActorsConfig;
+  updatedAt: string;
+};
+
+export type BlastingMetricsDashboardTarget = {
+  targetId: string;
+  platform: SocialPlatform;
+  url: string;
+  baselineMetrics: SubmissionMetrics;
+  finalMetrics: SubmissionMetrics;
+  baselineScrapedAt: string | null;
+  finalScrapedAt: string | null;
+  deltaMetrics: SubmissionMetrics;
+  growthPercent: SubmissionMetrics;
+  scrapeRuns: Array<{
+    phase: "baseline" | "deadline";
+    status: MetricScrapeStatus;
+    errorMessage: string | null;
+    completedAt: string | null;
+  }>;
+};
+
+export type BlastingMetricsDashboard = {
+  orderId: string;
+  status: OrderStatus;
+  deadline: string;
+  scrapeStatus: {
+    baseline: MetricScrapeStatus;
+    deadline: MetricScrapeStatus;
+  };
+  targets: BlastingMetricsDashboardTarget[];
+  totals: {
+    baseline: SubmissionMetrics;
+    final: SubmissionMetrics;
+    delta: SubmissionMetrics;
+    growthPercent: SubmissionMetrics;
+  };
 };
 export type NotificationCategory =
   | "assignment"

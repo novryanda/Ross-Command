@@ -3,8 +3,15 @@ import { ActivityIcon, CalendarClockIcon, ClipboardListIcon, FileTextIcon } from
 import { CommandTaskCharts } from "@/components/komando/command-task-charts";
 import { StatsCard } from "@/components/komando/stats-card";
 import type { OrdersSummary } from "@/lib/api/types";
+import type { OrdersPageScope } from "@/lib/order-page-scope";
 
-export function OrdersSummaryCharts({ summary }: { summary: OrdersSummary }) {
+export function OrdersSummaryCharts({
+  summary,
+  scope = "all",
+}: {
+  summary: OrdersSummary;
+  scope?: OrdersPageScope;
+}) {
   return (
     <section className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -14,7 +21,7 @@ export function OrdersSummaryCharts({ summary }: { summary: OrdersSummary }) {
         <StatsCard title="Selesai" value={summary.stats.selesai} description="Progress tuntas" icon={CalendarClockIcon} />
       </div>
 
-      <CommandTaskCharts charts={summary.charts} />
+      <CommandTaskCharts charts={summary.charts} scope={scope} />
     </section>
   );
 }

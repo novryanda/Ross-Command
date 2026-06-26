@@ -37,6 +37,12 @@ services:
 
       # ── Startup flags ──────────────────────────────────────
       RUN_MIGRATE_ON_STARTUP: ${RUN_MIGRATE_ON_STARTUP:-true}
+
+      # ── System settings (enkripsi token Apify, dll.) ─────
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}
+
+      # ── Apify webhook (URL publik yang bisa diakses dari internet)
+      API_PUBLIC_BASE_URL: ${API_PUBLIC_BASE_URL}
     expose:
       - '${PORT:-3001}'
     healthcheck:

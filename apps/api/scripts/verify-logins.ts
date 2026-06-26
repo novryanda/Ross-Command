@@ -10,15 +10,7 @@ const prisma = new PrismaClient({
   },
 });
 
-const testAccounts = [
-  { username: 'superadmin', password: 'Admin@1234!' },
-  { username: 'kasad', password: 'Komando@123!' },
-  { username: 'pangdam_ibb', password: 'Komando@123!' },
-  { username: 'danrem_022', password: 'Komandan@123!' },
-  { username: 'dandenintel', password: 'Komandan@123!' },
-  { username: 'joko_susilo', password: 'Anggota@123!' },
-  { username: 'dwi_cahyono', password: 'Anggota@123!' },
-] as const;
+const testAccounts = [{ username: 'superadmin', password: 'Admin@1234!' }] as const;
 
 async function main() {
   console.log('Verifikasi login akun seed...\n');

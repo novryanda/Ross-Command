@@ -15,25 +15,25 @@ export function getOrdersPageMeta(scope: OrdersPageScope) {
     case "blasting":
       return {
         title: "Blasting",
-        description: "Pantau semua tugas blasting, progres terlaksana anggota, dan tren aktivitas per periode.",
+        description: "Pantau semua tugas blasting dan progres terlaksana anggota.",
         createHref: "/orders/new?type=blasting",
       };
     case "counter":
       return {
         title: "Counter",
-        description: "Pantau semua tugas counter narasi, progres terlaksana anggota, dan tren pelaksanaan per periode.",
+        description: "Pantau semua tugas counter narasi dan progres terlaksana anggota.",
         createHref: "/orders/new?type=counter",
       };
     case "report":
       return {
         title: "Report",
-        description: "Pantau semua tugas report akun, progres terlaksana anggota, dan tren pelaporan per periode.",
+        description: "Pantau semua tugas report akun dan progres terlaksana anggota.",
         createHref: "/orders/new?type=report",
       };
     case "posting":
       return {
         title: "Posting",
-        description: "Pantau semua tugas posting, progres terlaksana anggota, dan tren publikasi per periode.",
+        description: "Pantau semua tugas posting dan progres terlaksana anggota.",
         createHref: "/orders/new?type=posting",
       };
     default:

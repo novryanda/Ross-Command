@@ -5,6 +5,7 @@ import {
   ClipboardCheckIcon,
   LayoutListIcon,
   PenLineIcon,
+  Settings2Icon,
   Share2Icon,
   ThumbsDownIcon,
   ThumbsUpIcon,
@@ -38,7 +39,8 @@ export function getNavItems(me: Me): NavConfig {
           label: 'Admin',
           items: [
             { title: 'Manajemen Organisasi', url: '/admin/units', icon: Building2Icon },
-            { title: 'Manajemen User', url: '/admin/users', icon: UserCogIcon }
+            { title: 'Manajemen User', url: '/admin/users', icon: UserCogIcon },
+            { title: 'Konfigurasi Sistem', url: '/admin/system-settings', icon: Settings2Icon }
           ]
         },
         {
