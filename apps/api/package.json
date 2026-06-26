@@ -19,6 +19,8 @@
     "prisma:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
     "prisma:seed": "prisma db seed",
     "prisma:seed:minimal": "tsx prisma/seed-minimal.ts",
+    "prisma:seed:pussiberad": "tsx prisma/seed-pussiberad-demo.ts",
+    "prisma:seed:mabesad": "tsx prisma/seed-mabesad-users.ts",
     "prisma:seed:full": "tsx prisma/seed.ts",
     "db:clean": "tsx prisma/db-clean.ts",
     "db:reset:minimal": "tsx prisma/db-clean.ts && tsx prisma/seed-minimal.ts",

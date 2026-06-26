@@ -18,6 +18,7 @@ import {
   resolveSubmissionMetrics,
   serializeLatestSubmission,
   subtractMetrics,
+  sumMetrics,
   sumTargetBaselineMetrics,
   type SubmissionMetrics,
   type TargetMetricTotal,
@@ -49,6 +50,9 @@ type AssignmentProgress = {
   totalPending: number;
   percentageComplete: number;
   metricTotals: SubmissionMetrics;
+  baselineMetricTotals?: SubmissionMetrics;
+  deltaMetricTotals?: SubmissionMetrics;
+  accumulatedMetricTotals?: SubmissionMetrics;
   targetMetricTotals?: TargetMetricTotal[];
 };
 
@@ -1058,8 +1062,12 @@ export class OrdersService {
         ? sumTargetBaselineMetrics(targetMetricTotals)
         : undefined;
     const deltaMetricTotals = baselineMetricTotals
-      ? subtractMetrics(metricTotals, baselineMetricTotals)
+      ? metricTotals
       : undefined;
+    const accumulatedMetricTotals =
+      baselineMetricTotals && metricTotals
+        ? sumMetrics(baselineMetricTotals, metricTotals)
+        : undefined;
 
     return {
       totalAssigned,
@@ -1073,7 +1081,7 @@ export class OrdersService {
           : Math.round((totalSubmitted / totalAssigned) * 10000) / 100,
       metricTotals,
       ...(baselineMetricTotals
-        ? { baselineMetricTotals, deltaMetricTotals }
+        ? { baselineMetricTotals, deltaMetricTotals, accumulatedMetricTotals }
         : {}),
       ...(targetMetricTotals?.length ? { targetMetricTotals } : {}),
     };
@@ -1181,7 +1189,7 @@ export class OrdersService {
       );
     }
 
-    const [socialTargets, scrapeRuns] = await Promise.all([
+    const [socialTargets, scrapeRuns, submissions] = await Promise.all([
       this.prisma.orderSocialTarget.findMany({
         where: { orderId },
         orderBy: { sortOrder: 'asc' },
@@ -1190,11 +1198,31 @@ export class OrdersService {
         where: { orderId },
         orderBy: { startedAt: 'asc' },
       }),
+      this.prisma.submission.findMany({
+        where: {
+          isLatest: true,
+          assignment: { orderId },
+        },
+        select: { targetMetrics: true },
+      }),
     ]);
+
+    const personnelByTarget = new Map(
+      aggregateTargetMetricTotals(socialTargets, submissions).map((entry) => [
+        entry.targetId,
+        entry,
+      ]),
+    );
 
     const targets = socialTargets.map((target) => {
       const baselineMetrics = normalizeMetrics(target.baselineMetrics);
       const finalMetrics = normalizeMetrics(target.finalMetrics);
+      const personnelEntry = personnelByTarget.get(target.id);
+      const personnelMetrics =
+        personnelEntry?.metrics ?? { ...emptySubmissionMetrics };
+      const accumulatedMetrics =
+        personnelEntry?.accumulatedMetrics ??
+        sumMetrics(baselineMetrics, personnelMetrics);
       const deltaMetrics = subtractMetrics(finalMetrics, baselineMetrics);
 
       return {
@@ -1202,6 +1230,8 @@ export class OrdersService {
         platform: target.platform,
         url: target.url,
         baselineMetrics,
+        personnelMetrics,
+        accumulatedMetrics,
         finalMetrics,
         baselineScrapedAt: target.baselineScrapedAt?.toISOString() ?? null,
         finalScrapedAt: target.finalScrapedAt?.toISOString() ?? null,
@@ -1218,6 +1248,17 @@ export class OrdersService {
       };
     });
 
+    const scrapedTotals = aggregateScrapedTotals(
+      socialTargets.map((target) => ({
+        baselineMetrics: normalizeMetrics(target.baselineMetrics),
+        finalMetrics: normalizeMetrics(target.finalMetrics),
+      })),
+    );
+    const personnelTotals = Array.from(personnelByTarget.values()).reduce(
+      (total, entry) => sumMetrics(total, entry.metrics),
+      { ...emptySubmissionMetrics },
+    );
+
     return {
       orderId: order.id,
       status: order.status,
@@ -1227,12 +1268,11 @@ export class OrdersService {
         deadline: summarizeScrapePhaseStatus(scrapeRuns, 'deadline'),
       },
       targets,
-      totals: aggregateScrapedTotals(
-        socialTargets.map((target) => ({
-          baselineMetrics: normalizeMetrics(target.baselineMetrics),
-          finalMetrics: normalizeMetrics(target.finalMetrics),
-        })),
-      ),
+      totals: {
+        ...scrapedTotals,
+        personnel: personnelTotals,
+        accumulated: sumMetrics(scrapedTotals.baseline, personnelTotals),
+      },
     };
   }
 

@@ -24,8 +24,8 @@ const statusChartConfig = {
 } satisfies ChartConfig;
 
 const metricsChartConfig = {
-  baseline: { label: "Baseline", color: "hsl(215 16% 65%)" },
-  current: { label: "Current", color: "hsl(221 83% 53%)" },
+  baseline: { label: "Data Awal", color: "hsl(215 16% 65%)" },
+  accumulated: { label: "Akumulasi", color: "hsl(221 83% 53%)" },
 } satisfies ChartConfig;
 
 export function OrderMonitoringSummaryCharts({
@@ -72,13 +72,16 @@ export function OrderMonitoringSummaryCharts({
         key: field.key,
         label: field.label,
         baseline: summary.baselineMetricTotals?.[field.key] ?? 0,
-        current: summary.metricTotals[field.key],
-        delta: summary.deltaMetricTotals?.[field.key] ?? summary.metricTotals[field.key],
+        accumulated:
+          summary.accumulatedMetricTotals?.[field.key] ??
+          (summary.baselineMetricTotals?.[field.key] ?? 0) + summary.metricTotals[field.key],
       })),
-    [summary.baselineMetricTotals, summary.deltaMetricTotals, summary.metricTotals],
+    [summary.accumulatedMetricTotals, summary.baselineMetricTotals, summary.metricTotals],
   );
 
-  const hasMetrics = metricsChartData.some((item) => item.current > 0 || item.baseline > 0);
+  const hasMetrics = metricsChartData.some(
+    (item) => item.accumulated > 0 || item.baseline > 0,
+  );
   const hasBaseline = metricsChartData.some((item) => item.baseline > 0);
 
   return (
@@ -123,8 +126,8 @@ export function OrderMonitoringSummaryCharts({
           description={
             hasMetrics
               ? hasBaseline
-                ? "Perbandingan baseline awal dengan capaian metrik saat ini"
-                : "Total agregat seluruh submission"
+                ? "Perbandingan data awal dengan akumulasi input personel"
+                : "Total akumulasi input personel"
               : "Belum ada metrik tercatat"
           }
         >
@@ -138,13 +141,13 @@ export function OrderMonitoringSummaryCharts({
                     <ChartTooltipContent
                       formatter={(value, name) => [
                         Number(value).toLocaleString("id-ID"),
-                        name === "baseline" ? "Baseline" : "Current",
+                        name === "baseline" ? "Data Awal" : "Akumulasi",
                       ]}
                     />
                   }
                 />
                 <Bar dataKey="baseline" fill="var(--color-baseline)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="current" fill="var(--color-current)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="accumulated" fill="var(--color-accumulated)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ChartContainer>
           ) : (
@@ -156,11 +159,11 @@ export function OrderMonitoringSummaryCharts({
                 <div key={item.key} className="rounded-md bg-muted/40 px-2 py-1.5">
                   <p className="text-muted-foreground">{item.label}</p>
                   <p className="font-medium tabular-nums">
-                    {item.baseline.toLocaleString("id-ID")} → {item.current.toLocaleString("id-ID")}
+                    {item.baseline.toLocaleString("id-ID")} → {item.accumulated.toLocaleString("id-ID")}
                   </p>
                   <p className="text-muted-foreground">
-                    Delta {item.delta > 0 ? "+" : ""}
-                    {item.delta.toLocaleString("id-ID")}
+                    Kontribusi personel{" "}
+                    {Math.max(0, item.accumulated - item.baseline).toLocaleString("id-ID")}
                   </p>
                 </div>
               ))}

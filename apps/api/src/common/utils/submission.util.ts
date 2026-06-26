@@ -35,7 +35,11 @@ export type TargetMetricTotal = {
   platform: string;
   url: string;
   baselineMetrics?: SubmissionMetrics;
+  /** Total input inkremental dari seluruh personel. */
   metrics: SubmissionMetrics;
+  /** Baseline + akumulasi input personel. */
+  accumulatedMetrics: SubmissionMetrics;
+  /** @deprecated Gunakan accumulatedMetrics. */
   deltaMetrics?: SubmissionMetrics;
 };
 
@@ -183,6 +187,7 @@ export function aggregateTargetMetricTotals(
       url: target.url,
       baselineMetrics: normalizeMetrics(target.baselineMetrics),
       metrics: { ...emptySubmissionMetrics },
+      accumulatedMetrics: normalizeMetrics(target.baselineMetrics),
     });
   }
 
@@ -212,9 +217,9 @@ export function aggregateTargetMetricTotals(
 
     results.push({
       ...item,
-      deltaMetrics: subtractMetrics(
-        item.metrics,
+      accumulatedMetrics: sumMetrics(
         item.baselineMetrics ?? emptySubmissionMetrics,
+        item.metrics,
       ),
     });
   }
@@ -336,8 +341,7 @@ export function serializeLatestSubmission(
       return {
         ...entry,
         baselineMetrics,
-        deltaMetrics:
-          entry.deltaMetrics ?? subtractMetrics(entry.metrics, baselineMetrics),
+        deltaMetrics: entry.deltaMetrics ?? entry.metrics,
       };
     }) ?? null;
   const metrics = resolveSubmissionMetrics(submission);

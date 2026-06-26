@@ -89,6 +89,8 @@ export type BlastingMetricsDashboardTarget = {
   platform: SocialPlatform;
   url: string;
   baselineMetrics: SubmissionMetrics;
+  personnelMetrics: SubmissionMetrics;
+  accumulatedMetrics: SubmissionMetrics;
   finalMetrics: SubmissionMetrics;
   baselineScrapedAt: string | null;
   finalScrapedAt: string | null;
@@ -113,6 +115,8 @@ export type BlastingMetricsDashboard = {
   targets: BlastingMetricsDashboardTarget[];
   totals: {
     baseline: SubmissionMetrics;
+    personnel: SubmissionMetrics;
+    accumulated: SubmissionMetrics;
     final: SubmissionMetrics;
     delta: SubmissionMetrics;
     growthPercent: SubmissionMetrics;
@@ -175,11 +179,15 @@ export type TargetMetricEntry = {
   platform: SocialPlatform;
   url: string;
   baselineMetrics?: SubmissionMetrics;
+  /** Input inkremental personel (per submission atau agregat). */
   metrics: SubmissionMetrics;
+  accumulatedMetrics?: SubmissionMetrics;
   deltaMetrics?: SubmissionMetrics;
 };
 
-export type TargetMetricTotal = TargetMetricEntry;
+export type TargetMetricTotal = TargetMetricEntry & {
+  accumulatedMetrics: SubmissionMetrics;
+};
 
 export type ProgressSummary = {
   totalAssigned: number;
@@ -191,6 +199,7 @@ export type ProgressSummary = {
   metricTotals: SubmissionMetrics;
   baselineMetricTotals?: SubmissionMetrics;
   deltaMetricTotals?: SubmissionMetrics;
+  accumulatedMetricTotals?: SubmissionMetrics;
   targetMetricTotals?: TargetMetricTotal[];
 };
 

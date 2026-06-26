@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { EyeIcon, HeartIcon, MessageCircleIcon, Repeat2Icon, Share2Icon } from "lucide-react";
 
-import type { OrderSocialTarget, Submission, SubmissionMetrics, TargetMetricEntry } from "@/lib/api/types";
+import type { OrderSocialTarget, Submission, SubmissionMetrics, TargetMetricEntry, TargetMetricTotal } from "@/lib/api/types";
 
 export const emptySubmissionMetrics: SubmissionMetrics = {
   views: 0,
@@ -37,8 +37,7 @@ export function buildInitialTargetMetricValues(
   return Object.fromEntries(
     targets.map((target) => [
       target.id ?? target.url,
-      fromSubmission.get(target.id ?? "") ??
-        target.baselineMetrics ?? { ...emptySubmissionMetrics },
+      fromSubmission.get(target.id ?? "") ?? { ...emptySubmissionMetrics },
     ]),
   );
 }
@@ -78,6 +77,26 @@ export function sumTargetMetricValues(values: Record<string, SubmissionMetrics>)
     }),
     { ...emptySubmissionMetrics },
   );
+}
+
+export function toTargetMetricTotals(entries: TargetMetricEntry[]): TargetMetricTotal[] {
+  return entries.map((entry) => {
+    const baseline = entry.baselineMetrics ?? emptySubmissionMetrics;
+    const accumulatedMetrics =
+      entry.accumulatedMetrics ??
+      ({
+        views: baseline.views + entry.metrics.views,
+        likes: baseline.likes + entry.metrics.likes,
+        comments: baseline.comments + entry.metrics.comments,
+        shares: baseline.shares + entry.metrics.shares,
+        reposts: baseline.reposts + entry.metrics.reposts,
+      } satisfies SubmissionMetrics);
+
+    return {
+      ...entry,
+      accumulatedMetrics,
+    };
+  });
 }
 
 export function diffMetrics(

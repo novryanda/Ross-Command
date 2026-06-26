@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { serverApiFetch } from "@/lib/api/server";
 import type { Assignment } from "@/lib/api/types";
+import { toTargetMetricTotals } from "@/lib/blasting-metrics";
 
 export default async function AssignmentDetailPage({
   params,
@@ -147,7 +148,7 @@ export default async function AssignmentDetailPage({
                 </div>
               ) : isBlasting && assignment.latestSubmission.targetMetrics?.length ? (
                 <TargetMetricTotalsSection
-                  targets={assignment.latestSubmission.targetMetrics}
+                  targets={toTargetMetricTotals(assignment.latestSubmission.targetMetrics)}
                   title="Perbandingan per Link Target"
                 />
               ) : assignment.latestSubmission.driveLink ? (

@@ -46,8 +46,9 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 const metricsChartConfig = {
-  baseline: { label: "Awal", color: "hsl(215 16% 65%)" },
-  final: { label: "Akhir", color: "hsl(221 83% 53%)" },
+  baseline: { label: "Data Awal", color: "hsl(215 16% 65%)" },
+  accumulated: { label: "Akumulasi", color: "hsl(221 83% 53%)" },
+  final: { label: "Data Riil Akhir", color: "hsl(142 71% 45%)" },
 } satisfies ChartConfig;
 
 const statusTone: Record<MetricScrapeStatus, string> = {
@@ -90,9 +91,8 @@ function BlastingMetricsTargetCard({
         key: field.key,
         label: field.label,
         baseline: target.baselineMetrics[field.key],
+        accumulated: target.accumulatedMetrics[field.key],
         final: target.finalMetrics[field.key],
-        delta: target.deltaMetrics[field.key],
-        growth: target.growthPercent[field.key],
       })),
     [target],
   );
@@ -133,41 +133,56 @@ function BlastingMetricsTargetCard({
                   <ChartTooltipContent
                     formatter={(value, name) => [
                       Number(value).toLocaleString("id-ID"),
-                      name === "baseline" ? "Awal" : "Akhir",
+                      name === "baseline"
+                        ? "Data Awal"
+                        : name === "accumulated"
+                          ? "Akumulasi"
+                          : "Data Riil Akhir",
                     ]}
                   />
                 }
               />
               <Bar dataKey="baseline" fill="var(--color-baseline)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="accumulated" fill="var(--color-accumulated)" radius={[6, 6, 0, 0]} />
               <Bar dataKey="final" fill="var(--color-final)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ChartContainer>
         ) : (
           <Skeleton className="aspect-[4/3] w-full max-h-[220px] rounded-md" />
         )}
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-          {chartData.map((item) => (
-            <div key={item.key} className="rounded-md border px-2 py-1.5">
-              <p className="text-muted-foreground">{item.label}</p>
-              <p className="font-medium tabular-nums">
-                {item.baseline.toLocaleString("id-ID")} → {item.final.toLocaleString("id-ID")}
-              </p>
-              <p className="text-muted-foreground">
-                {item.final > 0 || target.finalScrapedAt ? (
-                  <>
-                    {item.delta > 0 ? "+" : ""}
-                    {item.delta.toLocaleString("id-ID")} ({item.growth > 0 ? "+" : ""}
-                    {item.growth}%)
-                  </>
-                ) : (
-                  "-"
-                )}
-              </p>
-            </div>
-          ))}
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+          <MetricSummaryCard title="Data Awal" metrics={target.baselineMetrics} />
+          <MetricSummaryCard title="Akumulasi" metrics={target.accumulatedMetrics} />
+          <MetricSummaryCard title="Data Riil Akhir" metrics={target.finalMetrics} pending={!target.finalScrapedAt} />
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function MetricSummaryCard({
+  title,
+  metrics,
+  pending = false,
+}: {
+  title: string;
+  metrics: BlastingMetricsDashboard["targets"][number]["baselineMetrics"];
+  pending?: boolean;
+}) {
+  return (
+    <div className="rounded-md border px-3 py-2">
+      <p className="text-muted-foreground mb-2 font-medium">{title}</p>
+      <div className="grid grid-cols-5 gap-1">
+        {metricFieldLabels.map((field) => (
+          <div key={field.key} className="text-center">
+            <field.icon className="text-muted-foreground mx-auto size-3.5" aria-hidden />
+            <p className="mt-1 font-medium tabular-nums">
+              {pending ? "-" : metrics[field.key].toLocaleString("id-ID")}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

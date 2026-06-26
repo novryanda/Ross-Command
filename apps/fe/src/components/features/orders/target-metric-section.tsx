@@ -11,13 +11,14 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { diffMetrics, metricFieldLabels } from "@/lib/blasting-metrics";
+import { metricFieldLabels } from "@/lib/blasting-metrics";
 import type { OrderSocialTarget, SubmissionMetrics, TargetMetricTotal } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 const comparisonChartConfig = {
-  baseline: { label: "Baseline", color: "hsl(215 16% 65%)" },
-  current: { label: "Current", color: "hsl(221 83% 53%)" },
+  baseline: { label: "Data Awal", color: "hsl(215 16% 65%)" },
+  accumulated: { label: "Akumulasi", color: "hsl(221 83% 53%)" },
+  final: { label: "Data Riil Akhir", color: "hsl(142 71% 45%)" },
 } satisfies ChartConfig;
 
 export function TargetMetricTotalsSection({
@@ -75,7 +76,6 @@ export function TargetMetricInputSection({
           shares: 0,
           reposts: 0,
         };
-        const delta = diffMetrics(metrics, target.baselineMetrics);
 
         return (
           <div key={targetKey} className="rounded-lg border p-3">
@@ -96,10 +96,13 @@ export function TargetMetricInputSection({
               <PlatformBadge platform={target.platform} />
             </div>
             <MetricStrip
-              title="Baseline"
+              title="Data Awal"
               metrics={target.baselineMetrics}
-              emptyLabel="Belum ada baseline"
+              emptyLabel="Belum ada data awal"
             />
+            <p className="text-muted-foreground mt-3 mb-2 text-[11px]">
+              Isi jumlah aksi yang Anda lakukan (contoh: 1 suka = ketik 1).
+            </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               {metricFieldLabels.map((field) => (
                 <label key={field.key} className="grid gap-1 text-xs">
@@ -109,6 +112,7 @@ export function TargetMetricInputSection({
                     min={0}
                     value={metrics[field.key]}
                     disabled={disabled}
+                    placeholder="0"
                     onChange={(event) =>
                       onChange(targetKey, {
                         ...metrics,
@@ -120,7 +124,6 @@ export function TargetMetricInputSection({
                 </label>
               ))}
             </div>
-            <MetricStrip title="Selisih" metrics={delta} signed className="mt-3" />
           </div>
         );
       })}
@@ -130,10 +133,20 @@ export function TargetMetricInputSection({
 
 function TargetMetricCard({ target }: { target: TargetMetricTotal }) {
   const hasBaseline = Boolean(target.baselineMetrics);
+  const accumulatedMetrics =
+    target.accumulatedMetrics ??
+    ({
+      views: (target.baselineMetrics?.views ?? 0) + target.metrics.views,
+      likes: (target.baselineMetrics?.likes ?? 0) + target.metrics.likes,
+      comments: (target.baselineMetrics?.comments ?? 0) + target.metrics.comments,
+      shares: (target.baselineMetrics?.shares ?? 0) + target.metrics.shares,
+      reposts: (target.baselineMetrics?.reposts ?? 0) + target.metrics.reposts,
+    } satisfies SubmissionMetrics);
+
   const chartData = metricFieldLabels.map((field) => ({
     label: field.short,
     baseline: target.baselineMetrics?.[field.key] ?? 0,
-    current: target.metrics[field.key],
+    accumulated: accumulatedMetrics[field.key],
   }));
 
   return (
@@ -162,21 +175,20 @@ function TargetMetricCard({ target }: { target: TargetMetricTotal }) {
                   <ChartTooltipContent
                     formatter={(value, name) => [
                       Number(value).toLocaleString("id-ID"),
-                      name === "baseline" ? "Baseline" : "Current",
+                      name === "baseline" ? "Data Awal" : "Akumulasi",
                     ]}
                   />
                 }
               />
               <Bar dataKey="baseline" fill="var(--color-baseline)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="current" fill="var(--color-current)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="accumulated" fill="var(--color-accumulated)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ChartContainer>
         </div>
       ) : null}
       <div className="space-y-2">
-        <MetricStrip title="Current" metrics={target.metrics} />
-        {hasBaseline ? <MetricStrip title="Baseline" metrics={target.baselineMetrics} /> : null}
-        {target.deltaMetrics ? <MetricStrip title="Selisih" metrics={target.deltaMetrics} signed /> : null}
+        {hasBaseline ? <MetricStrip title="Data Awal" metrics={target.baselineMetrics} /> : null}
+        <MetricStrip title="Akumulasi" metrics={accumulatedMetrics} />
       </div>
     </div>
   );

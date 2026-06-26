@@ -7,7 +7,6 @@ import {
   hasAnyMetric,
   normalizeMetrics,
   serializeLatestSubmission,
-  subtractMetrics,
   sumTargetMetricEntries,
 } from '../common/utils/submission.util';
 import { parseLinks, type ParsedLink } from '../common/utils/url-parser';
@@ -1068,10 +1067,7 @@ export class AssignmentsService {
           targetMap.get(entry.targetId)?.baselineMetrics,
         ),
         metrics: normalizeMetrics(entry.metrics),
-        deltaMetrics: subtractMetrics(
-          normalizeMetrics(entry.metrics),
-          normalizeMetrics(targetMap.get(entry.targetId)?.baselineMetrics),
-        ),
+        deltaMetrics: normalizeMetrics(entry.metrics),
       }));
 
       metrics = sumTargetMetricEntries(targetMetricsPayload);
