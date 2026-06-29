@@ -106,4 +106,20 @@ export class AssignmentRepresentedController {
     );
     return successResponse(result, 'Bulk submission berhasil diproses');
   }
+
+  @Post(':orderId/units/:unitId/unit-submission')
+  async submitUnitTotal(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Param('unitId') unitId: string,
+    @Body() body: unknown,
+  ) {
+    const result = await this.assignmentsService.submitUnitTotal(
+      currentUser.user.id,
+      orderId,
+      unitId,
+      body,
+    );
+    return successResponse(result, 'Total satuan berhasil dikirim');
+  }
 }

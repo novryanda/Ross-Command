@@ -8,7 +8,7 @@ import { PostingProofDialog } from "@/components/features/assignments/posting-pr
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
 import { OrderAssignmentsTable } from "@/components/features/orders/order-assignments-table";
-import { StatusBadge, submissionInputLabel } from "@/components/komando/badges";
+import { RepresentedByLeaderBadge, StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -72,6 +72,7 @@ export function OrderAssignmentsList({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={assignment.status} />
+              {assignment.representedByLeader ? <RepresentedByLeaderBadge /> : null}
               {isPosting && assignment.latestSubmission?.postingCompleteness ? (
                 <PostingCompletenessBadge
                   completeness={assignment.latestSubmission.postingCompleteness}
@@ -98,7 +99,7 @@ export function OrderAssignmentsList({
                     />
                   </DialogContent>
                 </Dialog>
-              ) : assignment.latestSubmission ? (
+              ) : assignment.representedByLeader ? null : assignment.latestSubmission ? (
                 isPosting && assignment.latestSubmission.platformLinks?.length ? (
                   <PostingProofDialog
                     submission={assignment.latestSubmission}

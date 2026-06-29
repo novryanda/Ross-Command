@@ -75,6 +75,14 @@ export function StatusBadge({ status }: { status: OrderStatus | AssignmentStatus
   return <Badge className={cn("h-5 rounded-sm px-1.5 text-xs", statusClass[status])}>{label}</Badge>;
 }
 
+export function RepresentedByLeaderBadge() {
+  return (
+    <Badge variant="secondary" className="h-5 rounded-sm px-1.5 text-xs">
+      Diwakili pimpinan
+    </Badge>
+  );
+}
+
 export function OrderTypeBadge({ type }: { type: OrderType }) {
   return <Badge className={cn("h-5 rounded-sm px-1.5 text-xs", orderTypeClass[type])}>{orderTypeLabel[type]}</Badge>;
 }

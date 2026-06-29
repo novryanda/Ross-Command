@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2Icon, ChevronDownIcon, ClipboardListIcon, SearchIcon, Settings2Icon, UsersIcon } from "lucide-react";
+import {
+  Building2Icon,
+  ChevronDownIcon,
+  ClipboardListIcon,
+  EyeIcon,
+  SearchIcon,
+  Settings2Icon,
+  UsersIcon,
+} from "lucide-react";
 
 import { StatusBadge } from "@/components/komando/badges";
 import { PageState } from "@/components/komando/page-state";
@@ -48,7 +56,6 @@ type TabMonitor = "perorangan" | "persatuan";
 type MemberColumn = "unit" | "status" | "metrics" | "submittedAt";
 type UnitColumn =
   | "commander"
-  | "level"
   | "assigned"
   | "submitted"
   | "pending"
@@ -66,9 +73,8 @@ const memberColumnLabels: Record<MemberColumn, string> = {
 };
 const unitColumnLabels: Record<UnitColumn, string> = {
   commander: "Pimpinan",
-  level: "Level",
   assigned: "Ditugaskan",
-  submitted: "Sudah Kirim",
+  submitted: "Sudah Melaksanakan",
   pending: "Menunggu",
   late: "Terlambat",
   metrics: "Metrik",
@@ -87,7 +93,6 @@ const defaultMemberColumns: Record<MemberColumn, boolean> = {
 };
 const defaultUnitColumns: Record<UnitColumn, boolean> = {
   commander: true,
-  level: true,
   assigned: true,
   submitted: true,
   pending: true,
@@ -379,9 +384,6 @@ export function OrderProgressMonitoringView({
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 className="text-base font-semibold">Ringkasan Persatuan</h3>
-                <p className="text-muted-foreground text-sm">
-                  Pilih satuan untuk melihat progres agregat dan rincian anggotanya.
-                </p>
               </div>
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="relative w-full md:w-[26rem]">
@@ -413,20 +415,19 @@ export function OrderProgressMonitoringView({
             {filteredUnits.length ? (
               <div className="mt-4 min-w-0 overflow-hidden rounded-lg border">
                 <div className="w-full overflow-x-auto">
-                  <Table className="min-w-[1160px]">
+                  <Table className="min-w-[980px]">
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="min-w-56">Satuan</TableHead>
                         {unitColumns.commander ? <TableHead className="min-w-52">Pimpinan</TableHead> : null}
-                        {unitColumns.level ? <TableHead className="min-w-24">Level</TableHead> : null}
-                        {unitColumns.assigned ? <TableHead className="min-w-28">Ditugaskan</TableHead> : null}
-                        {unitColumns.submitted ? <TableHead className="min-w-28">Sudah Kirim</TableHead> : null}
-                        {unitColumns.pending ? <TableHead className="min-w-28">Menunggu</TableHead> : null}
-                        {unitColumns.late ? <TableHead className="min-w-28">Terlambat</TableHead> : null}
+                        {unitColumns.assigned ? <TableHead className="min-w-20 px-2 text-center">Ditugaskan</TableHead> : null}
+                        {unitColumns.submitted ? <TableHead className="min-w-20 px-2 text-center">Sudah Melaksanakan</TableHead> : null}
+                        {unitColumns.pending ? <TableHead className="min-w-20 px-2 text-center">Belum Melaksanakan</TableHead> : null}
+                        {unitColumns.late ? <TableHead className="min-w-20 px-2 text-center">Terlambat</TableHead> : null}
                         {isBlasting && unitColumns.metrics ? (
                           <TableHead className="min-w-80">Metrik</TableHead>
                         ) : null}
-                        {unitColumns.action ? <TableHead className="min-w-28 text-right">Aksi</TableHead> : null}
+                        {unitColumns.action ? <TableHead className="w-16 min-w-16 px-2 text-center">Aksi</TableHead> : null}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -437,7 +438,6 @@ export function OrderProgressMonitoringView({
                             <TableCell>
                               <div>
                                 <p className="font-medium">{item.unit.name}</p>
-                                <p className="text-muted-foreground text-xs">{item.unit.path}</p>
                               </div>
                             </TableCell>
                             {unitColumns.commander ? (
@@ -452,28 +452,42 @@ export function OrderProgressMonitoringView({
                                 )}
                               </TableCell>
                             ) : null}
-                            {unitColumns.level ? <TableCell>Level {item.unit.depthLevel}</TableCell> : null}
-                            {unitColumns.assigned ? <TableCell>{item.progress.totalAssigned}</TableCell> : null}
-                            {unitColumns.submitted ? <TableCell>{item.progress.totalSubmitted}</TableCell> : null}
-                            {unitColumns.pending ? <TableCell>{item.progress.totalPending}</TableCell> : null}
-                            {unitColumns.late ? <TableCell>{item.progress.totalLate}</TableCell> : null}
+                            {unitColumns.assigned ? (
+                              <TableCell className="px-2 text-center">{item.progress.totalAssigned}</TableCell>
+                            ) : null}
+                            {unitColumns.submitted ? (
+                              <TableCell className="px-2 text-center">{item.progress.totalSubmitted}</TableCell>
+                            ) : null}
+                            {unitColumns.pending ? (
+                              <TableCell className="px-2 text-center">{item.progress.totalPending}</TableCell>
+                            ) : null}
+                            {unitColumns.late ? (
+                              <TableCell className="px-2 text-center">{item.progress.totalLate}</TableCell>
+                            ) : null}
                             {isBlasting && unitColumns.metrics ? (
                               <TableCell>
                                 <MetricSummary metrics={item.progress.metricTotals} />
                               </TableCell>
                             ) : null}
                             {unitColumns.action ? (
-                              <TableCell className="text-right">
+                              <TableCell className="w-16 min-w-16 px-2 text-center">
                                 <button
                                   type="button"
-                                  className="text-sm font-medium underline-offset-4 hover:underline"
+                                  className={[
+                                    "inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors",
+                                    selected
+                                      ? "border-green-300 bg-green-100 text-green-700"
+                                      : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                                  ].join(" ")}
                                   onClick={() => {
                                     setSelectedUnitId(item.unit.id);
                                     setSelectedUnitMemberPage(1);
                                     setSelectedUnitMemberQuery("");
                                   }}
+                                  aria-label={selected ? "Sedang dilihat" : "Lihat detail"}
+                                  title={selected ? "Sedang dilihat" : "Lihat detail"}
                                 >
-                                  {selected ? "Sedang Dilihat" : "Lihat Detail"}
+                                  <EyeIcon className="size-4" />
                                 </button>
                               </TableCell>
                             ) : null}
@@ -508,7 +522,6 @@ export function OrderProgressMonitoringView({
                 <div>
                   <p className="text-sm font-semibold">Detail Satuan</p>
                   <h3 className="text-lg font-semibold">{selectedUnit.unit.name}</h3>
-                  <p className="text-muted-foreground text-sm">{selectedUnit.unit.path}</p>
                 </div>
                 <div className="grid w-full gap-2 xl:max-w-xl">
                   <MonitoringStatusLegend summary={selectedUnit.progress} />

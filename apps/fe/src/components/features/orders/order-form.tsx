@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Stepper } from "@/components/wizard-stepper";
 import { clientApiFetch } from "@/lib/api/client";
-import type { Order, OrderTargetAudience, OrderType, SocialPlatform, UnitNode } from "@/lib/api/types";
+import type { Order, OrderType, SocialPlatform, UnitNode } from "@/lib/api/types";
 
 const BLASTING_ACTIONS = ["like", "share", "repost"] as const;
 
@@ -37,14 +37,9 @@ const defaultDescription: Record<Exclude<OrderType, "posting">, string> = {
 
 const steps = [
   { id: "detail", title: "Detail", description: "Jenis dan instruksi" },
-  { id: "target", title: "Target", description: "Satuan dan mode distribusi" },
+  { id: "target", title: "Target", description: "Satuan target" },
   { id: "review", title: "Review", description: "Simpan atau kirim" },
 ];
-
-const targetAudienceLabel: Record<Exclude<OrderTargetAudience, "direct_user">, string> = {
-  all_members: "Seluruh Satuan",
-  unit_leaders: "Pimpinan Satuan",
-};
 
 function resolveDescription(orderType: OrderType, description: string) {
   const trimmed = description.trim();
@@ -66,17 +61,15 @@ type OrderDraft = {
   narration: string;
   engagementActions: string[];
   reportReason: string;
-  targetAudience: Exclude<OrderTargetAudience, "direct_user">;
   deadline: string;
 };
 
 export function OrderForm({
   units,
-  currentUserId,
   initialOrderType = "posting",
 }: {
   units: UnitNode[];
-  currentUserId: string;
+  currentUserId?: string;
   initialOrderType?: OrderType;
 }) {
   const router = useRouter();
@@ -94,7 +87,6 @@ export function OrderForm({
     narration: "",
     engagementActions: [],
     reportReason: "",
-    targetAudience: "all_members",
     deadline: "",
   });
 
@@ -102,23 +94,6 @@ export function OrderForm({
   const isBlasting = draft.orderType === "engagement" || draft.orderType === "blasting";
   const requiresNarration = draft.orderType === "counter";
   const requiresReport = draft.orderType === "report_akun";
-  const targetCounts = useMemo(
-    () => ({
-      allMembers: targets.filter((target) => target.targetAudience === "all_members").length,
-      unitLeaders: targets.filter((target) => target.targetAudience === "unit_leaders").length,
-    }),
-    [targets],
-  );
-  const targetModeSummary = useMemo(() => {
-    const parts = [];
-    if (targetCounts.allMembers > 0) {
-      parts.push(`${targetCounts.allMembers} seluruh satuan`);
-    }
-    if (targetCounts.unitLeaders > 0) {
-      parts.push(`${targetCounts.unitLeaders} pimpinan satuan`);
-    }
-    return parts.length ? parts.join(" + ") : targetAudienceLabel[draft.targetAudience];
-  }, [draft.targetAudience, targetCounts.allMembers, targetCounts.unitLeaders]);
 
   const canContinue = useMemo(() => {
     if (step === 0) {
@@ -296,14 +271,7 @@ export function OrderForm({
             <CardTitle className="text-base">Pilih Target</CardTitle>
           </CardHeader>
           <CardContent>
-            <TargetPicker
-              units={units}
-              currentUserId={currentUserId}
-              value={targets}
-              onChange={setTargets}
-              targetAudience={draft.targetAudience}
-              onTargetAudienceChange={(targetAudience) => setField("targetAudience", targetAudience)}
-            />
+            <TargetPicker units={units} value={targets} onChange={setTargets} />
           </CardContent>
         </Card>
       ) : null}
@@ -354,10 +322,9 @@ export function OrderForm({
               </div>
             )}
             <p>
-              <span className="text-muted-foreground">Mode Target:</span>{" "}
-              {targetModeSummary}
+              <span className="text-muted-foreground">Satuan target:</span>{" "}
+              {targets.length} satuan
             </p>
-            <p><span className="text-muted-foreground">Target:</span> {targets.length} target</p>
             <p><span className="text-muted-foreground">Deadline:</span> {draft.deadline ? new Date(draft.deadline).toLocaleString("id-ID") : "-"}</p>
           </CardContent>
         </Card>

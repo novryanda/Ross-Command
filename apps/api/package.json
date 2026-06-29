@@ -21,6 +21,8 @@
     "prisma:seed:minimal": "tsx prisma/seed-minimal.ts",
     "prisma:seed:pussiberad": "tsx prisma/seed-pussiberad-demo.ts",
     "prisma:seed:mabesad": "tsx prisma/seed-mabesad-users.ts",
+    "prisma:seed:kodam": "tsx prisma/seed-kodam-users.ts",
+    "prisma:add-order-units": "tsx prisma/add-order-unit-assignments.ts",
     "prisma:seed:full": "tsx prisma/seed.ts",
     "db:clean": "tsx prisma/db-clean.ts",
     "db:reset:minimal": "tsx prisma/db-clean.ts && tsx prisma/seed-minimal.ts",

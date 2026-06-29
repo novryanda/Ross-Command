@@ -70,9 +70,13 @@ type SerializedAssignmentItem = {
     id: string;
     name: string;
     path: string;
+    leaderOnlyAssignments: boolean;
+    commanderId: string | null;
   } | null;
   canSubmitForMember: boolean;
-  latestSubmission: ReturnType<typeof serializeLatestSubmission>;
+  canSubmitUnitTotal: boolean;
+  representedByLeader: boolean;
+  latestSubmission: ReturnType<typeof serializeLatestSubmission> | null;
 };
 
 type OrdersSummaryStats = {
@@ -1123,7 +1127,7 @@ export class OrdersService {
     const memberIds = new Set<string>();
 
     for (const target of targets) {
-      const resolvedMembers = await this.resolveTargetMemberIds(
+      const resolvedMembers = await this.resolveTargetAllMemberIds(
         commanderId,
         target,
       );
@@ -1825,6 +1829,39 @@ export class OrdersService {
     return Array.from(map.values());
   }
 
+  private async resolveTargetAllMemberIds(
+    commanderId: string,
+    target: {
+      targetType: 'unit' | 'individual';
+      targetAudience: OrderTargetAudience;
+      unitId: string | null;
+      userId: string | null;
+    },
+  ) {
+    if (target.targetType === 'unit' && target.unitId) {
+      await this.hierarchyService.assertUnitInHierarchy(
+        commanderId,
+        target.unitId,
+      );
+
+      if (target.targetAudience === 'unit_leaders') {
+        return this.hierarchyService.resolveUnitLeaderIds(target.unitId);
+      }
+
+      return this.hierarchyService.resolveUnitAllMemberIds(target.unitId);
+    }
+
+    if (target.targetType === 'individual' && target.userId) {
+      await this.hierarchyService.assertUserInHierarchy(
+        commanderId,
+        target.userId,
+      );
+      return [target.userId];
+    }
+
+    return [];
+  }
+
   private async resolveTargetMemberIds(
     commanderId: string,
     target: {
@@ -1888,6 +1925,7 @@ export class OrdersService {
             name: string;
             path: string;
             commanderId: string | null;
+            leaderOnlyAssignments: boolean;
           };
         }>;
       };
@@ -1922,6 +1960,16 @@ export class OrdersService {
       baselineMetrics: Prisma.JsonValue | null;
     }> = [],
   ): SerializedAssignmentItem {
+    const memberUnit = assignment.user.unitMemberships[0]?.unit;
+    const isLeaderOnlyUnit = memberUnit?.leaderOnlyAssignments ?? false;
+    const isUnitCommander = memberUnit?.commanderId === assignment.user.id;
+    const hasOwnSubmission = Boolean(assignment.submissions[0]);
+    const isRepresentedMember =
+      isLeaderOnlyUnit &&
+      !isUnitCommander &&
+      assignment.status !== 'belum_dikerjakan' &&
+      !hasOwnSubmission;
+
     return {
       id: assignment.id,
       status: assignment.status,
@@ -1932,21 +1980,31 @@ export class OrdersService {
         fullName: assignment.user.fullName,
         username: assignment.user.username,
       },
-      unit: assignment.user.unitMemberships[0]
+      unit: memberUnit
         ? {
-            id: assignment.user.unitMemberships[0].unit.id,
-            name: assignment.user.unitMemberships[0].unit.name,
-            path: assignment.user.unitMemberships[0].unit.path,
+            id: memberUnit.id,
+            name: memberUnit.name,
+            path: memberUnit.path,
+            leaderOnlyAssignments: memberUnit.leaderOnlyAssignments,
+            commanderId: memberUnit.commanderId,
           }
         : null,
       canSubmitForMember:
-        assignment.user.unitMemberships[0]?.unit.commanderId === commanderId,
-      latestSubmission: serializeLatestSubmission(
-        assignment.submissions[0],
-        orderType,
-        postingTargetPlatforms,
-        blastingTargets,
-      ),
+        memberUnit?.commanderId === commanderId && orderType === 'posting',
+      canSubmitUnitTotal:
+        isLeaderOnlyUnit &&
+        isUnitCommander &&
+        memberUnit?.commanderId === commanderId &&
+        orderType !== 'posting',
+      representedByLeader: isRepresentedMember,
+      latestSubmission: isRepresentedMember
+        ? null
+        : serializeLatestSubmission(
+            assignment.submissions[0],
+            orderType,
+            postingTargetPlatforms,
+            blastingTargets,
+          ),
     };
   }
 

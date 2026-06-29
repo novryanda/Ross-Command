@@ -134,6 +134,50 @@ export class HierarchyService {
     }
   }
 
+  async resolveUnitAllMemberIds(unitId: string): Promise<string[]> {
+    const targetUnit = await this.prisma.unit.findFirst({
+      where: {
+        id: unitId,
+        deletedAt: null,
+      },
+    });
+
+    if (!targetUnit) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Satuan tidak ditemukan',
+      );
+    }
+
+    const units = await this.prisma.unit.findMany({
+      where: {
+        deletedAt: null,
+        path: {
+          startsWith: targetUnit.path,
+        },
+      },
+      select: { id: true },
+    });
+
+    const memberships = await this.prisma.unitMember.findMany({
+      where: {
+        unitId: { in: units.map((unit) => unit.id) },
+        removedAt: null,
+        user: { deletedAt: null },
+      },
+      distinct: ['userId'],
+      select: { userId: true },
+    });
+
+    return memberships.map((membership) => membership.userId);
+  }
+
+  /** Assignees who receive/act on the task (leaders only for leader-only units). */
+  async resolveUnitAssigneeIds(unitId: string): Promise<string[]> {
+    return this.resolveUnitMemberIds(unitId);
+  }
+
   async resolveUnitMemberIds(unitId: string): Promise<string[]> {
     const targetUnit = await this.prisma.unit.findFirst({
       where: {

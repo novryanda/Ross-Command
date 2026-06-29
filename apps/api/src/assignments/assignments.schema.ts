@@ -63,3 +63,5 @@ export const bulkSubmissionRequestSchema = z.object({
 export const bulkSubmissionQuerySchema = z.object({
   unitId: z.string().uuid().optional(),
 });
+
+export const unitSubmissionSchema = submitProofSchema;

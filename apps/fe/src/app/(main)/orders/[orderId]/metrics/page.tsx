@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { BlastingMetricsDashboardLoader } from "@/components/features/orders/blasting-metrics-dashboard-loader";import { BackButton } from "@/components/komando/back-button";
+import { BlastingMetricsDashboardLoader } from "@/components/features/orders/blasting-metrics-dashboard-loader";
+import { BackButton } from "@/components/komando/back-button";
 import { DeadlineBadge, OrderTypeBadge, StatusBadge } from "@/components/komando/badges";
 import { PageHero } from "@/components/komando/page-hero";
 import { ApiRequestError, type BlastingMetricsDashboard, type OrderDetail } from "@/lib/api/types";
@@ -35,9 +36,7 @@ export default async function OrderMetricsPage({
       <BackButton href={`/orders/${orderId}`} label="Kembali ke detail tugas" />
 
       <PageHero
-        eyebrow="Dashboard metrik"
-        title={`Perbandingan Metrik — ${order.title}`}
-        description="Visualisasi metrik Apify saat tugas dibuat versus setelah deadline berakhir."
+        title={`Monitoring Enganggement — ${order.title}`}
       >
         <div className="flex flex-wrap gap-1.5">
           <OrderTypeBadge type={order.orderType} />

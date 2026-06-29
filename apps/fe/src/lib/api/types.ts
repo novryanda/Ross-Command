@@ -144,6 +144,8 @@ export type UnitSummary = {
   name: string;
   path?: string;
   depthLevel?: number;
+  leaderOnlyAssignments?: boolean;
+  commanderId?: string | null;
 };
 
 export type Me = {
@@ -314,6 +316,9 @@ export type Assignment = {
   };
   latestSubmission: Submission | null;
   canSubmitForMember?: boolean;
+  canSubmitUnitTotal?: boolean;
+  representedByLeader?: boolean;
+  leaderOnlyUnit?: { id: string; name: string } | null;
 };
 
 export type BulkSubmissionAssignment = {

@@ -47,8 +47,8 @@ function formatDateTime(value: string | null | undefined) {
 
 const metricsChartConfig = {
   baseline: { label: "Data Awal", color: "hsl(215 16% 65%)" },
-  accumulated: { label: "Akumulasi", color: "hsl(221 83% 53%)" },
-  final: { label: "Data Riil Akhir", color: "hsl(142 71% 45%)" },
+  accumulated: { label: "Data Inputan Personil", color: "hsl(221 83% 53%)" },
+  final: { label: "Data Akhir", color: "hsl(142 71% 45%)" },
 } satisfies ChartConfig;
 
 const statusTone: Record<MetricScrapeStatus, string> = {
@@ -136,8 +136,8 @@ function BlastingMetricsTargetCard({
                       name === "baseline"
                         ? "Data Awal"
                         : name === "accumulated"
-                          ? "Akumulasi"
-                          : "Data Riil Akhir",
+                          ? "Data Inputan Personil"
+                          : "Data Akhir",
                     ]}
                   />
                 }
@@ -152,8 +152,8 @@ function BlastingMetricsTargetCard({
         )}
         <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
           <MetricSummaryCard title="Data Awal" metrics={target.baselineMetrics} />
-          <MetricSummaryCard title="Akumulasi" metrics={target.accumulatedMetrics} />
-          <MetricSummaryCard title="Data Riil Akhir" metrics={target.finalMetrics} pending={!target.finalScrapedAt} />
+          <MetricSummaryCard title="Data Inputan Personil" metrics={target.accumulatedMetrics} />
+          <MetricSummaryCard title="Data Akhir" metrics={target.finalMetrics} pending={!target.finalScrapedAt} />
         </div>
       </CardContent>
     </Card>

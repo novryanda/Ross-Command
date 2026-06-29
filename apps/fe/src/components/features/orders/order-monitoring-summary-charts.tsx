@@ -18,8 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const statusChartConfig = {
-  submitted: { label: "Sudah Kirim", color: "hsl(142 71% 45%)" },
-  pending: { label: "Menunggu", color: "hsl(215 16% 65%)" },
+  submitted: { label: "Sudah Melaksanakan", color: "hsl(142 71% 45%)" },
+  pending: { label: "Belum Melaksanakan", color: "hsl(215 16% 65%)" },
   late: { label: "Terlambat", color: "hsl(38 92% 50%)" },
 } satisfies ChartConfig;
 
@@ -46,13 +46,13 @@ export function OrderMonitoringSummaryCharts({
       [
         {
           key: "submitted",
-          label: "Sudah Kirim",
+          label: "Sudah Melaksanakan",
           value: summary.totalSubmitted,
           fill: "var(--color-submitted)",
         },
         {
           key: "pending",
-          label: "Menunggu",
+          label: "Belum Melaksanakan",
           value: summary.totalPending,
           fill: "var(--color-pending)",
         },
@@ -257,8 +257,8 @@ function ChartPanel({
 
 export function MonitoringStatusLegend({ summary }: { summary: ProgressSummary }) {
   const items = [
-    { label: "Sudah Kirim", value: summary.totalSubmitted, className: "bg-emerald-500" },
-    { label: "Menunggu", value: summary.totalPending, className: "bg-muted-foreground/50" },
+    { label: "Sudah Melaksanakan", value: summary.totalSubmitted, className: "bg-emerald-500" },
+    { label: "Belum Melaksanakan", value: summary.totalPending, className: "bg-muted-foreground/50" },
     { label: "Terlambat", value: summary.totalLate, className: "bg-amber-500" },
   ];
 

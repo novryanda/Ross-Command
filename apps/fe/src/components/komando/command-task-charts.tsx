@@ -259,7 +259,7 @@ export function CommandTaskCharts({
         </ChartPanel>
 
         {!isScopedPage ? (
-          <ChartPanel title="Jenis Tugas" description="Distribusi berdasarkan tipe operasi">
+          <ChartPanel title="Distribusi Tugas" description="Distribusi berdasarkan Jenis Tugas">
             {orderTypeChartData.some((item) => item.count > 0) ? (
               <ChartContainer config={orderTypeChartConfig} className="aspect-[4/3] w-full max-h-[220px]">
                 <BarChart data={orderTypeChartData} margin={{ top: 16, right: 8, left: 4, bottom: 0 }}>

@@ -86,7 +86,6 @@ export default async function OrderDetailPage({
       <PageHero
         eyebrow="Detail tugas"
         title={order.title}
-        description="Instruksi, target, progres anggota, dan bukti pelaksanaan dari tugas ini."
         actions={<OrderActions order={order} />}
       >
         <div className="flex flex-wrap gap-1.5">
@@ -217,14 +216,17 @@ function Info({ label, value }: { label: string; value: number }) {
   );
 }
 
-function describeTargetAudience(targetAudience: OrderDetail["targets"][number]["targetAudience"], count: number) {
+function describeTargetAudience(
+  targetAudience: OrderDetail["targets"][number]["targetAudience"],
+  count: number,
+) {
   if (targetAudience === "unit_leaders") {
-    return `Pimpinan satuan saja - ${count} pimpinan`;
+    return `${count} pimpinan satuan (order lama)`;
   }
 
   if (targetAudience === "direct_user") {
     return `Target individu - ${count} anggota`;
   }
 
-  return `Seluruh satuan - ${count} anggota`;
+  return `${count} anggota`;
 }

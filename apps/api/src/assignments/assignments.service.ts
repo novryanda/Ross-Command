@@ -20,6 +20,7 @@ import {
   bulkSubmissionRequestSchema,
   listAssignmentsQuerySchema,
   submitProofSchema,
+  unitSubmissionSchema,
 } from './assignments.schema';
 
 @Injectable()
@@ -81,6 +82,20 @@ export class AssignmentsService {
             },
           }
         : {}),
+      user: {
+        NOT: {
+          unitMemberships: {
+            some: {
+              removedAt: null,
+              unit: {
+                leaderOnlyAssignments: true,
+                deletedAt: null,
+                NOT: { commanderId: userId },
+              },
+            },
+          },
+        },
+      },
     };
 
     const [assignments, total] = await this.prisma.$transaction([
@@ -177,6 +192,25 @@ export class AssignmentsService {
       userId,
       assignment.orderId,
     );
+    const membership = await this.prisma.unitMember.findFirst({
+      where: {
+        userId,
+        removedAt: null,
+        unit: { deletedAt: null },
+      },
+      include: { unit: true },
+      orderBy: { joinedAt: 'desc' },
+    });
+    const leaderOnlyUnit =
+      membership?.unit.leaderOnlyAssignments &&
+      membership.unit.commanderId === userId
+        ? membership.unit
+        : null;
+    const orderType = assignment.order.orderType;
+    const canSubmitUnitTotal =
+      Boolean(leaderOnlyUnit) &&
+      orderType !== 'posting' &&
+      assignment.userId === userId;
 
     return {
       id: assignment.id,
@@ -209,6 +243,13 @@ export class AssignmentsService {
         socialTargets,
       ),
       canSubmitForMember,
+      canSubmitUnitTotal,
+      leaderOnlyUnit: leaderOnlyUnit
+        ? {
+            id: leaderOnlyUnit.id,
+            name: leaderOnlyUnit.name,
+          }
+        : null,
     };
   }
 
@@ -248,6 +289,19 @@ export class AssignmentsService {
 
     await this.ensureDirectUnitLeader(actorUserId, assignment.userId);
 
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId },
+      select: { orderType: true },
+    });
+
+    if (order?.orderType !== 'posting') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Input per anggota hanya tersedia untuk perintah posting. Gunakan input total satuan.',
+      );
+    }
+
     return this.submitAssignmentProof({
       actorUserId,
       targetUserId: assignment.userId,
@@ -256,6 +310,277 @@ export class AssignmentsService {
       body,
       submissionSource: 'pimpinan',
     });
+  }
+
+  async submitUnitTotal(
+    actorUserId: string,
+    orderId: string,
+    unitId: string,
+    body: unknown,
+  ) {
+    const parsed = unitSubmissionSchema.parse(body);
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Perintah tidak ditemukan',
+      );
+    }
+
+    if (order.status === 'dibatalkan') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Perintah telah dibatalkan dan tidak dapat menerima submission',
+      );
+    }
+
+    if (order.orderType === 'posting') {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Input total satuan tidak tersedia untuk perintah posting',
+      );
+    }
+
+    const unit = await this.prisma.unit.findFirst({
+      where: { id: unitId, deletedAt: null },
+    });
+
+    if (!unit) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Satuan tidak ditemukan',
+      );
+    }
+
+    if (!unit.leaderOnlyAssignments) {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'BUSINESS_RULE_VIOLATED',
+        'Input total satuan hanya untuk satuan dengan distribusi pimpinan saja',
+      );
+    }
+
+    if (unit.commanderId !== actorUserId) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Hanya pimpinan satuan yang dapat menginput total satuan',
+      );
+    }
+
+    await this.assertUnitInOrderTargets(orderId, unit.path);
+
+    const leaderAssignment = await this.prisma.taskAssignment.findFirst({
+      where: { orderId, userId: actorUserId },
+    });
+
+    if (!leaderAssignment) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Assignment pimpinan tidak ditemukan',
+      );
+    }
+
+    const memberUserIds = await this.getUnitMemberUserIds(unitId);
+    const memberAssignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        orderId,
+        userId: { in: memberUserIds.filter((id) => id !== actorUserId) },
+      },
+      select: { id: true },
+    });
+
+    const submittedAt = new Date();
+    const nextStatus =
+      submittedAt <= order.deadline ? 'selesai' : 'terlambat';
+    const isBlasting = order.orderType === 'engagement';
+    const socialTargets = isBlasting
+      ? await this.prisma.orderSocialTarget.findMany({
+          where: { orderId },
+          orderBy: { sortOrder: 'asc' },
+        })
+      : [];
+
+    let targetMetricsPayload:
+      | Array<{
+          targetId: string;
+          platform: string;
+          url: string;
+          metrics: typeof emptySubmissionMetrics;
+        }>
+      | undefined;
+    let metrics = parsed.metrics ?? emptySubmissionMetrics;
+
+    if (isBlasting && socialTargets.length) {
+      const submittedTargetMetrics = parsed.targetMetrics ?? [];
+
+      if (submittedTargetMetrics.length !== socialTargets.length) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Metrik blasting wajib diisi untuk setiap link target perintah',
+        );
+      }
+
+      const targetMap = new Map(
+        socialTargets.map((target) => [target.id, target]),
+      );
+
+      for (const entry of submittedTargetMetrics) {
+        const target = targetMap.get(entry.targetId);
+        if (!target) {
+          throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            'VALIDATION_ERROR',
+            'Target metrik blasting tidak valid untuk perintah ini',
+          );
+        }
+
+        if (entry.url !== target.url || entry.platform !== target.platform) {
+          throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            'VALIDATION_ERROR',
+            'Data target metrik blasting tidak sesuai link perintah',
+          );
+        }
+      }
+
+      targetMetricsPayload = submittedTargetMetrics.map((entry) => ({
+        targetId: entry.targetId,
+        platform: entry.platform,
+        url: entry.url,
+        baselineMetrics: normalizeMetrics(
+          targetMap.get(entry.targetId)?.baselineMetrics,
+        ),
+        metrics: normalizeMetrics(entry.metrics),
+        deltaMetrics: normalizeMetrics(entry.metrics),
+      }));
+
+      metrics = sumTargetMetricEntries(targetMetricsPayload);
+
+      if (!parsed.driveLink && !hasAnyMetric(metrics)) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'Isi minimal satu metrik blasting pada salah satu link target',
+        );
+      }
+    } else if (!parsed.driveLink && !(isBlasting && hasAnyMetric(metrics))) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        isBlasting
+          ? 'Isi link bukti atau minimal satu metrik blasting'
+          : 'Link bukti wajib diisi',
+      );
+    }
+
+    const memberCount = memberUserIds.length;
+    const notes =
+      parsed.notes ??
+      `Total satuan: ${memberCount} anggota`;
+
+    const submission = await this.prisma.$transaction(async (tx) => {
+      await tx.submission.updateMany({
+        where: {
+          assignmentId: leaderAssignment.id,
+          isLatest: true,
+        },
+        data: { isLatest: false },
+      });
+
+      const createdSubmission = await tx.submission.create({
+        data: {
+          assignmentId: leaderAssignment.id,
+          userId: actorUserId,
+          submittedByUserId: actorUserId,
+          submissionSource: 'pimpinan',
+          driveLink: parsed.driveLink ?? null,
+          targetMetrics:
+            isBlasting && targetMetricsPayload?.length
+              ? targetMetricsPayload
+              : undefined,
+          views: metrics.views,
+          likes: metrics.likes,
+          comments: metrics.comments,
+          shares: metrics.shares,
+          reposts: metrics.reposts,
+          notes,
+          submittedAt,
+        },
+      });
+
+      await tx.taskAssignment.update({
+        where: { id: leaderAssignment.id },
+        data: { status: nextStatus, completedAt: submittedAt },
+      });
+
+      if (memberAssignments.length) {
+        await tx.taskAssignment.updateMany({
+          where: { id: { in: memberAssignments.map((item) => item.id) } },
+          data: { status: nextStatus, completedAt: submittedAt },
+        });
+      }
+
+      return createdSubmission;
+    });
+
+    await this.activityService.logSubmissionSent({
+      actorUserId,
+      orderId,
+      assignmentId: leaderAssignment.id,
+      submissionId: submission.id,
+      occurredAt: submission.submittedAt,
+    });
+
+    await this.ordersService.refreshOrderStatus(orderId);
+
+    return {
+      unitId,
+      memberCount,
+      status: nextStatus,
+      submittedAt: submission.submittedAt,
+    };
+  }
+
+  private async assertUnitInOrderTargets(orderId: string, unitPath: string) {
+    const targets = await this.prisma.orderTarget.findMany({
+      where: { orderId, targetType: 'unit', unit: { deletedAt: null } },
+      select: { unit: { select: { path: true } } },
+    });
+
+    const inScope = targets.some((target) =>
+      target.unit?.path ? unitPath.startsWith(target.unit.path) : false,
+    );
+
+    if (!inScope) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Satuan berada di luar cakupan target perintah',
+      );
+    }
+  }
+
+  private async getUnitMemberUserIds(unitId: string) {
+    const memberships = await this.prisma.unitMember.findMany({
+      where: {
+        unitId,
+        removedAt: null,
+        user: { deletedAt: null },
+      },
+      select: { userId: true },
+    });
+
+    return memberships.map((membership) => membership.userId);
   }
 
   async listBulkSubmissionAssignments(
@@ -767,7 +1092,7 @@ export class AssignmentsService {
       this.prisma.orderTarget.findMany({
         where: {
           orderId,
-          targetAudience: 'unit_leaders',
+          targetType: 'unit',
           unit: { deletedAt: null },
         },
         select: {
@@ -781,6 +1106,7 @@ export class AssignmentsService {
       this.prisma.unit.findMany({
         where: {
           commanderId: actorUserId,
+          leaderOnlyAssignments: true,
           deletedAt: null,
         },
         select: {
@@ -796,7 +1122,10 @@ export class AssignmentsService {
 
     return commandedUnits
       .filter((unit) =>
-        targetPaths.some((targetPath) => unit.path.startsWith(targetPath)),
+        targetPaths.some(
+          (targetPath) =>
+            unit.path.startsWith(targetPath) || targetPath.startsWith(unit.path),
+        ),
       )
       .map((unit) => unit.id);
   }

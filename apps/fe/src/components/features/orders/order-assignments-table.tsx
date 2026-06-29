@@ -8,7 +8,7 @@ import { PostingCompletenessBadge } from "@/components/features/assignments/post
 import { PostingProofDialog } from "@/components/features/assignments/posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
-import { StatusBadge, submissionInputLabel } from "@/components/komando/badges";
+import { RepresentedByLeaderBadge, StatusBadge, submissionInputLabel } from "@/components/komando/badges";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -233,7 +233,10 @@ export function OrderAssignmentsTable({
                   ) : null}
                   {visibleColumns.status ? (
                   <TableCell className="py-2.5">
-                    <StatusBadge status={assignment.status} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={assignment.status} />
+                      {assignment.representedByLeader ? <RepresentedByLeaderBadge /> : null}
+                    </div>
                   </TableCell>
                   ) : null}
                   {isPosting && visibleColumns.postingCompleteness ? (
@@ -272,36 +275,15 @@ export function OrderAssignmentsTable({
                   ) : null}
                   {visibleColumns.action ? (
                   <TableCell className="py-2.5 text-right last:pr-4">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {isBlasting && assignment.canSubmitForMember ? (
-                        <BlastingMetricsDialog
-                          assignment={assignment}
-                          targetUrls={targetUrls}
-                          submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
-                        />
-                      ) : (
-                        <ProofCell
-                          assignment={assignment}
-                          isPosting={isPosting}
-                          postingTargetPlatforms={postingTargetPlatforms}
-                        />
-                      )}
-                      {!isBlasting && assignment.canSubmitForMember ? (
-                        <SubmitProofDialog
-                          assignmentId={assignment.id}
-                          orderType={orderType}
-                          postingTargetPlatforms={postingTargetPlatforms}
-                          submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
-                          initialSubmission={assignment.latestSubmission}
-                          title={assignment.latestSubmission ? "Edit Bukti Anggota" : "Input Bukti Anggota"}
-                          trigger={
-                            <Button size="sm" variant="outline" className="h-8">
-                              {assignment.latestSubmission ? "Ubah" : "Input"}
-                            </Button>
-                          }
-                        />
-                      ) : null}
-                    </div>
+                    <AssignmentActionCell
+                      assignment={assignment}
+                      orderId={orderId}
+                      orderType={orderType}
+                      isPosting={isPosting}
+                      isBlasting={isBlasting}
+                      postingTargetPlatforms={postingTargetPlatforms}
+                      targetUrls={targetUrls}
+                    />
                   </TableCell>
                   ) : null}
                 </TableRow>
@@ -333,6 +315,10 @@ function getToggleableColumns({
 }
 
 function MetricSummary({ assignment }: { assignment: Assignment }) {
+  if (assignment.representedByLeader) {
+    return <span className="text-muted-foreground text-sm">-</span>;
+  }
+
   const metrics = assignment.latestSubmission?.metrics ?? {
     views: 0,
     likes: 0,
@@ -358,6 +344,61 @@ function MetricSummary({ assignment }: { assignment: Assignment }) {
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AssignmentActionCell({
+  assignment,
+  orderId,
+  orderType,
+  isPosting,
+  isBlasting,
+  postingTargetPlatforms,
+  targetUrls,
+}: {
+  assignment: Assignment;
+  orderId: string;
+  orderType?: OrderType;
+  isPosting: boolean;
+  isBlasting: boolean;
+  postingTargetPlatforms: SocialPlatform[];
+  targetUrls: OrderSocialTarget[];
+}) {
+  if (assignment.representedByLeader || assignment.canSubmitUnitTotal) {
+    return <span className="text-muted-foreground text-sm">-</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {isBlasting && assignment.canSubmitForMember ? (
+        <BlastingMetricsDialog
+          assignment={assignment}
+          targetUrls={targetUrls}
+          submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
+        />
+      ) : (
+        <ProofCell
+          assignment={assignment}
+          isPosting={isPosting}
+          postingTargetPlatforms={postingTargetPlatforms}
+        />
+      )}
+      {!isBlasting && assignment.canSubmitForMember ? (
+        <SubmitProofDialog
+          assignmentId={assignment.id}
+          orderType={orderType}
+          postingTargetPlatforms={postingTargetPlatforms}
+          submitUrl={`/api/v1/orders/${orderId}/assignments/${assignment.id}/submit`}
+          initialSubmission={assignment.latestSubmission}
+          title={assignment.latestSubmission ? "Edit Bukti Anggota" : "Input Bukti Anggota"}
+          trigger={
+            <Button size="sm" variant="outline" className="h-8">
+              {assignment.latestSubmission ? "Ubah" : "Input"}
+            </Button>
+          }
+        />
+      ) : null}
     </div>
   );
 }

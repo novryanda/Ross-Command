@@ -5,6 +5,7 @@ import { PostingProofDialog } from "@/components/features/assignments/posting-pr
 import { RepresentativePostingProofDialog } from "@/components/features/assignments/representative-posting-proof-dialog";
 import { SubmitProofDialog } from "@/components/features/assignments/submit-proof-dialog";
 import { BlastingMetricsInlineForm } from "@/components/features/orders/blasting-metrics-inline-form";
+import { UnitTotalSubmissionForm } from "@/components/features/orders/unit-total-submission-form";
 import { TargetMetricTotalsSection } from "@/components/features/orders/target-metric-section";
 import { OrderPostingDetails } from "@/components/features/orders/order-posting-fields";
 import { OrderTargetUrlsList } from "@/components/features/orders/order-target-urls-field";
@@ -27,6 +28,8 @@ export default async function AssignmentDetailPage({
   const response = await serverApiFetch<Assignment>(`/api/v1/assignments/me/${assignmentId}`);
   const assignment = response.data;
   const isBlasting = assignment.order.orderType === "engagement" || assignment.order.orderType === "blasting";
+  const isPosting = assignment.order.orderType === "posting";
+  const showUnitTotalForm = assignment.canSubmitUnitTotal && assignment.leaderOnlyUnit;
 
   return (
     <div className="space-y-6">
@@ -36,20 +39,22 @@ export default async function AssignmentDetailPage({
         eyebrow="Detail tugas saya"
         title={assignment.order.title}
         description={
-          assignment.order.orderType === "posting"
-            ? "Baca instruksi pelaksanaan, unggah posting ke sosmed target, lalu kirim link tiap platform."
-            : isBlasting
-              ? "Baca instruksi pelaksanaan, buka target, lalu input metrik blasting."
-              : "Baca instruksi pelaksanaan, buka target, lalu kirim bukti melalui link Drive."
+          showUnitTotalForm
+            ? `Input total pelaksanaan seluruh anggota ${assignment.leaderOnlyUnit?.name ?? "satuan"}.`
+            : isPosting
+              ? "Baca instruksi pelaksanaan, unggah posting ke sosmed target, lalu kirim link tiap platform."
+              : isBlasting
+                ? "Baca instruksi pelaksanaan, buka target, lalu input metrik blasting."
+                : "Baca instruksi pelaksanaan, buka target, lalu kirim bukti melalui link Drive."
         }
         actions={
-          isBlasting ? null : assignment.order.orderType === "posting" && assignment.canSubmitForMember ? (
+          showUnitTotalForm || isBlasting ? null : isPosting && assignment.canSubmitForMember ? (
             <RepresentativePostingProofDialog
               orderId={assignment.order.id}
               postingTargetPlatforms={assignment.order.postingTargetPlatforms}
               trigger={<Button size="sm">Kirim Bukti</Button>}
             />
-          ) : (
+          ) : !isPosting ? (
             <SubmitProofDialog
               assignmentId={assignment.id}
               orderType={assignment.order.orderType}
@@ -62,7 +67,7 @@ export default async function AssignmentDetailPage({
                 </Button>
               }
             />
-          )
+          ) : null
         }
       >
         <div className="flex flex-wrap gap-1.5">
@@ -104,7 +109,24 @@ export default async function AssignmentDetailPage({
         </CardContent>
       </Card>
 
-      {isBlasting ? (
+      {showUnitTotalForm && assignment.leaderOnlyUnit ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {assignment.latestSubmission ? "Ubah Total Satuan" : "Input Total Satuan"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UnitTotalSubmissionForm
+              orderId={assignment.order.id}
+              unitId={assignment.leaderOnlyUnit.id}
+              orderType={assignment.order.orderType}
+              targetUrls={assignment.order.targetUrls ?? []}
+              initialSubmission={assignment.latestSubmission}
+            />
+          </CardContent>
+        </Card>
+      ) : isBlasting ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
