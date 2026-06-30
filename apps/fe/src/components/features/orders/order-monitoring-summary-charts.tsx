@@ -23,6 +23,12 @@ const statusChartConfig = {
   late: { label: "Terlambat", color: "hsl(38 92% 50%)" },
 } satisfies ChartConfig;
 
+const submissionChartConfig = {
+  onTime: { label: "Tepat Waktu", color: "hsl(142 71% 45%)" },
+  late: { label: "Terlambat", color: "hsl(38 92% 50%)" },
+  pending: { label: "Belum Submit", color: "hsl(215 16% 65%)" },
+} satisfies ChartConfig;
+
 const metricsChartConfig = {
   baseline: { label: "Data Awal", color: "hsl(215 16% 65%)" },
   accumulated: { label: "Akumulasi", color: "hsl(221 83% 53%)" },
@@ -66,6 +72,31 @@ export function OrderMonitoringSummaryCharts({
     [summary.totalLate, summary.totalPending, summary.totalSubmitted],
   );
 
+  const submissionChartData = useMemo(
+    () =>
+      [
+        {
+          key: "onTime",
+          label: "Tepat Waktu",
+          value: summary.totalOnTime,
+          fill: "var(--color-onTime)",
+        },
+        {
+          key: "late",
+          label: "Terlambat",
+          value: summary.totalLate,
+          fill: "var(--color-late)",
+        },
+        {
+          key: "pending",
+          label: "Belum Submit",
+          value: summary.totalPending,
+          fill: "var(--color-pending)",
+        },
+      ].filter((item) => item.value > 0),
+    [summary.totalLate, summary.totalPending, summary.totalOnTime],
+  );
+
   const metricsChartData = useMemo(
     () =>
       metricFieldLabels.map((field) => ({
@@ -94,7 +125,7 @@ export function OrderMonitoringSummaryCharts({
         statusLabel={statusLabel}
       />
 
-      <div className={cn("grid gap-4", showMetrics ? "lg:grid-cols-2" : "max-w-xl")}>
+      <div className={cn("grid gap-4", showMetrics ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
         <ChartPanel title="Status Penugasan" description={`Total ditugaskan: ${summary.totalAssigned}`}>
           {statusChartData.length ? (
             <ChartContainer config={statusChartConfig} className="mx-auto aspect-square max-h-[240px] w-full">
@@ -118,6 +149,31 @@ export function OrderMonitoringSummaryCharts({
             <EmptyChartState message="Belum ada data status penugasan." />
           )}
           <MonitoringStatusLegend summary={summary} />
+        </ChartPanel>
+
+        <ChartPanel title="Ketepatan Waktu" description={`Total ditugaskan: ${summary.totalAssigned}`}>
+          {submissionChartData.length ? (
+            <ChartContainer config={submissionChartConfig} className="mx-auto aspect-square max-h-[240px] w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="label" />} />
+                <Pie
+                  data={submissionChartData}
+                  dataKey="value"
+                  nameKey="label"
+                  innerRadius={58}
+                  outerRadius={88}
+                  paddingAngle={2}
+                >
+                  {submissionChartData.map((item) => (
+                    <Cell key={item.key} fill={item.fill} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+          ) : (
+            <EmptyChartState message="Belum ada data ketepatan waktu." />
+          )}
+          <MonitoringSubmissionLegend summary={summary} />
         </ChartPanel>
 
         {showMetrics ? (
@@ -260,6 +316,28 @@ export function MonitoringStatusLegend({ summary }: { summary: ProgressSummary }
     { label: "Sudah Melaksanakan", value: summary.totalSubmitted, className: "bg-emerald-500" },
     { label: "Belum Melaksanakan", value: summary.totalPending, className: "bg-muted-foreground/50" },
     { label: "Terlambat", value: summary.totalLate, className: "bg-amber-500" },
+  ];
+
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-md bg-muted/40 px-2 py-1.5 text-center">
+          <div className="mb-1 flex items-center justify-center gap-1">
+            <span className={cn("size-2 rounded-full", item.className)} />
+            <span className="text-muted-foreground text-[10px]">{item.label}</span>
+          </div>
+          <p className="text-sm font-semibold tabular-nums">{item.value.toLocaleString("id-ID")}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function MonitoringSubmissionLegend({ summary }: { summary: ProgressSummary }) {
+  const items = [
+    { label: "Tepat Waktu", value: summary.totalOnTime, className: "bg-emerald-500" },
+    { label: "Terlambat", value: summary.totalLate, className: "bg-amber-500" },
+    { label: "Belum Submit", value: summary.totalPending, className: "bg-muted-foreground/50" },
   ];
 
   return (

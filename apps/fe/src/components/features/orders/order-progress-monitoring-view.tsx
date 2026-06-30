@@ -69,7 +69,7 @@ const memberColumnLabels: Record<MemberColumn, string> = {
   unit: "Satuan",
   status: "Status",
   metrics: "Metrik",
-  submittedAt: "Submit Terakhir",
+  submittedAt: "Waktu Submit",
 };
 const unitColumnLabels: Record<UnitColumn, string> = {
   commander: "Pimpinan",
@@ -83,7 +83,7 @@ const unitColumnLabels: Record<UnitColumn, string> = {
 const selectedUnitMemberColumnLabels: Record<SelectedUnitMemberColumn, string> = {
   status: "Status",
   metrics: "Metrik",
-  submittedAt: "Submit Terakhir",
+  submittedAt: "Waktu Submit",
 };
 const defaultMemberColumns: Record<MemberColumn, boolean> = {
   unit: true,
@@ -112,14 +112,12 @@ export function OrderProgressMonitoringView({
   initialUnitId,
   orderId,
   orderType,
-  showBulkSubmit = false,
 }: {
   monitoring: OrderProgressByUnit;
   defaultTab?: TabMonitor;
   initialUnitId?: string;
   orderId?: string;
   orderType?: "posting" | "engagement" | "blasting" | "counter" | "report_akun";
-  showBulkSubmit?: boolean;
 }) {
   const [tab, setTab] = useState<TabMonitor>(defaultTab);
   const [memberQuery, setMemberQuery] = useState("");
@@ -226,7 +224,6 @@ export function OrderProgressMonitoringView({
     Number(selectedUnitMemberRows),
   );
 
-  const canShowBulkSubmit = showBulkSubmit && orderType === "posting" && Boolean(orderId);
   const isBlasting = isBlastingOrderType(orderType);
   const memberColumnOptions = useMemo(
     () =>
@@ -251,12 +248,6 @@ export function OrderProgressMonitoringView({
       ) as Record<SelectedUnitMemberColumn, string>,
     [isBlasting],
   );
-  const selectedUnitBulkSubmitHref =
-    canShowBulkSubmit && selectedUnit
-      ? `/orders/${orderId}/monitoring/bulk-submit?unit=${selectedUnit.unit.id}`
-      : canShowBulkSubmit
-        ? `/orders/${orderId}/monitoring/bulk-submit`
-        : null;
 
   return (
     <div className="min-w-0 space-y-6 overflow-x-hidden">
@@ -325,7 +316,7 @@ export function OrderProgressMonitoringView({
                           <TableHead className="min-w-80">Metrik</TableHead>
                         ) : null}
                         {memberColumns.submittedAt ? (
-                          <TableHead className="min-w-36">Terlaksana Terakhir</TableHead>
+                          <TableHead className="min-w-36">Waktu Submit</TableHead>
                         ) : null}
                       </TableRow>
                     </TableHeader>
@@ -552,27 +543,19 @@ export function OrderProgressMonitoringView({
                     className="pl-9"
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {selectedUnitBulkSubmitHref ? (
-                    <Button variant="default" size="sm" asChild>
-                      <Link href={selectedUnitBulkSubmitHref}>
-                        <ClipboardListIcon className="size-4" />
-                        Kirim Massal
-                      </Link>
-                    </Button>
-                  ) : null}
-                  <ColumnSelector
-                  title="Tampilkan kolom"
-                  options={selectedUnitMemberColumnOptions}
-                  visibility={selectedUnitMemberColumns}
-                  onToggle={(column, checked) =>
-                    setSelectedUnitMemberColumns((current) => ({
-                      ...current,
-                      [column]: checked,
-                    }))
-                  }
-                />
-                </div>
+                 <div className="flex flex-wrap items-center gap-2">
+                   <ColumnSelector
+                   title="Tampilkan kolom"
+                   options={selectedUnitMemberColumnOptions}
+                   visibility={selectedUnitMemberColumns}
+                   onToggle={(column, checked) =>
+                     setSelectedUnitMemberColumns((current) => ({
+                       ...current,
+                       [column]: checked,
+                     }))
+                   }
+                 />
+                 </div>
               </div>
 
               {filteredSelectedUnitMembers.length ? (
@@ -587,7 +570,7 @@ export function OrderProgressMonitoringView({
                             <TableHead className="min-w-80">Metrik</TableHead>
                           ) : null}
                           {selectedUnitMemberColumns.submittedAt ? (
-                            <TableHead className="min-w-36">Terlaksana Terakhir</TableHead>
+                            <TableHead className="min-w-36">Waktu Submit</TableHead>
                           ) : null}
                         </TableRow>
                       </TableHeader>

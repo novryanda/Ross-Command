@@ -41,9 +41,6 @@ export default async function OrderMonitoringPage({
 
   const order = orderResponse.data;
   const monitoring = monitoringResponse.data;
-  const showBulkSubmit = monitoring.units.some((item) =>
-    item.members.some((member) => member.canSubmitForMember),
-  );
 
   return (
     <div className="min-w-0 space-y-6 overflow-x-hidden">
@@ -58,11 +55,6 @@ export default async function OrderMonitoringPage({
             {order.orderType === "blasting" || order.orderType === "engagement" ? (
               <Button asChild variant="outline">
                 <Link href={`/orders/${orderId}/metrics`}>Dashboard Metrik</Link>
-              </Button>
-            ) : null}
-            {showBulkSubmit && order.orderType === "posting" ? (
-              <Button asChild>
-                <Link href={`/orders/${orderId}/monitoring/bulk-submit`}>Kirim Massal</Link>
               </Button>
             ) : null}
           </>
@@ -81,7 +73,6 @@ export default async function OrderMonitoringPage({
         initialUnitId={unitValue}
         orderId={orderId}
         orderType={order.orderType}
-        showBulkSubmit={showBulkSubmit}
       />
     </div>
   );
