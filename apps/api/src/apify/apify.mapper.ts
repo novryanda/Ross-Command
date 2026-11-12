@@ -105,9 +105,24 @@ export function extractApifyDatasetItems(payload: unknown): unknown[] {
   return [payload];
 }
 
+function isErrorItem(item: unknown): boolean {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const source = item as Record<string, unknown>;
+  return (
+    source.result_type === 'error' ||
+    Boolean(source.error) ||
+    Boolean(source.error_message) ||
+    Boolean(source.error_type)
+  );
+}
+
 export function mergeDatasetMetrics(items: unknown[]): SubmissionMetrics {
-  return items.reduce<SubmissionMetrics>(
-    (total, item) => {
+  return items
+    .filter((item) => !isErrorItem(item))
+    .reduce<SubmissionMetrics>((total, item) => {
       const metrics = mapApifyOutputToMetrics(item);
       return {
         views: total.views + metrics.views,
@@ -116,7 +131,5 @@ export function mergeDatasetMetrics(items: unknown[]): SubmissionMetrics {
         shares: total.shares + metrics.shares,
         reposts: total.reposts + metrics.reposts,
       };
-    },
-    emptySubmissionMetrics,
-  );
+    }, emptySubmissionMetrics);
 }

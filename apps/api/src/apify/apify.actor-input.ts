@@ -66,6 +66,13 @@ export function buildActorRunInput(
   }
 
   if (params.platform === 'youtube' || actorKey.includes('youtube')) {
+    if (actorKey.includes('youtube-shorts-api')) {
+      return {
+        startUrls: [{ url: normalizedUrl }],
+        maxResultsShorts: 1,
+      };
+    }
+
     return {
       startUrls: [{ url: normalizedUrl }],
       maxResults: 1,
